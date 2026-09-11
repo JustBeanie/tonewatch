@@ -22,7 +22,7 @@ typecheck:
     {{pnpm}} --dir web exec tsc -b
 
 test:
-    {{uv}} run --project backend pytest -c backend/pyproject.toml
+    {{uv}} run --project backend python backend/scripts/run_pytest.py
     {{uv}} run --project backend python backend/scripts/check_package_coverage.py
 
 test-web:

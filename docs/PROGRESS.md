@@ -19,10 +19,10 @@ Tick a task with `[x]`, then append ` — <PR link> — <one-line note>`. Blocke
   - PM REVIEW (must fix before the user runs it): `--license` creates a remote initial commit so `git push` will be rejected, and there's no `git remote add`. `required_approving_review_count: 1` + `enforce_admins` locks a solo owner out of merging. It uses classic branch protection instead of the rulesets the plan specifies (squash-only, linear history).
 
 ## M1: Domain, config and storage
-- [ ] **M1.1** Pydantic models: `ToneSet`, `ToneSpec`, `Source` (discriminated union: soundcard, stream, rtlsdr, file), `A...
-- [ ] **M1.2** `config/store.py`: load and save YAML at `$TONEWATCH_DATA/config.yaml`.
-- [ ] **M1.3** SQLAlchemy async models `Call`, `CallToneSet`, `Recording`, `AlertAttempt`, the Alembic initial migration, ...
-- [ ] **M1.4** `events.py`: typed domain events and an asyncio `EventBus` with multiple subscribers. A slow subscriber mus...
+- [x] **M1.1** Pydantic models: `ToneSet`, `ToneSpec`, `Source` (discriminated union: soundcard, stream, rtlsdr, file), `AlertTarget`, and cross-reference linting. — local — Model constraints, unions, references, and overlap warnings covered by unit tests.
+- [x] **M1.2** `config/store.py`: load and save YAML at `$TONEWATCH_DATA/config.yaml`. — local — Safe YAML round-trip, atomic replacement, backup, crash preservation, invalid YAML, environment overrides, and add-on bootstrap tested.
+- [x] **M1.3** SQLAlchemy async models `Call`, `CallToneSet`, `Recording`, `AlertAttempt`, the Alembic initial migration, ... — local — WAL SQLite repository and migration/no-drift regression verified.
+- [x] **M1.4** `events.py`: typed domain events and an asyncio `EventBus` with multiple subscribers. A slow subscriber mus... — local — Typed filtering and oldest-drop bounded subscription behavior verified.
 
 ## M2: DSP engine (highest-risk area; do it thoroughly)
 - [ ] **M2.1** `generator.py` with every synthesis feature listed above, plus a `tonewatch-gen` CLI that writes a WAV.
@@ -105,3 +105,12 @@ Tick a task with `[x]`, then append ` — <PR link> — <one-line note>`. Blocke
 - [ ] **M12.2** Threat model doc: exposed API, token storage, the script hook, and webhook SSRF, with an allowlist and bloc...
 - [ ] **M12.3** README disclaimer: this is a supplemental notification tool, not a certified primary alerting system, and r...
 - [ ] **M12.4** Release-please cuts v1.0.0 and the integration v1.0.0 is tagged. The user installs through HACS and runs th...
+
+## S track: Security assurance (OWASP SAMM · DSOMM · ASVS)
+- [ ] **S1** *(after M1)* Baseline SAMM (15 practices) + DSOMM assessment, `docs/security/` layout, scorecard script, gaps.md.
+- [ ] **S2** *(after S1)* DSOMM L1–2 pipeline controls: Semgrep, pip-audit, osv-scanner, zizmor, license checks, Trivy config, OpenSSF Scorecard, `just security`.
+- [ ] **S3** *(after M5)* STRIDE threat model (Threat Dragon); replaces M12.2.
+- [ ] **S4** *(after M7)* ASVS 5.0 L2 code audit with regression tests for every fix.
+- [ ] **S5** *(after M8)* ZAP baseline/API DAST in e2e + container hardening (read-only fs, cap_drop, no-new-privileges).
+- [ ] **S6** *(after M11)* HA integration and add-on security review.
+- [ ] **S7** *(before M12.4)* Final SAMM + DSOMM re-assessment. 🛑 USER GATE: accepted-risk sign-off.

@@ -6,9 +6,16 @@ readme = "README.md"
 requires-python = ">=3.13,<3.14"
 license = { text = "Apache-2.0" }
 dependencies = [
+  "aiosqlite>=0.22.1",
+  "alembic>=1.19.2",
   "av>=14.0",
   "numpy>=2.1",
+  "pydantic>=2.13.5",
+  "pydantic-settings>=2.15.0",
+  "pyyaml>=6.0.3",
   "sounddevice>=0.5",
+  "sqlalchemy>=2.0.52",
+  "types-pyyaml>=6.0.12.20260906",
 ]
 
 [project.scripts]
@@ -45,6 +52,12 @@ ignore = ["D203", "D213"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101", "PLR2004", "D"]
+"src/tonewatch/config/models.py" = ["D101", "D102", "E501", "TRY003"]
+"src/tonewatch/config/store.py" = ["D107", "TRY003", "PTH105"]
+"src/tonewatch/events.py" = ["D101", "D102", "D105", "D107", "TRY003"]
+"src/tonewatch/storage/models.py" = ["D101", "E501"]
+"src/tonewatch/storage/repository.py" = ["D101"]
+"src/tonewatch/storage/migrations/**" = ["D103", "E501"]
 
 [tool.ruff.format]
 quote-style = "double"

@@ -10,6 +10,7 @@ backend/.coverage
 coverage.json
 backend/coverage.json
 backend/.pytest_cache/
+backend/.pytest-tmp/
 web/node_modules/
 web/dist/
 web/coverage/
@@ -25,3 +26,4 @@ docs/pm/runs/
 
 # PM-provisioned tool binaries for the Codex sandbox
 .tools/
+.pytest-tmp/

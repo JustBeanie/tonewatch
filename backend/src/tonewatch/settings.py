@@ -1,0 +1,41 @@
+"""Runtime settings and Home Assistant add-on bootstrap."""
+
+import json
+import os
+from pathlib import Path
+from typing import Any, cast
+
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    """Application settings, overridable with TONEWATCH_ environment variables."""
+
+    model_config = SettingsConfigDict(env_prefix="TONEWATCH_", extra="ignore")
+
+    data_dir: Path = Path("data")
+    log_level: str = "INFO"
+    bind_host: str = "127.0.0.1"
+    bind_port: int = Field(default=8099, ge=1, le=65535)
+    addon_mode: bool = False
+
+    @classmethod
+    def load(cls, *, options_path: Path = Path("/data/options.json")) -> "Settings":
+        """Load environment settings and optional Supervisor add-on options."""
+        values: dict[str, object] = {}
+        addon = bool(os.getenv("SUPERVISOR_TOKEN"))
+        if addon and options_path.is_file():
+            with options_path.open(encoding="utf-8") as handle:
+                options = json.load(handle)
+            if isinstance(options, dict):
+                supported = {"data_dir", "log_level", "bind_host", "bind_port"}
+                values.update(
+                    {
+                        key: value
+                        for key, value in options.items()
+                        if key in supported and f"TONEWATCH_{key.upper()}" not in os.environ
+                    }
+                )
+        values["addon_mode"] = addon
+        return cls(**cast("dict[str, Any]", values))
