@@ -21,7 +21,8 @@
       "matchDepTypes": [
         "devDependencies"
       ],
-      "automerge": true
+      "automerge": true,
+      "minimumReleaseAge": "7 days"
     }
   ]
 }

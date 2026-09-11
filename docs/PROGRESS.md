@@ -24,13 +24,13 @@ Tick a task with `[x]`, then append ` — <PR link> — <one-line note>`. Blocke
 - [x] **M1.4** `events.py`: typed domain events and an asyncio `EventBus` with multiple subscribers. A slow subscriber mus... — local — Typed filtering and oldest-drop bounded subscription behavior verified.
 
 ## M2: DSP engine (highest-risk area; do it thoroughly)
-- [ ] **M2.1** `generator.py` with every synthesis feature listed above, plus a `tonewatch-gen` CLI that writes a WAV.
-- [ ] **M2.2** `spectrum.py`: framing, window, FFT, parabolic interpolation, purity and level. Test frequency accuracy to ...
-- [ ] **M2.3** `segmenter.py`, with dropout tolerance and median tracking.
-- [ ] **M2.4** `matcher.py`: the per-tone-set state machine, `max_gap`, cooldown and early pre-alert.
-- [ ] **M2.5** Golden scenario suite of at least 25 scenarios: clean, noisy, off-frequency, too short, too long, stacked, ...
-- [ ] **M2.6** Hypothesis property tests and the benchmark (`just bench`), with the results recorded in `docs/benchmarks.md`.
-- [ ] **M2.7** `tonewatch analyze file.wav --config config.yaml` prints the detected calls and segments. This is the main ...
+- [x] **M2.1** `generator.py` with every synthesis feature listed above, plus a `tonewatch-gen` CLI that writes a WAV. — local — Deterministic float32 generators and WAV CLI covered by unit tests.
+- [x] **M2.2** `spectrum.py`: framing, window, FFT, parabolic interpolation, purity and level. Test frequency accuracy to ... — local — Incremental Hann FFT, log-bin interpolation, purity/level thresholds, and chunking invariance verified.
+- [x] **M2.3** `segmenter.py`, with dropout tolerance and median tracking. — local — Open/extended/closed updates, dropout bridging, median frequency tracking, and smear correction verified.
+- [x] **M2.4** `matcher.py`: the per-tone-set state machine, `max_gap`, cooldown and early pre-alert. — local — Per-set stream-time cooldown, early B matching, long-tone matching, excess recording, and stacked pages verified.
+- [x] **M2.5** Golden scenario suite of at least 25 scenarios: clean, noisy, off-frequency, too short, too long, stacked, ... — local — 25 data-driven scenarios pass; 10-minute voice and pink-noise cases plus one-hour mixed false-positive run pass in `just test-slow`.
+- [x] **M2.6** Hypothesis property tests and the benchmark (`just bench`), with the results recorded in `docs/benchmarks.md`. — local — 3 properties pass; 200-set/10-minute benchmark is 1,283× realtime.
+- [x] **M2.7** `tonewatch analyze file.wav --config config.yaml` prints the detected calls and segments. This is the main ... — local — WAV normalization/resampling, table output, stable JSON schema, and CLI tests pass.
 
 ## M3: Sources and pipeline
 - [ ] **M3.1** `sources/base.py`: an `AudioSource` async iterator protocol, frame dataclass, and lifecycle (`open`/`close`).

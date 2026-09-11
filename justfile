@@ -26,6 +26,9 @@ test:
     {{uv}} run --project backend python backend/scripts/run_pytest.py
     {{uv}} run --project backend python backend/scripts/check_package_coverage.py
 
+test-slow:
+    {{uv}} run --project backend python backend/scripts/run_pytest.py -m slow --no-cov
+
 test-web:
     {{pnpm}} --dir web test
 
@@ -33,6 +36,7 @@ security-scorecard:
     {{uv}} run --project backend python scripts/security_scorecard.py --check
 
 security:
+    {{uv}} run --project backend python -c "from pathlib import Path; Path('.tools').mkdir(exist_ok=True)"
     {{uv}} export --project backend --frozen --no-dev --no-emit-project --format requirements-txt > .tools/security-requirements.txt
     {{uv}} run --project backend --with pip-audit pip-audit -r .tools/security-requirements.txt --cache-dir .tools/pip-audit-cache
     {{uv}} run --project backend --with zizmor zizmor .github/workflows
@@ -57,7 +61,7 @@ e2e:
     @echo "End-to-end tests start with M6.9."
 
 bench:
-    @echo "Benchmarks start with M2.6."
+    {{uv}} run --project backend python backend/scripts/run_pytest.py backend/tests/benchmarks --benchmark-only --no-cov
 
 docker-build:
     @echo "Docker build starts with M8.1."
