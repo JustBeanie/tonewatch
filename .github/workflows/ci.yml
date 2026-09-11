@@ -1,0 +1,49 @@
+name: CI
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  test-python:
+    permissions: {contents: read}
+    strategy: {matrix: {os: [ubuntu-latest, windows-latest, ubuntu-24.04-arm]}}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: astral-sh/setup-uv@e58605a9b6da7c637471fab8847a5e5a6b8df081 # v5
+      - run: uv python install 3.13
+      - run: uv sync --project backend
+      - run: uv run --project backend pytest backend/tests/spike -v
+  lint-python:
+    permissions: {contents: read}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: astral-sh/setup-uv@e58605a9b6da7c637471fab8847a5e5a6b8df081 # v5
+      - run: uv run --project backend ruff check backend
+  typecheck:
+    permissions: {contents: read}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: astral-sh/setup-uv@e58605a9b6da7c637471fab8847a5e5a6b8df081 # v5
+      - run: uv sync --project backend
+      - run: uv run --project backend mypy backend/src backend/tests
+  lint-web:
+    permissions: {contents: read}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with: {node-version: 24, cache: pnpm, cache-dependency-path: web/pnpm-lock.yaml}
+      - run: pnpm --dir web install --frozen-lockfile
+      - run: pnpm --dir web lint
+      - run: pnpm --dir web exec prettier --check .
+  test-web:
+    permissions: {contents: read}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+      - run: pnpm --dir web install --frozen-lockfile
+      - run: pnpm --dir web test

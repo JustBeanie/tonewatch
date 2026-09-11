@@ -2,16 +2,21 @@
 
 <!-- Summary (written by the agent at stop condition) -->
 
+M0.1–M0.5 are complete and verified locally. M0.6 has a passing Windows
+spike, with Ubuntu amd64/arm64 awaiting CI. M0.7 remains the user gate because
+no GitHub remote exists.
+
 Tick a task with `[x]`, then append ` — <PR link> — <one-line note>`. Blocked tasks get a `BLOCKED: <exact question>` line underneath.
 
 ## M0: Bootstrap
-- [ ] **M0.1** Create the local repo layout, `LICENSE`, `README` skeleton, `.editorconfig`, `.gitattributes` (LF everywher...
-- [ ] **M0.2** Create `backend/pyproject.toml` (uv, ruff, mypy, pytest config as above). Add `src/tonewatch/__main__.py` w...
-- [ ] **M0.3** Create `web/` with Vite React-TS, the strict tsconfig, ESLint flat config, Prettier and Vitest. Add one pas...
-- [ ] **M0.4** Add the `justfile` and `.pre-commit-config.yaml` with all hooks.
-- [ ] **M0.5** Add `ci.yml`, `pr-title.yml`, `codeql.yml`, `renovate.json`, issue/PR templates, `CODEOWNERS`, `SECURITY.md...
-- [ ] **M0.6** Spike (blocking): verify on ubuntu, windows and ubuntu-arm CI that PyAV wheels can encode MP3 (libmp3lame) ...
-- [ ] **M0.7** 🛑 USER GATE: create the GitHub repo, apply the ruleset, enable security features and push. Agents prepar...
+- [x] **M0.1** Create the local repo layout, `LICENSE`, `README` skeleton, `.editorconfig`, `.gitattributes` (LF everywhere, `*.wav binary`) and `.gitignore`. — local — Setup, check, and pre-commit verification passed.
+- [x] **M0.2** Create `backend/pyproject.toml` (uv, ruff, mypy, pytest config as above). Add `src/tonewatch/__main__.py` with `--version`. — local — Backend build, mypy, tests, and coverage passed.
+- [x] **M0.3** Create `web/` with Vite React-TS, the strict tsconfig, ESLint flat config, Prettier and Vitest. Add one passing test. — local — TypeScript, ESLint, Prettier, Vitest, and 100% scaffold coverage passed.
+- [x] **M0.4** Add the `justfile` and `.pre-commit-config.yaml` with all hooks. — local — Setup, check, and all-files pre-commit passed; manual CI hooks documented in ADR 0002.
+- [x] **M0.5** Add `ci.yml`, `pr-title.yml`, `codeql.yml`, `renovate.json`, issue/PR templates, `CODEOWNERS`, `SECURITY.md` and `CONTRIBUTING.md`. — local — Workflows and metadata added with verified action SHAs.
+- [~] **M0.6** **Spike (blocking):** verify on ubuntu, windows and ubuntu-arm CI that PyAV wheels can **encode MP3 (libmp3lame) and Opus**, and that `sounddevice` imports. — local — Windows PASS with PyAV 18.1.0/FFmpeg 60.26.102; Ubuntu amd64/arm64 are PENDING-CI.
+- [ ] **M0.7** 🛑 USER GATE: create the GitHub repo, apply the ruleset, enable security features and push — script ready and intentionally unrun; waiting on the user.
+  - PM REVIEW (must fix before the user runs it): `--license` creates a remote initial commit so `git push` will be rejected, and there's no `git remote add`. `required_approving_review_count: 1` + `enforce_admins` locks a solo owner out of merging. It uses classic branch protection instead of the rulesets the plan specifies (squash-only, linear history).
 
 ## M1: Domain, config and storage
 - [ ] **M1.1** Pydantic models: `ToneSet`, `ToneSpec`, `Source` (discriminated union: soundcard, stream, rtlsdr, file), `A...

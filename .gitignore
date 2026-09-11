@@ -7,6 +7,9 @@ __pycache__/
 .coverage
 htmlcov/
 backend/.coverage
+coverage.json
+backend/coverage.json
+backend/.pytest_cache/
 web/node_modules/
 web/dist/
 web/coverage/
