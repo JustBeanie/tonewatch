@@ -34,3 +34,15 @@ There is no remote yet, so the PR workflow is replaced by a PM review loop:
 - Anything you'd put in a PR description goes in your final message: what changed per task ID, how you verified it, open risks, and any `BLOCKED:` questions.
 - CI can't run yet. Verify CI-only requirements locally where possible, and mark the rest `PENDING-CI` in `docs/PROGRESS.md` instead of ticking them.
 - Tool caches live in the usual user dirs (uv, pnpm, npm, pre-commit), which are writable. Don't install anything system-wide.
+
+### Tooling inside the Codex sandbox (Windows)
+
+The sandbox runs as a separate user with a reduced PATH and **cannot see WinGet install folders**. The PM keeps working copies of the tools in the gitignored `.tools/bin` folder (`uv.exe`, `uvx.exe`, `just.exe`, `pnpm.cmd`). Start every shell command with:
+
+```
+set "PATH=%CD%\.tools\bin;C:\Program Files\nodejs;%PATH%" && <command>
+```
+
+**Never** install tools globally (npm -g, curl-downloading binaries, winget, pip --user). If a tool is missing, write `BLOCKED: need <tool>` and the PM will provision it.
+
+**Never tick a task in `docs/PROGRESS.md` until its Definition of done has actually been run green.** If you can't run the verification, mark the task `[~]` with the reason.

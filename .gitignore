@@ -1,2 +1,24 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+backend/.coverage
+web/node_modules/
+web/dist/
+web/coverage/
+web/*.tsbuildinfo
+web/*.d.ts
+web/vite.config.js
+web/vitest.config.js
+.env
+*.wav
+backend/tests/fixtures/private/
 # PM run logs (large JSONL event streams)
 docs/pm/runs/
+
+# PM-provisioned tool binaries for the Codex sandbox
+.tools/
