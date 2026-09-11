@@ -6,9 +6,14 @@
 # Live stream: stdout, and docs/pm/runs/<brief>-<stamp>.log (readable). The raw event
 # stream stays in the matching .jsonl. Follow any run from another terminal with:
 #   uv run --project backend python docs/pm/watch.py --latest --follow
+#
+# Parallel runs: WORKTREE=/c/Users/beanie/Documents/Proj/tonewatch-<name> runs the engineer in
+# that git worktree (it needs its own .tools/bin copy). PM files (briefs, runs, reports,
+# ledger) always live in the main checkout.
 set -euo pipefail
 BRIEF="$1"; RESUME="${2:-}"; EFFORT="${EFFORT:-medium}"; MODEL="${MODEL:-gpt-5.6-luna}"
 ROOT="/c/Users/beanie/Documents/Proj/tonewatch"
+WORK="${WORKTREE:-$ROOT}"
 # The bin/<hash> directory changes when the Codex app updates; take the newest codex.exe.
 CODEX=""
 for candidate in /c/Users/beanie/AppData/Local/OpenAI/Codex/bin/*/codex.exe; do
@@ -47,14 +52,14 @@ COMMON=( -m "$MODEL" -c "model_reasoning_effort=\"$EFFORT\""
   -c 'sandbox_mode="workspace-write"' -c 'sandbox_workspace_write.network_access=true'
   -c "sandbox_workspace_write.writable_roots=$ROOTS"
   --json -o "$REPORT" )
-cd "$ROOT"
+cd "$WORK"
 echo "$RUN" > "$ROOT/docs/pm/runs/CURRENT"
-echo "dispatch $RUN model=$MODEL effort=$EFFORT resume=${RESUME:-new} codex=$CODEX"
+echo "dispatch $RUN model=$MODEL effort=$EFFORT resume=${RESUME:-new} work=$WORK codex=$CODEX"
 
 set +e
 : > "$LOG"
 if [ -z "$RESUME" ]; then
-  "$CODEX" exec -C "$ROOT" "${COMMON[@]}" - < "$PROMPT_FILE" > "$LOG" 2>&1 &
+  "$CODEX" exec -C "$WORK" "${COMMON[@]}" - < "$PROMPT_FILE" > "$LOG" 2>&1 &
 else
   "$CODEX" exec resume "$RESUME" "${COMMON[@]}" - < "$PROMPT_FILE" > "$LOG" 2>&1 &
 fi
