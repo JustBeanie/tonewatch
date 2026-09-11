@@ -77,7 +77,8 @@ ignore = ["D203", "D213"]
   "TC003",
   "TRY003",
 ]
-"src/tonewatch/pipeline/*.py" = ["D107", "D102", "PLR0913", "TRY003"]
+"src/tonewatch/pipeline/*.py" = ["D107", "D102", "PLR0913", "TRY003", "ASYNC240"]
+"src/tonewatch/recording/*.py" = ["D101", "D102", "D107", "E501", "PLR0913", "PLR0917", "TRY003", "ASYNC240", "PTH105", "TC001", "TC002", "TC003"]
 # DSP: the brief fixes the public constructors' keyword tuning parameters (PLR0913,
 # PLR0917) and the matcher's per-sequence state machine (PLR0912); DSP constants such as
 # window sizes and the 250-3000 Hz band are domain values, not magic numbers (PLR2004).

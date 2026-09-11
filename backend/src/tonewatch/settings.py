@@ -8,6 +8,8 @@ from typing import Any, cast
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from tonewatch.recording.retention import RetentionPolicy
+
 
 class Settings(BaseSettings):
     """Application settings, overridable with TONEWATCH_ environment variables."""
@@ -19,6 +21,7 @@ class Settings(BaseSettings):
     bind_host: str = "127.0.0.1"
     bind_port: int = Field(default=8099, ge=1, le=65535)
     addon_mode: bool = False
+    retention: RetentionPolicy = Field(default_factory=RetentionPolicy)
 
     @classmethod
     def load(cls, *, options_path: Path = Path("/data/options.json")) -> "Settings":

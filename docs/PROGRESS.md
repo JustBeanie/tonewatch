@@ -42,10 +42,10 @@ Tick a task with `[x]`, then append ` — <PR link> — <one-line note>`. Blocke
 - [x] **M3.7** `watchdog.py`: no frames for more than 10 s, flatline (RMS < −80 dBFS) for more than N min, clipping rati... — local — Transition-only health events, hysteresis, clipping/no-data/flatline/disconnect checks, and injected-clock tests verified.
 
 ## M4: Recording
-- [ ] **M4.1** Ring buffer pre-roll, then post-roll with silence early-stop and the max cap.
-- [ ] **M4.2** Tonal-segment trimming and stacked-page merge.
-- [ ] **M4.3** `encoder.py`: MP3 plus optional Opus, with metadata tags (tone set names, timestamp). Files go to `recordin...
-- [ ] **M4.4** `retention.py`: max age, max total size and max count, run by a daily job.
+- [x] **M4.1** Ring buffer pre-roll, then post-roll with silence early-stop and the max cap. — local — CallRecorder policy aggregation, cap/silence decisions, and pre-roll covered by focused tests.
+- [x] **M4.2** Tonal-segment trimming and stacked-page merge. — local — Stream-time guarded span removal, join fades, and unioned stacked-call policies implemented and tested.
+- [x] **M4.3** `encoder.py`: MP3 plus optional Opus, with metadata tags (tone set names, timestamp). Files go to `recordings/YYYY/MM/DD/<call_id>.<ext>`. — local — Atomic PyAV MP3/Opus output, metadata, persistence subscriber, and lifecycle events verified.
+- [x] **M4.4** `retention.py`: max age, max total size and max count, run by a daily job. — local — Safe retention enforcement, escape refusal, pruning, injectable daily loop, and supervisor startup task verified.
 
 ## M5: API
 - [ ] **M5.1** FastAPI app factory, lifespan starting the supervisor, structlog JSON logs, and `/healthz` plus `/readyz`.

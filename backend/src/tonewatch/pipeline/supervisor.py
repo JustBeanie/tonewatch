@@ -12,6 +12,7 @@ from tonewatch.events import EventBus, FeedHealthChanged
 from tonewatch.pipeline.channel import Channel
 from tonewatch.pipeline.persistence import PersistenceSubscriber
 from tonewatch.pipeline.watchdog import Watchdog
+from tonewatch.recording.retention import RetentionService, retention_loop
 from tonewatch.sources.base import SourceConfigError
 
 if TYPE_CHECKING:
@@ -38,6 +39,7 @@ class Supervisor:
         jitter: Jitter | None = None,
         channel_factory: ChannelFactory | None = None,
         shutdown_timeout_s: float = 5,
+        retention_service: RetentionService | None = None,
     ) -> None:
         self.config, self.bus, self.session_factory = config, bus, session_factory
         self.clock, self.sleep = clock, sleep
@@ -50,6 +52,8 @@ class Supervisor:
         self._configs: dict[str, Source] = {}
         self._stopping = False
         self.persistence = PersistenceSubscriber(bus, session_factory)
+        self.retention_service = retention_service
+        self._retention_task: asyncio.Task[None] | None = None
 
     async def start(self) -> None:
         """Start persistence and one task per enabled source."""
@@ -57,6 +61,11 @@ class Supervisor:
             return
         self._stopping = False
         await self.persistence.start()
+        if self.retention_service is not None:
+            self._retention_task = asyncio.create_task(
+                retention_loop(self.retention_service, self.session_factory, sleep=self.sleep),
+                name="tonewatch-retention",
+            )
         for source in self.config.sources:
             if source.enabled:
                 self._start_source(source)
@@ -75,6 +84,10 @@ class Supervisor:
                 pass
         self._tasks.clear()
         self._configs.clear()
+        if self._retention_task is not None:
+            self._retention_task.cancel()
+            await asyncio.gather(self._retention_task, return_exceptions=True)
+            self._retention_task = None
         await self.persistence.stop()
 
     async def wait(self) -> None:

@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import asyncio
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from tonewatch.events import CallClosed, EventBus, Subscription, ToneDetected
-from tonewatch.storage.models import Call, CallToneSet
+import av
+
+from tonewatch.events import CallClosed, EventBus, RecordingReady, Subscription, ToneDetected
+from tonewatch.storage.models import Call, CallToneSet, Recording
 from tonewatch.storage.repository import close_call, create_call, create_call_tone_set
 
 if TYPE_CHECKING:
@@ -70,16 +73,43 @@ class PersistenceSubscriber:
                 subscription.queue.task_done()
 
     async def _persist(self, event: object) -> None:
-        if not isinstance(event, (ToneDetected, CallClosed)):
+        if not isinstance(event, (ToneDetected, CallClosed, RecordingReady)):
             return
         if self.session_factory is None:
             return
         async with self.session_factory() as session:
             if isinstance(event, ToneDetected):
                 await self._persist_detection(session, event)
+            elif isinstance(event, RecordingReady):
+                await self._persist_recording(session, event)
             else:
                 await close_call(session, call_id=event.call_id, status=event.status)
             await session.commit()
+
+    async def _persist_recording(self, session: AsyncSession, event: RecordingReady) -> None:
+        """Persist file facts measured from the encoded file."""
+        path = Path(event.path)
+        duration = 0.0
+        try:
+            with av.open(str(path)) as container:
+                stream = next((item for item in container.streams if item.type == "audio"), None)
+                if (
+                    stream is not None
+                    and stream.duration is not None
+                    and stream.time_base is not None
+                ):
+                    duration = float(stream.duration * stream.time_base)
+        except (OSError, av.error.FFmpegError):
+            duration = 0.0
+        session.add(
+            Recording(
+                call_id=event.call_id,
+                format=event.format,
+                path=str(path),
+                duration_s=duration,
+                size_bytes=path.stat().st_size,
+            )
+        )
 
     async def _persist_detection(self, session: AsyncSession, event: ToneDetected) -> None:
         # Calls arrive before their first tone-set row, and the subscriber is serial.

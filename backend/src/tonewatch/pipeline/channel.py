@@ -25,7 +25,19 @@ if TYPE_CHECKING:
     from tonewatch.pipeline.watchdog import Watchdog
 
 WallClock = Callable[[], datetime | float]
-RecorderHook = Callable[[AudioFrame, RingBuffer], Awaitable[None] | None]
+
+
+@dataclass(frozen=True, slots=True)
+class RecorderCall:
+    """Immutable call identity supplied to recording hooks."""
+
+    id: UUID
+    source_id: str
+    started_at: datetime
+    toneset_ids: frozenset[str]
+
+
+RecorderHook = Callable[..., Awaitable[None] | None]
 
 
 class DetectionEngineLike(Protocol):
@@ -42,6 +54,7 @@ EngineFactory = Callable[[list["ToneSet"]], DetectionEngineLike]
 @dataclass(slots=True)
 class _OpenCall:
     id: UUID
+    first_detection_s: float
     last_detection_s: float
     merge_window_s: float
     toneset_ids: set[str] = field(default_factory=set)
@@ -73,7 +86,8 @@ class Channel:
             tone for tone in tonesets if tone.enabled and (allowed == "all" or tone.id in allowed)
         )
         pre_roll = max((tone.record.pre_roll_s for tone in self.tonesets), default=10)
-        self.ringbuffer = RingBuffer(pre_roll or 10)
+        # Keep enough history to compensate for detector latency before the first tone.
+        self.ringbuffer = RingBuffer((pre_roll or 10) + 1)
         self._open_call: _OpenCall | None = None
         self._anchor_wall: datetime | None = None
         self._anchor_stream_s = 0.0
@@ -97,13 +111,22 @@ class Channel:
                 self._observe_frame(frame)
                 self._close_expired(frame.stream_time_s)
                 self.ringbuffer.extend(frame.samples, stream_time_s=frame.stream_time_s)
-                if self.recorder_hook is not None:
-                    result = self.recorder_hook(frame, self.ringbuffer)
-                    if inspect.isawaitable(result):
-                        await result
                 output = engine.feed(frame.samples)
                 for detection in output.detections:
                     self._publish_detection(detection)
+                if self.recorder_hook is not None:
+                    call = self._recorder_call()
+                    try:
+                        result = self.recorder_hook(frame, self.ringbuffer, output, call, "active")
+                    except TypeError:
+                        result = self.recorder_hook(frame, self.ringbuffer)
+                    if inspect.isawaitable(result):
+                        await result
+                    should_stop = getattr(self.recorder_hook, "should_stop", None)
+                    if callable(should_stop) and should_stop(
+                        frame.stream_time_s + frame.samples.size / 16_000, frame.samples
+                    ):
+                        break
                 await asyncio.sleep(0)
             self._close_call()
             await asyncio.sleep(0)
@@ -132,7 +155,9 @@ class Channel:
         ):
             if open_call is not None:
                 self._close_call()
-            open_call = _OpenCall(uuid4(), detection.detected_at_s, toneset.record.post_s)
+            open_call = _OpenCall(
+                uuid4(), detection.detected_at_s, detection.detected_at_s, toneset.record.post_s
+            )
             self._open_call = open_call
         else:
             open_call.merge_window_s = max(open_call.merge_window_s, toneset.record.post_s)
@@ -145,6 +170,16 @@ class Channel:
                 self._to_wall_time(detection.detected_at_s),
                 self.source_id,
             )
+        )
+
+    def _recorder_call(self) -> RecorderCall | None:
+        if self._open_call is None:
+            return None
+        return RecorderCall(
+            self._open_call.id,
+            self.source_id,
+            self._to_wall_time(self._open_call.first_detection_s),
+            frozenset(self._open_call.toneset_ids),
         )
 
     def _close_expired(self, stream_time_s: float) -> None:
