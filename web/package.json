@@ -35,5 +35,6 @@
     "typescript": "~5.7.2",
     "vitest": "latest",
     "@vitest/coverage-v8": "latest"
-  }
+  },
+  "packageManager": "pnpm@10.34.5"
 }

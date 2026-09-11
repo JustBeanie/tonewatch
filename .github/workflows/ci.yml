@@ -5,21 +5,27 @@ permissions:
 jobs:
   test-python:
     permissions: {contents: read}
-    strategy: {matrix: {os: [ubuntu-latest, windows-latest, ubuntu-24.04-arm]}}
+    strategy:
+      fail-fast: false
+      matrix: {os: [ubuntu-latest, windows-latest, ubuntu-24.04-arm]}
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: astral-sh/setup-uv@e58605a9b6da7c637471fab8847a5e5a6b8df081 # v5
-      - run: uv python install 3.13
+      # The sounddevice wheel bundles PortAudio on Windows/macOS only.
+      - if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libportaudio2
       - run: uv sync --project backend
-      - run: uv run --project backend pytest backend/tests/spike -v
+      - run: uv run --project backend python backend/scripts/run_pytest.py -v
+      - run: uv run --project backend python backend/scripts/check_package_coverage.py
   lint-python:
     permissions: {contents: read}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: astral-sh/setup-uv@e58605a9b6da7c637471fab8847a5e5a6b8df081 # v5
-      - run: uv run --project backend ruff check backend
+      - run: uv run --project backend ruff check backend scripts docs/pm
+      - run: uv run --project backend ruff format --check backend scripts docs/pm
   typecheck:
     permissions: {contents: read}
     runs-on: ubuntu-latest
@@ -34,6 +40,7 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+        with: {package_json_file: web/package.json}
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with: {node-version: 24, cache: pnpm, cache-dependency-path: web/pnpm-lock.yaml}
       - run: pnpm --dir web install --frozen-lockfile
@@ -45,5 +52,9 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+        with: {package_json_file: web/package.json}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with: {node-version: 24, cache: pnpm, cache-dependency-path: web/pnpm-lock.yaml}
       - run: pnpm --dir web install --frozen-lockfile
+      - run: pnpm --dir web exec tsc -b
       - run: pnpm --dir web test
