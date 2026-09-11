@@ -52,8 +52,7 @@ Evidence-backed gaps from the S1 baseline. Planned work is intentionally scored 
 - SAMM: **Design / Secure Architecture / Technology Management** — 0.0 vs 1.0; owner **S2**.
 - SAMM: **Design / Security Requirements / Software Requirements** — 1.0 vs 2.0; owner **S2**.
 - SAMM: **Design / Security Requirements / Supplier Security** — 0.0 vs 2.0; owner **S2**.
-- SAMM: **Design / Threat Assessment / Application Risk Profile** — 0.0 vs 2.0; owner **S2**.
-- SAMM: **Design / Threat Assessment / Threat Modeling** — 0.0 vs 2.0; owner **S2**.
+- SAMM: **Design / Threat Assessment / Application Risk Profile** — 1.0 vs 2.0; owner **S2**.
 - SAMM: **Governance / Education & Guidance / Organization and Culture** — 0.0 vs 1.0; owner **S2**.
 - SAMM: **Governance / Policy & Compliance / Compliance Management** — 0.0 vs 1.0; owner **S2**.
 - SAMM: **Governance / Strategy & Metrics / Measure and Improve** — 0.0 vs 1.0; owner **S2**.
@@ -64,8 +63,6 @@ Evidence-backed gaps from the S1 baseline. Planned work is intentionally scored 
 - SAMM: **Operations / Incident Management / Incident Detection** — 0.0 vs 1.0; owner **S2**.
 - SAMM: **Operations / Operational Management / Data Protection** — 0.0 vs 1.0; owner **S2**.
 - SAMM: **Operations / Operational Management / System Decommissioning / Legacy Management** — 0.0 vs 1.0; owner **S2**.
-- SAMM: **Verification / Architecture Assessment / Architecture Mitigation** — 0.0 vs 1.0; owner **S2**.
-- SAMM: **Verification / Architecture Assessment / Architecture Validation** — 0.0 vs 1.0; owner **S2**.
 - SAMM: **Verification / Requirements-driven Testing / Misuse/Abuse Testing** — 0.0 vs 1.0; owner **S2**.
 - SAMM: **Verification / Security Testing / Deep Understanding** — 0.0 vs 2.0; owner **S2**.
 - DSOMM: **Implementation / Application Hardening / App. Hardening Level 1 (50%)** (L1) — planned; owner **M5**.
@@ -113,3 +110,17 @@ Evidence-backed gaps from the S1 baseline. Planned work is intentionally scored 
 - DSOMM: **Culture and Organization / Education and Guidance / Security consulting on request** (L1) — planned; owner **S3**.
 - DSOMM: **Culture and Organization / Process / Definition of simple BCDR practices for critical components** (L1) — planned; owner **S3**.
 - DSOMM: **Culture and Organization / Process / Determining the protection requirement** (L2) — planned; owner **S3**.
+
+## S3 STRIDE findings
+
+- TM-002 — partial: A host reader steals the bearer token from the data directory. Owner: S4.
+- TM-005 — partial: Concurrent config writes can race backups or overwrite a newer configuration. Owner: S4.
+- TM-007 — partial: Malicious WAV/stream media reaches PyAV/FFmpeg parser code and may exploit a decoder vulnerability. Owner: S4.
+- TM-009 — open: Config changes have no audit record identifying actor, time, or before/after values. Owner: S4.
+- TM-010 — partial: Test-page triggers are persisted as events without caller identity or audit trail. Owner: S4.
+- TM-011 — partial: Passwords, tokens, cookies, or authorization data may be emitted in rendered logs. Owner: S4.
+- TM-015 — partial: Zeroconf TXT records reveal more deployment metadata than intended. Owner: S4.
+- TM-018 — open: Slow-loris HTTP clients hold uvicorn workers and sockets indefinitely. Owner: S4.
+- TM-021 — partial: Many tone sets or channels consume CPU, memory, and bounded event queues. Owner: S4.
+- TM-022 — open: Login-throttle state grows without a global bound when keyed by spoofed IPs. Owner: S4.
+- TM-027 — open: A configured stream URL can target localhost, `169.254.169.254`, or private services (SSRF). Owner: S4.

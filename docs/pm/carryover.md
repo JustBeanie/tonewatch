@@ -11,4 +11,10 @@ Accepted gaps that must be written into a later brief. Remove an entry once that
   - The chunked-upload (no Content-Length) byte-counting path in the analyze body guard has thin test evidence.
   - Re-verify both.
 
-- **Watch Windows CI:** after the RtlSdrSource `communicate()` fix, confirm the flaky Windows `ResourceWarning: unclosed _ProactorReadPipeTransport` failure (run 34644998370) doesn't recur.
+- **Watch Windows CI:** after the RtlSdrSource `communicate()` fix, confirm the flaky Windows `ResourceWarning: unclosed _ProactorReadPipeTransport` failure (run 34644998370) doesn't recur. — run 34650516071 test-python windows-latest PASSED (1 of N).
+
+- **Verify after the S3 push:** the `api-client-drift` job (now `uvx --from rust-just just gen-api`) passes in CI.
+- **S4 priority, from the S3 review:**
+  - TM-027: stream URL SSRF.
+  - PM addition: PyAV/FFmpeg `av.open(url)` also honours FFmpeg protocols (`file:`, `concat:`, `subfile:`, `data:`, `pipe:`), so a stream source could read local files (for example `/data/api_token`) or chain protocols.
+  - Needs a scheme allowlist (http, https, rtsp, rtsps, icecast), an FFmpeg `protocol_whitelist` option on open, re-validation on redirects, and blocked loopback/link-local/metadata addresses. Private RFC1918 LAN streams stay allowed by default, because a local Icecast server is a legitimate use.

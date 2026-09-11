@@ -329,6 +329,12 @@ def render(samm: list[SammEntry], dsomm: list[DsommActivity]) -> dict[Path, str]
     gap_md = (
         "# Security gaps\n\nEvidence-backed gaps from the S1 baseline. Planned work is intentionally scored as zero.\n\n"
         + "\n".join(gap for _, gap in gaps)
+        + "\n\n## S3 STRIDE findings\n\n"
+        + "\n".join(
+            f"- {row[0]} — {row[6]}: {row[3]} Owner: {row[8]}."
+            for row in _threat_rows()
+            if row[6] in {"open", "partial"}
+        )
         + "\n"
     )
     return {
@@ -336,6 +342,32 @@ def render(samm: list[SammEntry], dsomm: list[DsommActivity]) -> dict[Path, str]
         ROOT / "docs/security/dsomm/scorecard.md": dsomm_md,
         ROOT / "docs/security/gaps.md": gap_md,
     }
+
+
+def _threat_rows() -> list[tuple[str, str, str, str, str, str, str, str, str]]:
+    path = ROOT / "docs/security/threat-model/README.md"
+    if not path.exists():
+        return []
+    rows: list[tuple[str, str, str, str, str, str, str, str, str]] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.startswith("| TM-"):
+            continue
+        values = tuple(value.strip().strip("`") for value in line.strip("|").split("|"))
+        if len(values) == 9:
+            rows.append(
+                (
+                    values[0],
+                    values[1],
+                    values[2],
+                    values[3],
+                    values[4],
+                    values[5],
+                    values[6],
+                    values[7],
+                    values[8],
+                )
+            )
+    return rows
 
 
 def main() -> int:

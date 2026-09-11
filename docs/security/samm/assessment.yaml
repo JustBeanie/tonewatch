@@ -167,14 +167,14 @@ entries:
     practice: Threat Assessment
     stream: Application Risk Profile
     stream_id: D-TA-A
-    current_level: 0
+    current_level: 1
     target_level: 2
     answers:
       - level: 1
         question: Do you classify applications according to business risk based on a simple
           and predefined set of questions?
-        answer: 'No'
-        rationale: The evidence does not demonstrate this higher maturity level.
+        answer: Yes, some of them
+        rationale: The S3 model records the self-hosted household/department risk profile and deployment assumptions.
       - level: 2
         question: Do you use centralized and quantified application risk profiles to evaluate
           business risk?
@@ -184,7 +184,9 @@ entries:
         question: Do you regularly review and update the risk profiles for your applications?
         answer: 'No'
         rationale: The evidence does not demonstrate this higher maturity level.
-    evidence: []
+    evidence:
+      - docs/security/threat-model/README.md
+      - docs/security/threat-model/tonewatch.json
     na: false
     na_justification: null
     assessed_on: '2026-09-10'
@@ -192,24 +194,27 @@ entries:
     practice: Threat Assessment
     stream: Threat Modeling
     stream_id: D-TA-B
-    current_level: 0
+    current_level: 2
     target_level: 2
     answers:
       - level: 1
         question: Do you identify and manage architectural design flaws with threat modeling?
-        answer: 'No'
-        rationale: The evidence does not demonstrate this higher maturity level.
+        answer: Yes, some of them
+        rationale: The STRIDE inventory identifies and manages architectural flaws for the implemented M0-M5 surface.
       - level: 2
         question: Do you use a standard methodology, aligned with your application risk
           levels?
-        answer: 'No'
-        rationale: The evidence does not demonstrate this higher maturity level.
+        answer: Yes, for some applications
+        rationale: The S3 deliverable uses OWASP Threat Dragon STRIDE and ties each finding to code, tests, gaps, or ownership.
       - level: 3
         question: Do you regularly review and update the threat modeling methodology for
           your applications?
         answer: 'No'
         rationale: The evidence does not demonstrate this higher maturity level.
-    evidence: []
+    evidence:
+      - docs/security/threat-model/README.md
+      - docs/security/threat-model/tonewatch.json
+      - backend/tests/unit/test_threat_model.py
     na: false
     na_justification: null
     assessed_on: '2026-09-10'
@@ -478,14 +483,14 @@ entries:
     practice: Architecture Assessment
     stream: Architecture Validation
     stream_id: V-AA-A
-    current_level: 0
+    current_level: 1
     target_level: 1
     answers:
       - level: 1
         question: Do you review the application architecture for key security objectives
           on an ad-hoc basis?
-        answer: 'No'
-        rationale: The evidence does not demonstrate this higher maturity level.
+        answer: Yes, for some applications
+        rationale: S3 reviews trust boundaries, data flows, stores, external origins, and deployment assumptions against security objectives.
       - level: 2
         question: Do you regularly review the security mechanisms of your architecture?
         answer: 'No'
@@ -494,7 +499,10 @@ entries:
         question: Do you regularly review the effectiveness of the security controls?
         answer: 'No'
         rationale: The evidence does not demonstrate this higher maturity level.
-    evidence: []
+    evidence:
+      - docs/security/threat-model/tonewatch.json
+      - docs/security/threat-model/README.md
+      - backend/tests/unit/test_threat_model.py
     na: false
     na_justification: null
     assessed_on: '2026-09-10'
@@ -502,14 +510,14 @@ entries:
     practice: Architecture Assessment
     stream: Architecture Mitigation
     stream_id: V-AA-B
-    current_level: 0
+    current_level: 1
     target_level: 1
     answers:
       - level: 1
         question: Do you review the application architecture for mitigations of typical
           threats on an ad-hoc basis?
-        answer: 'No'
-        rationale: The evidence does not demonstrate this higher maturity level.
+        answer: Yes, for some applications
+        rationale: The inventory reviews mitigations and explicitly records partial, open, accepted, and planned residual risk.
       - level: 2
         question: Do you regularly evaluate the threats to your architecture?
         answer: 'No'
@@ -519,7 +527,10 @@ entries:
           assessment findings?
         answer: 'No'
         rationale: The evidence does not demonstrate this higher maturity level.
-    evidence: []
+    evidence:
+      - docs/security/threat-model/README.md
+      - docs/security/threat-model/tonewatch.json
+      - backend/tests/unit/test_threat_model.py
     na: false
     na_justification: null
     assessed_on: '2026-09-10'
