@@ -14,7 +14,7 @@ Instructions for autonomous coding agents working on this repo. The full spec is
 7. **When uncertain about external behavior** (a PyAV encoder, Supervisor API, or HA entity schema), write a spike test or ADR proving it before building on it.
 8. **Stop condition.** Stop when every non-gated task is checked, or when only 🛑/BLOCKED tasks remain. Then write a summary at the top of `PROGRESS.md`.
 
-**Dependency order:** M0 → M1 → M2 → M3 → M4 → M5 → (M6 ∥ M7) → M8 → (M9 ∥ M10) → M11 → M12. M2 can start right after M1.1.
+**Dependency order:** M0 → M1 → S1 → S2 → M2 → M3 → M4 → M5 → S3 → (M6 ∥ M7) → S4 → M8 → S5 → (M9 ∥ M10) → M11 → S6 → M12 (S7 before M12.4). M2 can start right after M1.1.
 
 ## Commands
 
@@ -59,3 +59,4 @@ Search with `rg` (in `.tools/bin`), not `findstr` or `dir /s`. Keep `cmd /c` one
   - "benchmark is 6× realtime, optimise `spectrum.feed`"
 - **Escalate one rung** for a sub-brief when luna·high has failed PM review on that specific problem twice, or when the engineer reports a design problem it can't resolve.
 - **Environment failures** (missing tools, sandbox permissions) never justify escalation. The PM fixes the environment instead.
+- **Security review sub-briefs** (ASVS checks after M5, M7, M8, M10 and M11) count as targeted tasks and may run on terra·high, scoped to the listed modules.

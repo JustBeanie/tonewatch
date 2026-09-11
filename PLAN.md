@@ -154,6 +154,54 @@ ruff, mypy, prettier and eslint (as local hooks), plus:
 
 ---
 
+## Security assurance: OWASP SAMM + DSOMM (added 2026-09-10)
+
+The app is audited against two OWASP maturity models, and security work is scheduled as the **S track** alongside the milestones.
+
+- **OWASP SAMM v2** (Software Assurance Maturity Model) covers 5 business functions and 15 practices: Governance, Design, Implementation, Verification and Operations. It measures *how the project builds software securely*.
+- **OWASP DSOMM** (DevSecOps Maturity Model) covers the Build & Deployment, Culture & Organization, Implementation, Information Gathering and Test & Verification dimensions. It measures *how much security is automated in the pipeline*.
+- **OWASP ASVS 5.0 Level 2** is the line-by-line **code standard**. SAMM and DSOMM are process maturity models and don't define code requirements, so ASVS supplies them. It is SAMM's Verification → Requirements-driven Testing practice made concrete.
+
+### Target maturity (realistic for a small open-source, self-hosted app)
+| Model | Target for v1.0 | Stretch |
+|---|---|---|
+| SAMM | **Level 1 in all 15 practices**, and **Level 2** in Threat Assessment, Security Requirements, Secure Build, Secure Deployment, Defect Management and Security Testing | Level 2 everywhere |
+| DSOMM | **Level 1 in all dimensions**, and **Level 2** in Build & Deployment, Implementation and Test & Verification | Level 3 in Test & Verification |
+| ASVS 5.0 | **Level 2** for the API, auth, WebSocket, file handling, webhook and script hook | n/a |
+
+Practices that don't fit a solo project (for example, a formal security training programme or an incident response team) are marked **N/A with a written justification** rather than silently scored 0.
+
+### Evidence layout (in the repo, reviewed like code)
+```
+docs/security/
+  samm/assessment.yaml        # practice -> stream -> level, answer, evidence links, date
+  samm/scorecard.md           # generated; baseline vs current vs target
+  dsomm/activities.yaml       # DSOMM activity ids -> implemented | planned | n/a + evidence
+  dsomm/scorecard.md
+  asvs/checklist.csv          # ASVS 5.0 L2 requirement id -> status, code/test reference
+  threat-model/tonewatch.json # OWASP Threat Dragon model (STRIDE)
+  threat-model/README.md
+  gaps.md                     # every gap -> GitHub issue label `security` + owner milestone
+```
+`scripts/security_scorecard.py` regenerates both scorecards from the YAML and fails CI if a claimed level has no evidence link.
+
+### Pipeline controls this adds (the DSOMM Level 2 core)
+These are wired into CI and pre-commit. Items marked ✓ already exist in the plan; ➕ items are new.
+
+| Control | Tool | Where |
+|---|---|---|
+| SAST | CodeQL ✓, ruff `S` rules ✓, ➕ **Semgrep** (`p/python`, `p/typescript`, `p/owasp-top-ten`) | ci.yml |
+| SCA / vulnerable deps | ➕ **pip-audit** (uv export), ➕ **osv-scanner** (both lockfiles), Renovate ✓ | ci.yml, and weekly on a schedule |
+| Secrets | gitleaks ✓, GitHub push protection ✓ | pre-commit/CI |
+| Container image | Trivy ✓, ➕ Trivy **config** scan (Dockerfile/compose misconfig), hadolint ✓ | docker.yml |
+| Supply chain | SBOM ✓, cosign ✓, provenance ✓, SHA-pinned actions ✓, ➕ **OpenSSF Scorecard** action, ➕ `zizmor` (GitHub Actions security lint) | scorecard.yml, ci.yml |
+| DAST | ➕ **OWASP ZAP baseline + API scan** (against `openapi.json`) run on the compose e2e stack | e2e job |
+| License compliance | ➕ `pip-licenses` + `license-checker`, with a deny list for GPL-incompatible licences in the Apache-2.0 distribution | ci.yml |
+| Runtime hardening | ➕ Container: non-root ✓, **read-only root fs**, `cap_drop: ALL`, `no-new-privileges`, tmpfs for /tmp | compose files, add-on config |
+
+### Security review triggers
+Milestones that change the attack surface (M5, M7, M8, M10, M11) each get a **targeted ASVS review sub-brief** after they pass functional review. Under the model policy it may run on a higher model (terra·high), scoped to the listed modules.
+
 ## GitHub setup (M0)
 
 - **Visibility:** public repo, Apache-2.0 license. Default branch `main`.
@@ -360,9 +408,33 @@ Each task has an ID. Agents mark `[x]` in `docs/PROGRESS.md` and reference the I
 
 ### M12: Docs, hardening and v1.0.0
 - **M12.1** mkdocs-material site: install guides (Docker, Pi, add-on, Windows), finding tone frequencies, tuning purity/tolerance, troubleshooting missed pages with `analyze`, and HA recipes. Publish with GitHub Pages.
-- **M12.2** Threat model doc: exposed API, token storage, the script hook, and webhook SSRF, with an allowlist and blocks on link-local and metadata IPs by default.
+- **M12.2** Update the S3 threat model for anything added since. Confirm the webhook SSRF allowlist blocks link-local and metadata IPs by default.
 - **M12.3** README disclaimer: this is a **supplemental notification tool, not a certified primary alerting system**, and recording or rebroadcasting radio traffic may be regulated locally.
 - **M12.4** Release-please cuts v1.0.0 and the integration v1.0.0 is tagged. The user installs through HACS and runs the checklist.
+
+### S track: Security assurance (OWASP SAMM · DSOMM · ASVS)
+- **S1** *(after M1)* **Baseline assessment.**
+  - Create the `docs/security/` layout.
+  - Score SAMM (all 15 practices, both streams) and DSOMM activities against the **current** repo, with honest scores and evidence links.
+  - Write the target table above into the YAML.
+  - Generate the scorecards and `gaps.md`.
+  - Add `scripts/security_scorecard.py` with tests.
+- **S2** *(after S1)* **DSOMM Level 1–2 pipeline controls.**
+  - Add Semgrep, pip-audit, osv-scanner, zizmor, license checks, the Trivy config scan and the OpenSSF Scorecard workflow.
+  - Add local `just security` running everything that can run offline or locally.
+  - Run the tools and triage every finding: fix it, or document an accepted risk with an expiry date.
+- **S3** *(after M5)* **Threat model** (SAMM Threat Assessment L2). STRIDE over the data-flow diagram: audio sources, API/WS, HA ingress, MQTT, webhooks, script hook, recordings on disk, add-on Supervisor token. Each threat maps to a mitigation task or an accepted risk. This **replaces M12.2**, which becomes "update the threat model".
+- **S4** *(after M7)* **ASVS 5.0 L2 code audit.**
+  - Covers authentication/session, access control (ingress trust), input validation (config, uploads, WAV parsing), output encoding (UI), file handling (path traversal in recording download), SSRF (webhook), command execution (script hook), logging (no secrets), and error handling.
+  - Every requirement is marked pass, fail or N/A with a code or test reference.
+  - Failures become fix tasks, and **every fix gets a regression test**.
+- **S5** *(after M8)* **DAST and container hardening.** Run the ZAP baseline and API scans in the e2e job. Apply read-only root fs, `cap_drop` and `no-new-privileges` to compose and the add-on. Verify the container still runs with sound card and RTL-SDR device mappings; record that in the hardware checklist.
+- **S6** *(after M11)* **HA surface review.** ASVS checks on the integration: token redaction in diagnostics, the media_source auth proxy, WebSocket reconnect handling, and add-on permissions kept to least privilege (`hassio_api`, `services`, `map`).
+- **S7** *(before M12.4 release)* **Final SAMM + DSOMM re-assessment.**
+  - Update the scorecards with evidence.
+  - Every target level is met, or the gap has an accepted-risk entry signed off by the user.
+  - Publish the scorecards in the docs site and link them from `SECURITY.md`.
+  - 🛑 **USER GATE:** the user signs off on accepted risks.
 
 ---
 
@@ -380,7 +452,7 @@ Each task has an ID. Agents mark `[x]` in `docs/PROGRESS.md` and reference the I
 7. **When uncertain about external behavior** (a PyAV encoder, Supervisor API, or HA entity schema), write a spike test or ADR proving it before building on it.
 8. **Stop condition.** Stop when every non-gated task is checked, or when only 🛑/BLOCKED tasks remain. Then write a summary at the top of `PROGRESS.md`.
 
-**Dependency order:** M0 → M1 → M2 → M3 → M4 → M5 → (M6 ∥ M7) → M8 → (M9 ∥ M10) → M11 → M12. M2 can start right after M1.1.
+**Dependency order:** M0 → M1 → S1 → S2 → M2 → M3 → M4 → M5 → S3 → (M6 ∥ M7) → S4 → M8 → S5 → (M9 ∥ M10) → M11 → S6 → M12 (S7 before M12.4). M2 can start right after M1.1.
 
 ---
 
@@ -401,6 +473,7 @@ Each task has an ID. Agents mark `[x]` in `docs/PROGRESS.md` and reference the I
 
 ## Verification
 
+- **Security (S track):** `just security` is green. The SAMM and DSOMM scorecards meet their targets or have signed-off accepted risks. The ASVS L2 checklist has no unexplained `fail`. The ZAP baseline shows no High alerts. The OpenSSF Scorecard result is recorded.
 - **Per PR (automated):** `just check`, the CI matrix (ubuntu, windows, arm), e2e on compose with a file source, docker build and Trivy, and the API-client drift check.
 - **DSP confidence:** the golden suite, the property tests, 0 false positives over 1 h of noise/voice, and `docs/benchmarks.md`. Then `tonewatch analyze` on the user's real page WAVs (private fixtures) must detect 100% with correct tone sets.
 - **Hardware-in-the-loop checklist (user, manual; lives in `docs/hil-checklist.md`):**
