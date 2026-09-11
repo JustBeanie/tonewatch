@@ -33,11 +33,11 @@ Tick a task with `[x]`, then append ` — <PR link> — <one-line note>`. Blocke
 - [x] **M2.7** `tonewatch analyze file.wav --config config.yaml` prints the detected calls and segments. This is the main ... — local — WAV normalization/resampling, table output, stable JSON schema, and CLI tests pass.
 
 ## M3: Sources and pipeline
-- [ ] **M3.1** `sources/base.py`: an `AudioSource` async iterator protocol, frame dataclass, and lifecycle (`open`/`close`).
-- [ ] **M3.2** `file.py` in realtime and fast modes. It is used by all integration tests and e2e.
-- [ ] **M3.3** `soundcard.py` (sounddevice callback → asyncio queue, device selection by name/index, channel select L/R/...
-- [ ] **M3.4** `stream.py`: PyAV decode of HTTP/Icecast/RTSP with exponential backoff reconnect. Test it against a local s...
-- [ ] **M3.5** `rtlsdr.py`: an `rtl_fm` subprocess with frequency, gain, ppm and squelch, reading s16le from stdout, resta...
+- [x] **M3.1** `sources/base.py`: an `AudioSource` async iterator protocol, frame dataclass, and lifecycle (`open`/`close`). — local — Protocol, frozen frames, typed retry/config errors, factory, shared normalization, and cross-thread EventBus delivery tested.
+- [x] **M3.2** `file.py` in realtime and fast modes. It is used by all integration tests and e2e. — local — WAV/PyAV decoding, mono 16 kHz chunks, deterministic timestamps, realtime pacing hooks, and looping tested.
+- [x] **M3.3** `soundcard.py` (sounddevice callback → asyncio queue, device selection by name/index, channel select L/R/... — local — Thread-safe bounded callback queue, overflow accounting, device selection, channel handling, and `tonewatch devices` implemented/tested.
+- [x] **M3.4** `stream.py`: PyAV decode of HTTP/Icecast/RTSP with exponential backoff reconnect. Test it against a local s... — local — Real PyAV Ogg/Opus decode through a threaded localhost HTTP server, forced truncated response, reconnect, monotonic time, and discontinuity flag tested.
+- [x] **M3.5** `rtlsdr.py`: an `rtl_fm` subprocess with frequency, gain, ppm and squelch, reading s16le from stdout, resta... — local — Real Python fake `rtl_fm` subprocess records argv, runs twice after exit, verifies 1 kHz PCM, shell-free execution, and reaping.
 - [ ] **M3.6** `pipeline/channel.py` (source → ringbuffer → DSP → recorder) and `supervisor.py`, which runs N channe...
 - [ ] **M3.7** `watchdog.py`: no frames for more than 10 s, flatline (RMS < −80 dBFS) for more than N min, clipping rati...
 

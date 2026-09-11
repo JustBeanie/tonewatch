@@ -2,6 +2,7 @@
 
 import asyncio
 from collections.abc import AsyncIterator
+from contextlib import suppress
 from dataclasses import dataclass
 from datetime import datetime
 from uuid import UUID
@@ -73,6 +74,8 @@ class EventBus:
 
     def subscribe(self, event_type: type[Event] | None = None) -> Subscription:
         """Subscribe to one event type, or all events."""
+        with suppress(RuntimeError):
+            self._loop = asyncio.get_running_loop()
         subscription = Subscription(event_type, self._max_queue_size)
         self._subscribers.add(subscription)
         return subscription

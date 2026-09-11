@@ -41,8 +41,8 @@ security:
     {{uv}} run --project backend --with pip-audit pip-audit -r .tools/security-requirements.txt --cache-dir .tools/pip-audit-cache
     {{uv}} run --project backend --with zizmor zizmor .github/workflows
     {{pnpm}} --dir web audit --audit-level high
-    {{uv}} run --project backend --no-dev --with pip-licenses pip-licenses --from=mixed --fail-on="GPL;AGPL"
-    {{pnpm}} --dir web exec license-checker --production --failOn "GPL;AGPL"
+    {{pnpm}} --dir web licenses list --prod --json > .tools/web-licenses.json
+    {{uv}} run --project backend python scripts/license_check.py --python-requirements .tools/security-requirements.txt --web-licenses .tools/web-licenses.json
     {{uv}} run --project backend python scripts/security_scorecard.py --check
     @echo "NOTICE: semgrep is CI-only (container required); skipped locally."
     @echo "NOTICE: osv-scanner is CI-only (container required); skipped locally."

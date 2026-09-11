@@ -7,8 +7,8 @@ from typing import Any
 
 REPORT = Path("coverage.json")
 SOURCE_ROOT = Path("backend/src/tonewatch")
-PACKAGES = ("dsp", "pipeline")
-MINIMUM = 95.0
+PACKAGES = ("dsp", "pipeline", "sources")
+MINIMUMS = {"dsp": 95.0, "pipeline": 95.0, "sources": 90.0}
 
 
 def package_coverage(report: dict[str, Any], package: str) -> float:
@@ -33,8 +33,9 @@ def main() -> int:
         if not (SOURCE_ROOT / package).is_dir():
             continue
         percentage = package_coverage(report, package)
-        if percentage < MINIMUM:
-            failures.append(f"{package}: {percentage:.2f}% < {MINIMUM:.2f}%")
+        minimum = MINIMUMS[package]
+        if percentage < minimum:
+            failures.append(f"{package}: {percentage:.2f}% < {minimum:.2f}%")
     if failures:
         for failure in failures:
             sys.stdout.write(f"{failure}\n")

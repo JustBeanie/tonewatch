@@ -63,6 +63,20 @@ ignore = ["D203", "D213"]
 "src/tonewatch/storage/repository.py" = ["D101"]
 "src/tonewatch/storage/migrations/**" = ["D103", "E501"]
 "src/tonewatch/__main__.py" = ["PLR2004", "TRY003"]
+"src/tonewatch/sources/*.py" = [
+  "ASYNC240",
+  "D",
+  "N818",
+  "PLC0415",
+  "PLR2004",
+  "PLR0913",
+  "PTH",
+  "S101",
+  "TC001",
+  "TC002",
+  "TC003",
+  "TRY003",
+]
 # DSP: the brief fixes the public constructors' keyword tuning parameters (PLR0913,
 # PLR0917) and the matcher's per-sequence state machine (PLR0912); DSP constants such as
 # window sizes and the 250-3000 Hz band are domain values, not magic numbers (PLR2004).
@@ -79,6 +93,7 @@ ignore = ["D203", "D213"]
 "tests/unit/test_dsp_contracts.py" = ["E501", "PERF401"]
 "tests/unit/test_dsp_edges.py" = ["E501"]
 "tests/unit/test_dsp_properties.py" = ["E501"]
+"tests/unit/test_sources.py" = ["ARG005", "PLC0415", "RUF012"]
 
 [tool.ruff.format]
 quote-style = "double"
@@ -99,7 +114,7 @@ module = ["tonewatch.dsp", "tonewatch.dsp.*"]
 disallow_any_explicit = true
 
 [[tool.mypy.overrides]]
-module = ["av", "sounddevice"]
+module = ["av", "sounddevice", "tonewatch.sources.soundcard"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]

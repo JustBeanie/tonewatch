@@ -12,6 +12,7 @@ import yaml
 from tonewatch import __version__
 from tonewatch.config.models import AppConfig
 from tonewatch.dsp.engine import DetectionEngine
+from tonewatch.sources.soundcard import input_devices
 
 
 def _read_wav(path: Path) -> tuple[np.ndarray, int]:
@@ -118,6 +119,21 @@ def _analyze(args: argparse.Namespace) -> None:
         __import__("sys").stdout.write(f"Frames: {len(payload.get('frames', []))}\n")
 
 
+def _devices(args: argparse.Namespace) -> None:
+    """List available input devices."""
+    devices = input_devices()
+    if args.json:
+        json.dump(devices, fp=__import__("sys").stdout, indent=2)
+        __import__("sys").stdout.write("\n")
+        return
+    __import__("sys").stdout.write("index  name  host_api  max_input_channels  default_rate\n")
+    for device in devices:
+        __import__("sys").stdout.write(
+            f"{device['index']:5}  {device['name']}  {device['host_api']}  "
+            f"{device['max_input_channels']:18}  {device['default_rate']:12g}\n"
+        )
+
+
 def main() -> None:
     """Run the ToneWatch command-line interface."""
     parser = argparse.ArgumentParser(prog="tonewatch")
@@ -128,9 +144,13 @@ def main() -> None:
     analyze.add_argument("--config", required=True, type=Path)
     analyze.add_argument("--json", action="store_true")
     analyze.add_argument("--frames", action="store_true")
+    devices = subparsers.add_parser("devices")
+    devices.add_argument("--json", action="store_true")
     args = parser.parse_args()
     if args.command == "analyze":
         _analyze(args)
+    elif args.command == "devices":
+        _devices(args)
 
 
 if __name__ == "__main__":
