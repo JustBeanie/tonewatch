@@ -43,6 +43,8 @@ The sandbox runs as a separate user with a reduced PATH and **cannot see WinGet 
 set "PATH=%CD%\.tools\bin;C:\Program Files\nodejs;%PATH%" && <command>
 ```
 
+Search with `rg` (in `.tools/bin`), not `findstr` or `dir /s`. Keep `cmd /c` one-liners simple; for anything with nested quotes, write a short script under the gitignored `.tools/tmp/` and run that. In M0, about 40% of engineer commands failed on quoting or missing search tools, which wastes tokens.
+
 **Never** install tools globally (npm -g, curl-downloading binaries, winget, pip --user). If a tool is missing, write `BLOCKED: need <tool>` and the PM will provision it.
 
 **Never tick a task in `docs/PROGRESS.md` until its Definition of done has actually been run green.** If you can't run the verification, mark the task `[~]` with the reason.
