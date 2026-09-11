@@ -21,6 +21,7 @@ dependencies = [
   "types-pyyaml>=6.0.12.20260906",
   "uvicorn[standard]>=0.34",
   "python-multipart>=0.0.20",
+  "zeroconf>=0.148",
 ]
 
 [project.scripts]

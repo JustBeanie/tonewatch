@@ -44,7 +44,37 @@ class ConfigChanged:
     revision: int
 
 
-Event = ToneDetected | RecordingReady | FeedHealthChanged | CallClosed | ConfigChanged
+@dataclass(frozen=True)
+class ChannelLevel:
+    """A throttled instantaneous level sample for one source."""
+
+    source_id: str
+    rms_dbfs: float
+    peak: float
+    measured_at: datetime
+
+
+@dataclass(frozen=True)
+class SpectrumUpdate:
+    """A live spectrum update intended for subscribed clients."""
+
+    source_id: str
+    dominant_frequency_hz: float
+    purity: float
+    level_dbfs: float
+    magnitude: tuple[float, ...]
+    measured_at: datetime
+
+
+Event = (
+    ToneDetected
+    | RecordingReady
+    | FeedHealthChanged
+    | CallClosed
+    | ConfigChanged
+    | ChannelLevel
+    | SpectrumUpdate
+)
 
 
 class Subscription(AsyncIterator[Event]):
@@ -75,6 +105,27 @@ class EventBus:
         self._max_queue_size = max_queue_size
         self._subscribers: set[Subscription] = set()
         self._loop: asyncio.AbstractEventLoop | None = None
+        self._spectrum_topics: dict[str, int] = {}
+
+    def set_spectrum_subscribers(self, source_id: str, count: int) -> None:
+        """Set the number of clients interested in a source's live spectrum."""
+        if count <= 0:
+            self._spectrum_topics.pop(source_id, None)
+        else:
+            self._spectrum_topics[source_id] = count
+
+    def spectrum_subscribed(self, source_id: str) -> bool:
+        """Whether live spectrum work is currently requested for a source."""
+        return self._spectrum_topics.get(source_id, 0) > 0
+
+    def spectrum_subscriber_count(self, source_id: str) -> int:
+        """Return the current live spectrum subscriber count."""
+        return self._spectrum_topics.get(source_id, 0)
+
+    @property
+    def subscriber_count(self) -> int:
+        """Number of active bus subscriptions."""
+        return len(self._subscribers)
 
     def subscribe(
         self, event_type: type[Event] | None = None, *, maxsize: int | None = None

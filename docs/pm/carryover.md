@@ -10,3 +10,5 @@ Accepted gaps that must be written into a later brief. Remove an entry once that
   - `test_secrets_never_logged` uses `structlog.testing.capture_logs`, which bypasses processors, so redaction of *rendered* output isn't directly asserted.
   - The chunked-upload (no Content-Length) byte-counting path in the analyze body guard has thin test evidence.
   - Re-verify both.
+
+- **Watch Windows CI:** after the RtlSdrSource `communicate()` fix, confirm the flaky Windows `ResourceWarning: unclosed _ProactorReadPipeTransport` failure (run 34644998370) doesn't recur.

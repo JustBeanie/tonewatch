@@ -4,19 +4,21 @@ from __future__ import annotations
 
 import asyncio
 import inspect
+import math
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Protocol
 from uuid import UUID, uuid4
 
+import numpy as np
+
 from tonewatch.dsp.engine import DetectionEngine
-from tonewatch.events import CallClosed, EventBus, ToneDetected
+from tonewatch.events import CallClosed, ChannelLevel, EventBus, SpectrumUpdate, ToneDetected
 from tonewatch.pipeline.ringbuffer import RingBuffer
 from tonewatch.sources.base import AudioFrame, AudioSource, make_source
 
 if TYPE_CHECKING:
-    import numpy as np
     from numpy.typing import NDArray
 
     from tonewatch.config.models import Source, ToneSet
@@ -25,6 +27,7 @@ if TYPE_CHECKING:
     from tonewatch.pipeline.watchdog import Watchdog
 
 WallClock = Callable[[], datetime | float]
+LEVEL_INTERVAL_S = 0.2
 
 
 @dataclass(frozen=True, slots=True)
@@ -112,6 +115,19 @@ class Channel:
                 self._close_expired(frame.stream_time_s)
                 self.ringbuffer.extend(frame.samples, stream_time_s=frame.stream_time_s)
                 output = engine.feed(frame.samples)
+                self._publish_level(frame)
+                if self.bus.spectrum_subscribed(self.source_id):
+                    for spectrum in output.frames:
+                        self.bus.publish(
+                            SpectrumUpdate(
+                                self.source_id,
+                                spectrum.freq_hz,
+                                spectrum.purity,
+                                spectrum.level_dbfs,
+                                (),
+                                self._to_wall_time(spectrum.t_end_s),
+                            )
+                        )
                 for detection in output.detections:
                     self._publish_detection(detection)
                 if self.recorder_hook is not None:
@@ -138,6 +154,24 @@ class Channel:
         finally:
             await source.close()
             self._source = None
+
+    def _publish_level(self, frame: AudioFrame) -> None:
+        """Publish at most five level samples per source second."""
+        last = getattr(self, "_last_level_s", -math.inf)
+        if frame.stream_time_s - last < LEVEL_INTERVAL_S:
+            return
+        self._last_level_s = frame.stream_time_s
+        samples = frame.samples
+        rms = float(np.sqrt(np.mean(samples * samples))) if samples.size else 0.0
+        peak = float(np.max(np.abs(samples))) if samples.size else 0.0
+        self.bus.publish(
+            ChannelLevel(
+                self.source_id,
+                20 * math.log10(max(rms, 1e-12)),
+                peak,
+                self._to_wall_time(frame.stream_time_s),
+            )
+        )
 
     def _observe_frame(self, frame: AudioFrame) -> None:
         if self._anchor_wall is None or frame.discontinuity:

@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     bind_host: str = "127.0.0.1"
     bind_port: int = Field(default=8099, ge=1, le=65535)
     addon_mode: bool = False
+    zeroconf_enabled: bool = True
     allow_script_targets: bool = False
     ui_password: str | None = None
     recordings_root: Path | None = None
@@ -44,6 +45,8 @@ class Settings(BaseSettings):
                     }
                 )
         values["addon_mode"] = addon
+        if addon:
+            values["zeroconf_enabled"] = False
         return cls(**cast("dict[str, Any]", values))
 
     @property

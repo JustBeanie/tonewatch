@@ -51,9 +51,9 @@ Tick a task with `[x]`, then append ` — <PR link> — <one-line note>`. Blocke
 - [x] **M5.1** FastAPI app factory, lifespan starting the supervisor, structlog JSON logs, and `/healthz` plus `/readyz`. — local — Lifespan migration/config/supervisor lifecycle, request IDs, safe errors, security headers, and health probes implemented and integration-tested.
 - [x] **M5.2** Auth: a bearer API token generated on first run and stored in the data dir, with an optional UI password. — local — URL-safe owner-only token, scrypt UI sessions, ingress trust, CSRF, throttling, and CLI show/rotate implemented and tested.
 - [x] **M5.3** REST: CRUD for tone sets, sources and alert targets (persisted to YAML and hot-applied); calls list and det... — local — Authenticated CRUD, live reload, calls/recordings/analyze/devices/test endpoints, range/path protections, and hostile-input tests implemented.
-- [ ] **M5.4** WebSocket `/api/ws`: domain events, per-channel levels, and spectrum at 5 Hz when a client subscribes.
-- [ ] **M5.5** `zeroconf.py` advertises `_tonewatch._tcp`. `supervisor.py` posts Supervisor discovery (`/discovery`, servi...
-- [ ] **M5.6** `openapi.json` is exported to `web/src/api/generated` via `just gen-api`, with a CI drift check.
+- [x] **M5.4** WebSocket `/api/ws`: domain events, per-channel levels, and spectrum at 5 Hz when a client subscribes. — local — Authenticated topic hub, bounded priority queues, heartbeat, connection cap, channel telemetry gate, and cleanup implemented; proving tests in `test_m5b_live_api.py`.
+- [x] **M5.5** `zeroconf.py` advertises `_tonewatch._tcp`. `supervisor.py` posts Supervisor discovery (`/discovery`, servi... — local — Async mDNS advertisement, stable instance ID, add-on Supervisor registration/retry, and non-fatal startup integration implemented.
+- [x] **M5.6** `openapi.json` is exported to `web/src/api/generated` via `just gen-api`, with a CI drift check. — local — Deterministic OpenAPI and Pydantic-derived WebSocket generators, committed artifacts, local drift recipe, and CI job implemented.
 
 ## M6: Web UI
 - [ ] **M6.1** App shell, auth, ingress-aware base path (`base: './'`) and a light/dark theme.

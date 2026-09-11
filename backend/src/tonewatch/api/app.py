@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import uuid
 from contextlib import asynccontextmanager
 from typing import Any
@@ -17,9 +18,12 @@ from tonewatch.api.routes.calls import router as calls_router
 from tonewatch.api.routes.config import router as config_router
 from tonewatch.api.routes.recordings import router as recordings_router
 from tonewatch.api.routes.system import router as system_router
+from tonewatch.api.routes.ws import router as ws_router
 from tonewatch.config.models import AppConfig
 from tonewatch.config.store import ConfigStore
 from tonewatch.events import EventBus
+from tonewatch.integrations.supervisor import register_supervisor_discovery
+from tonewatch.integrations.zeroconf import ZeroconfAdvertiser
 from tonewatch.logging import clear_request_id, configure_logging, set_request_id
 from tonewatch.pipeline.supervisor import Supervisor
 from tonewatch.sources.soundcard import input_devices as _input_devices
@@ -60,6 +64,7 @@ def create_app(
         recordings_router,
         analyze_router,
         system_router,
+        ws_router,
     ):
         app.include_router(router)
     app.state.settings = settings
@@ -71,6 +76,13 @@ def create_app(
     app.state.supervisor = supervisor
     app.state.store = config_store
     app.state.engine = engine
+    app.state.ws_hub = None
+    app.state.ws_pump = None
+    advertiser = ZeroconfAdvertiser(
+        settings.data_dir,
+        settings.bind_port,
+        enabled=settings.zeroconf_enabled and not settings.addon_mode,
+    )
 
     @app.middleware("http")
     async def security_middleware(request: Request, call_next: Any) -> Response:
@@ -136,9 +148,18 @@ def create_app(
             if app.state.supervisor is None:
                 app.state.supervisor = Supervisor(app.state.config, bus, sessions)
             await app.state.supervisor.start()
+            await advertiser.start()
+            await register_supervisor_discovery(
+                settings.bind_port,
+                addon_mode=settings.addon_mode,
+            )
             app.state.ready = True
             yield
         finally:
+            await advertiser.stop()
+            if app.state.ws_pump is not None:
+                app.state.ws_pump.cancel()
+                await asyncio.gather(app.state.ws_pump, return_exceptions=True)
             if app.state.supervisor is not None:
                 await app.state.supervisor.stop()
             if app.state.engine is not None:

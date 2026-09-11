@@ -285,6 +285,9 @@ def test_rtl_command_and_process_read(monkeypatch) -> None:
         async def wait(self) -> int:
             return 0
 
+        async def communicate(self) -> tuple[bytes, bytes]:
+            return b"", b""
+
         def kill(self) -> None:
             self.returncode = -9
 

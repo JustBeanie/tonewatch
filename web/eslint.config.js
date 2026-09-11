@@ -3,7 +3,19 @@ import parser from "@typescript-eslint/parser";
 import react from "eslint-plugin-react";
 import hooks from "eslint-plugin-react-hooks";
 export default [
-    { ignores: ["dist", "coverage", "vite.config.ts", "vitest.config.ts", "*.d.ts", "*.js"] },
+    {
+        ignores: [
+            "dist",
+            "coverage",
+            "vite.config.ts",
+            "vitest.config.ts",
+            "*.d.ts",
+            "*.js",
+            "src/api/generated/**",
+            "src/api/openapi.json",
+            "src/api/ws-messages.ts",
+        ],
+    },
     {
         files: ["**/*.{ts,tsx}"],
         languageOptions: {

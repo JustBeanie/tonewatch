@@ -63,3 +63,17 @@ jobs:
       - run: pnpm --dir web install --frozen-lockfile
       - run: pnpm --dir web exec tsc -b
       - run: pnpm --dir web test
+  api-client-drift:
+    permissions: {contents: read}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with: {persist-credentials: false}
+      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
+      - uses: pnpm/action-setup@a8198c4bff370c8506180b035930dea56dbd5288 # v5
+        with: {package_json_file: web/package.json}
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with: {node-version: 24, cache: pnpm, cache-dependency-path: web/pnpm-lock.yaml}
+      - run: pnpm --dir web install --frozen-lockfile
+      - run: just gen-api
+      - run: git diff --exit-code -- web/src/api

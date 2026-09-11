@@ -65,11 +65,20 @@ class RtlSdrSource:
 
     async def close(self) -> None:
         self._closed = True
-        if self._process is not None and self._process.returncode is None:
-            self._process.kill()
         if self._process is not None:
-            await self._process.wait()
+            await self._reap(self._process)
         self._process = None
+
+    @staticmethod
+    async def _reap(process: asyncio.subprocess.Process) -> None:
+        """Kill if running, then drain stdout to EOF so the pipe transport closes.
+
+        `wait()` alone leaves the stdout pipe transport open; on Windows' Proactor loop
+        it is later finalised with a ResourceWarning in whatever test happens to run.
+        """
+        if process.returncode is None:
+            process.kill()
+        await process.communicate()
 
     async def __aenter__(self) -> RtlSdrSource:
         await self.open()
@@ -101,7 +110,7 @@ class RtlSdrSource:
                     ).astype(np.float32)
                     yield AudioFrame(samples, self._position / 16_000, self.config.id)
                     self._position += samples.size
-            await self._process.wait()
+            await self._reap(self._process)
             self._process = None
             if self._closed:
                 return

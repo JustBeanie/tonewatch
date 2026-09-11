@@ -7,9 +7,12 @@ from typing import Any
 
 REPORT = Path("coverage.json")
 SOURCE_ROOT = Path("backend/src/tonewatch")
-PACKAGES = ("dsp", "pipeline", "sources", "recording", "api")
-MINIMUMS = {"dsp": 95.0, "pipeline": 95.0, "sources": 90.0, "recording": 90.0, "api": 90.0}
-API_MODULES = tuple((SOURCE_ROOT / "api").rglob("*.py"))
+PACKAGES = ("dsp", "pipeline", "sources", "recording")
+MINIMUMS = {"dsp": 95.0, "pipeline": 95.0, "sources": 90.0, "recording": 90.0}
+MODULE_GATES = {
+    "api": (SOURCE_ROOT / "api").rglob("*.py"),
+    "integrations": (SOURCE_ROOT / "integrations").rglob("*.py"),
+}
 
 
 def package_coverage(report: dict[str, Any], package: str) -> float:
@@ -46,12 +49,20 @@ def main() -> int:
             continue
         percentage = package_coverage(report, package)
         minimum = MINIMUMS[package]
+        sys.stdout.write(f"{package}: {percentage:.2f}% (minimum {minimum:.2f}%)\n")
         if percentage < minimum:
             failures.append(f"{package}: {percentage:.2f}% < {minimum:.2f}%")
-    for module in API_MODULES:
-        percentage = module_coverage(report, module)
-        if percentage < MINIMUMS["api"]:
-            failures.append(f"{module.relative_to(SOURCE_ROOT.parent)}: {percentage:.2f}% < 90.00%")
+    for modules in MODULE_GATES.values():
+        minimum = 90.0
+        for module in modules:
+            percentage = module_coverage(report, module)
+            sys.stdout.write(
+                f"{module.relative_to(SOURCE_ROOT.parent)}: {percentage:.2f}% (minimum 90.00%)\n"
+            )
+            if percentage < minimum:
+                failures.append(
+                    f"{module.relative_to(SOURCE_ROOT.parent)}: {percentage:.2f}% < 90.00%"
+                )
     if failures:
         for failure in failures:
             sys.stdout.write(f"{failure}\n")

@@ -52,7 +52,13 @@ security:
 check: lint typecheck test test-web security-scorecard
 
 gen-api:
-    @echo "API generation starts with M5.6."
+    {{uv}} run --project backend python backend/scripts/export_openapi.py
+    {{uv}} run --project backend python backend/scripts/generate_ws_messages.py
+    {{pnpm}} --dir web exec openapi-typescript src/api/openapi.json -o src/api/generated/schema.d.ts
+
+api-drift:
+    just gen-api
+    git diff --exit-code -- web/src/api
 
 dev:
     @echo "Development server starts with M5.1 and M6.1."

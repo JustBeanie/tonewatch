@@ -6,3 +6,6 @@ pnpm-lock.yaml
 *.d.ts
 vite.config.js
 vitest.config.js
+src/api/generated/
+src/api/openapi.json
+src/api/ws-messages.ts
