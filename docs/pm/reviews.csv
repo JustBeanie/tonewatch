@@ -2,4 +2,4 @@ run_id,verdict,failure_class,findings,notes
 M0-20260910-195810,fail,env,8,"sandbox could not see uv/just; ticked unverified tasks (verification); global npm installs; hatchling readme path bug"
 M0-fix-20260910-203024,fail,verification,4,"setup+check truly green; pre-commit 'pass' was hollow (no tracked files); prettier hook paths; shellcheck; missing pkg coverage gate"
 M0-fix2-20260910-210517,pass,,3,"PM fixed 3 one-liners: pytest cacheprovider, --python 3.13.13 pin, report EOF exclude"
-M1-20260910-212251,pass,env,3,"PM fixed sandbox/user temp-dir clash (fixed --basetemp owned by sandbox user; added backend/scripts/run_pytest.py per-run basetemp). Minor spec gaps carried forward: EventBus call_soon_threadsafe publish path untested (events.py 87
+M1-20260910-212251,pass,env,3,"PM fixed sandbox/desktop temp-dir clash (fixed --basetemp owned by the sandbox user; added backend/scripts/run_pytest.py with per-run basetemp). Minor spec gaps carried forward: EventBus call_soon_threadsafe publish path untested (events.py 87 pct) goes to the M3.3 brief; storage/db.py 0 pct."
