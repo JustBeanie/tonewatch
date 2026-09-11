@@ -288,8 +288,7 @@ def main() -> int:
                     raise ValueError(f"generated file drift: {path.relative_to(ROOT)}")
             else:
                 path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_text(content, encoding="utf-8", newline="
-")
+                path.write_text(content, encoding="utf-8", newline="\n")
     except (OSError, ValueError, TypeError) as error:
         sys.stdout.write(f"security scorecard failed: {error}\n")
         return 1
