@@ -10,13 +10,17 @@ dependencies = [
   "aiosqlite>=0.22.1",
   "alembic>=1.19.2",
   "av>=14.0",
+  "fastapi>=0.115",
   "numpy>=2.1",
   "pydantic>=2.13.5",
   "pydantic-settings>=2.15.0",
   "pyyaml>=6.0.3",
   "sounddevice>=0.5",
   "sqlalchemy>=2.0.52",
+  "structlog>=24.4",
   "types-pyyaml>=6.0.12.20260906",
+  "uvicorn[standard]>=0.34",
+  "python-multipart>=0.0.20",
 ]
 
 [project.scripts]
@@ -33,8 +37,10 @@ dev = [
   "codespell>=2.3",
   "pytest>=8.3",
   "pytest-cov>=6.0",
+  "pytest-asyncio>=0.24",
   "pytest-benchmark>=5.1",
   "hypothesis>=6.100",
+  "httpx>=0.28",
   "ruff>=0.8",
 ]
 
@@ -62,7 +68,11 @@ ignore = ["D203", "D213"]
 "src/tonewatch/storage/models.py" = ["D101", "E501"]
 "src/tonewatch/storage/repository.py" = ["D101"]
 "src/tonewatch/storage/migrations/**" = ["D103", "E501"]
-"src/tonewatch/__main__.py" = ["PLR2004", "TRY003"]
+"src/tonewatch/__main__.py" = ["PLR2004", "TRY003", "PLC0415", "I001"]
+"src/tonewatch/api/*.py" = ["D", "PLR", "TRY003", "TRY301", "ASYNC240", "B008", "TC001", "TC002", "TC003", "ARG", "PTH", "S101", "RUF012", "PLC0415"]
+"tests/integration/test_api.py" = ["S106"]
+"tests/integration/test_api_security.py" = ["S106", "PLC0415", "TRY003"]
+"tests/integration/test_api_resources.py" = ["S106", "ARG001", "ASYNC240"]
 "src/tonewatch/sources/*.py" = [
   "ASYNC240",
   "D",

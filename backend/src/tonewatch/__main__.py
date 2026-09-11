@@ -134,6 +134,31 @@ def _devices(args: argparse.Namespace) -> None:
         )
 
 
+def _serve(_args: argparse.Namespace) -> None:
+    """Start the authenticated HTTP service."""
+    import uvicorn
+    from tonewatch.api.app import create_app
+    from tonewatch.logging import configure_logging
+    from tonewatch.settings import Settings
+
+    settings = Settings.load()
+    configure_logging(settings.log_level, json=True)
+    uvicorn.run(create_app(settings), host=settings.bind_host, port=settings.bind_port)
+
+
+def _token(args: argparse.Namespace) -> None:
+    """Show or rotate the API token."""
+    from tonewatch.api.auth import read_or_create_token, rotate_token
+    from tonewatch.settings import Settings
+
+    settings = Settings.load()
+    import sys
+
+    sys.stdout.write(
+        (read_or_create_token(settings) if args.action == "show" else rotate_token(settings)) + "\n"
+    )
+
+
 def main() -> None:
     """Run the ToneWatch command-line interface."""
     parser = argparse.ArgumentParser(prog="tonewatch")
@@ -146,11 +171,18 @@ def main() -> None:
     analyze.add_argument("--frames", action="store_true")
     devices = subparsers.add_parser("devices")
     devices.add_argument("--json", action="store_true")
+    subparsers.add_parser("serve")
+    token = subparsers.add_parser("token")
+    token.add_argument("action", choices=("show", "rotate"))
     args = parser.parse_args()
     if args.command == "analyze":
         _analyze(args)
     elif args.command == "devices":
         _devices(args)
+    elif args.command == "serve":
+        _serve(args)
+    elif args.command == "token":
+        _token(args)
 
 
 if __name__ == "__main__":

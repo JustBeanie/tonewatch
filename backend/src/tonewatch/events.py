@@ -14,6 +14,7 @@ class ToneDetected:
     toneset_id: str
     detected_at: datetime
     source_id: str = ""
+    test: bool = False
 
 
 @dataclass(frozen=True)
@@ -35,6 +36,7 @@ class CallClosed:
     call_id: UUID
     status: str
     source_id: str = ""
+    test: bool = False
 
 
 @dataclass(frozen=True)

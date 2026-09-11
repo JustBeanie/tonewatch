@@ -73,6 +73,7 @@ class Supervisor:
     async def stop(self) -> None:
         """Cancel all channel tasks within the bounded shutdown period."""
         self._stopping = True
+        await self.persistence.drain()
         tasks = tuple(self._tasks.values())
         for task in tasks:
             task.cancel()

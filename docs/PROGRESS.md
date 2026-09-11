@@ -48,9 +48,9 @@ Tick a task with `[x]`, then append ` — <PR link> — <one-line note>`. Blocke
 - [x] **M4.4** `retention.py`: max age, max total size and max count, run by a daily job. — local — Safe retention enforcement, escape refusal, pruning, injectable daily loop, and supervisor startup task verified.
 
 ## M5: API
-- [ ] **M5.1** FastAPI app factory, lifespan starting the supervisor, structlog JSON logs, and `/healthz` plus `/readyz`.
-- [ ] **M5.2** Auth: a bearer API token generated on first run and stored in the data dir, with an optional UI password.
-- [ ] **M5.3** REST: CRUD for tone sets, sources and alert targets (persisted to YAML and hot-applied); calls list and det...
+- [x] **M5.1** FastAPI app factory, lifespan starting the supervisor, structlog JSON logs, and `/healthz` plus `/readyz`. — local — Lifespan migration/config/supervisor lifecycle, request IDs, safe errors, security headers, and health probes implemented and integration-tested.
+- [x] **M5.2** Auth: a bearer API token generated on first run and stored in the data dir, with an optional UI password. — local — URL-safe owner-only token, scrypt UI sessions, ingress trust, CSRF, throttling, and CLI show/rotate implemented and tested.
+- [x] **M5.3** REST: CRUD for tone sets, sources and alert targets (persisted to YAML and hot-applied); calls list and det... — local — Authenticated CRUD, live reload, calls/recordings/analyze/devices/test endpoints, range/path protections, and hostile-input tests implemented.
 - [ ] **M5.4** WebSocket `/api/ws`: domain events, per-channel levels, and spectrum at 5 Hz when a client subscribes.
 - [ ] **M5.5** `zeroconf.py` advertises `_tonewatch._tcp`. `supervisor.py` posts Supervisor discovery (`/discovery`, servi...
 - [ ] **M5.6** `openapi.json` is exported to `web/src/api/generated` via `just gen-api`, with a CI drift check.

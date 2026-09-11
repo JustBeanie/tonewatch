@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     bind_host: str = "127.0.0.1"
     bind_port: int = Field(default=8099, ge=1, le=65535)
     addon_mode: bool = False
+    allow_script_targets: bool = False
+    ui_password: str | None = None
+    recordings_root: Path | None = None
     retention: RetentionPolicy = Field(default_factory=RetentionPolicy)
 
     @classmethod
@@ -42,3 +45,8 @@ class Settings(BaseSettings):
                 )
         values["addon_mode"] = addon
         return cls(**cast("dict[str, Any]", values))
+
+    @property
+    def recording_path(self) -> Path:
+        """Return the configured recording directory."""
+        return (self.recordings_root or self.data_dir / "recordings").resolve()
