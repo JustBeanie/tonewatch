@@ -19,4 +19,3 @@ Accepted gaps that must be written into a later brief. Remove an entry once that
   - Needs a scheme allowlist (http, https, rtsp, rtsps, icecast), an FFmpeg `protocol_whitelist` option on open, re-validation on redirects, and blocked loopback/link-local/metadata addresses. Private RFC1918 LAN streams stay allowed by default, because a local Icecast server is a legitimate use.
 
 - **Verify after the M6a push:** the `api-client-drift` job passes now that PortAudio is installed.
-- **M6b brief:** split the 546-line `web/src/App.tsx` into `src/app/` routes and `src/features/*` pages before adding more; web branch coverage is at 80.34%, just over the gate.
