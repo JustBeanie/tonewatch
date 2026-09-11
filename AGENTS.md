@@ -46,3 +46,14 @@ set "PATH=%CD%\.tools\bin;C:\Program Files\nodejs;%PATH%" && <command>
 **Never** install tools globally (npm -g, curl-downloading binaries, winget, pip --user). If a tool is missing, write `BLOCKED: need <tool>` and the PM will provision it.
 
 **Never tick a task in `docs/PROGRESS.md` until its Definition of done has actually been run green.** If you can't run the verification, mark the task `[~]` with the reason.
+
+## Model assignment (PM policy)
+
+**Escalation ladder:** luna·medium → luna·high → terra·high → sol·high → gpt-6-astra·high.
+
+- **Default for everything:** `gpt-5.6-luna`. Use medium for routine work. Use high for algorithm-heavy milestones (M2 DSP, M3.6 concurrency, M11 HA integration).
+- **Higher models are used sparingly, and only for targeted tasks.** A higher model never gets a whole milestone. The PM writes a narrow sub-brief (one module or one failing behaviour, with its own tests as the definition of done), and only a sub-brief goes to terra, sol or astra. For example:
+  - "matcher misses stacked pages in scenarios 14–16"
+  - "benchmark is 6× realtime, optimise `spectrum.feed`"
+- **Escalate one rung** for a sub-brief when luna·high has failed PM review on that specific problem twice, or when the engineer reports a design problem it can't resolve.
+- **Environment failures** (missing tools, sandbox permissions) never justify escalation. The PM fixes the environment instead.

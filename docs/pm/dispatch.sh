@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # PM dispatcher: runs one Codex engineer on a brief as a goal.
-# usage: docs/pm/dispatch.sh <brief-name> [resume-session-id]
+# usage: [MODEL=gpt-5.6-luna|gpt-5.6-terra|gpt-5.6-sol|gpt-6-astra] [EFFORT=medium|high|xhigh] docs/pm/dispatch.sh <brief-name> [resume-session-id]
 set -euo pipefail
-BRIEF="$1"; RESUME="${2:-}"
+BRIEF="$1"; RESUME="${2:-}"; EFFORT="${EFFORT:-medium}"; MODEL="${MODEL:-gpt-5.6-luna}"
 ROOT="/c/Users/beanie/Documents/Proj/tonewatch"
 CODEX="/c/Users/beanie/AppData/Local/OpenAI/Codex/bin/7ac07f4ce733f89a/codex.exe"
 export PATH="/c/Program Files/nodejs:$APPDATA/npm:$LOCALAPPDATA/Microsoft/WinGet/Packages/Casey.Just_Microsoft.Winget.Source_8wekyb3d8bbwe:$PATH"
@@ -26,7 +26,7 @@ else
 fi
 W="$(cygpath -m "$LOCALAPPDATA/uv")","$(cygpath -m "$APPDATA/uv")","$(cygpath -m "$LOCALAPPDATA/pnpm")","$(cygpath -m "$LOCALAPPDATA/npm-cache")","$(cygpath -m "$APPDATA/npm")","$(cygpath -m "$USERPROFILE/.cache")"
 ROOTS="[\"${W//,/\",\"}\"]"
-COMMON=( -m gpt-5.6-luna -c 'model_reasoning_effort="medium"'
+COMMON=( -m "$MODEL" -c "model_reasoning_effort=\"$EFFORT\""
   -c 'sandbox_mode="workspace-write"' -c 'sandbox_workspace_write.network_access=true'
   -c "sandbox_workspace_write.writable_roots=$ROOTS"
   --json -o "$REPORT" )
@@ -38,5 +38,7 @@ else
   "$CODEX" exec resume "$RESUME" "${COMMON[@]}" - < "$PROMPT_FILE" > "$LOG" 2>&1
 fi
 RC=$?
+echo "model=$MODEL effort=$EFFORT resume=${RESUME:-new}" >> "$REPORT"
+"$ROOT/.tools/bin/uv.exe" run --project "$ROOT/backend" python "$ROOT/docs/pm/ledger.py" || true
 set -e
 echo "exit=$RC log=$LOG report=$REPORT"

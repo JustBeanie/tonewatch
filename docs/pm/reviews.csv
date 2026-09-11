@@ -1,0 +1,4 @@
+run_id,verdict,failure_class,findings,notes
+M0-20260910-195810,fail,env,8,"sandbox could not see uv/just; ticked unverified tasks (verification); global npm installs; hatchling readme path bug"
+M0-fix-20260910-203024,fail,verification,4,"setup+check truly green; pre-commit 'pass' was hollow (no tracked files); prettier hook paths; shellcheck; missing pkg coverage gate"
+M0-fix2-20260910-210517,pass,,3,"PM fixed 3 one-liners: pytest cacheprovider, --python 3.13.13 pin, report EOF exclude"
