@@ -1,0 +1,772 @@
+entries:
+  - function: Governance
+    practice: Strategy & Metrics
+    stream: Create and Promote
+    stream_id: G-SM-A
+    current_level: 1
+    target_level: 1
+    answers:
+      - level: 1
+        question: Do you understand the enterprise-wide risk appetite for your applications?
+        answer: Yes, it covers general risks
+        rationale: The security plan and documentation establish a project-level application-security
+          strategy and scope.
+      - level: 2
+        question: Do you have a strategic plan for application security and use it to
+          make decisions?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+      - level: 3
+        question: Do you regularly review and update the Strategic Plan for Application
+          Security?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+    evidence:
+      - SECURITY.md
+      - PLAN.md
+      - docs/security/README.md
+    na: false
+    na_justification: null
+    assessed_on: '2026-09-10'
+  - function: Governance
+    practice: Strategy & Metrics
+    stream: Measure and Improve
+    stream_id: G-SM-B
+    current_level: 0
+    target_level: 1
+    answers:
+      - level: 1
+        question: Do you use a set of metrics to measure the effectiveness and efficiency
+          of the application security program across applications?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+      - level: 2
+        question: Have you defined Key Performance Indicators (KPIs) from available application
+          security metrics?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+      - level: 3
+        question: Do you update the Application Security strategy and roadmap based on
+          application security metrics and KPIs?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+    evidence: []
+    na: false
+    na_justification: null
+    assessed_on: '2026-09-10'
+  - function: Governance
+    practice: Policy & Compliance
+    stream: Policy and Standards
+    stream_id: G-PC-A
+    current_level: 1
+    target_level: 1
+    answers:
+      - level: 1
+        question: Do you have and apply a common set of policies and standards throughout
+          your organization?
+        answer: Yes, for some applications
+        rationale: The security policy and assurance documentation provide a common security
+          policy baseline.
+      - level: 2
+        question: Do you publish the organization's policies as test scripts or run-books
+          for easy interpretation by development teams?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+      - level: 3
+        question: Do you regularly report on policy and standard compliance, and use that
+          information to guide compliance improvement efforts?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+    evidence:
+      - SECURITY.md
+      - PLAN.md
+      - docs/security/README.md
+    na: false
+    na_justification: null
+    assessed_on: '2026-09-10'
+  - function: Governance
+    practice: Policy & Compliance
+    stream: Compliance Management
+    stream_id: G-PC-B
+    current_level: 0
+    target_level: 1
+    answers:
+      - level: 1
+        question: Do you have a complete picture of your external compliance obligations?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+      - level: 2
+        question: Do you have a standard set of security requirements and verification
+          procedures addressing the organization's external compliance obligations?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+      - level: 3
+        question: Do you regularly report on adherence to external compliance obligations
+          and use that information to guide efforts to close compliance gaps?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+    evidence: []
+    na: false
+    na_justification: null
+    assessed_on: '2026-09-10'
+  - function: Governance
+    practice: Education & Guidance
+    stream: Training and Awareness
+    stream_id: G-EG-A
+    current_level: 1
+    target_level: 1
+    answers:
+      - level: 1
+        question: Do you require employees involved with application development to take
+          SDLC training?
+        answer: Yes, some of them
+        rationale: Contributor and agent guidance contains explicit secure-coding, testing,
+          and evidence rules.
+      - level: 2
+        question: Is training customized for individual roles such as developers, testers,
+          or security champions?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+      - level: 3
+        question: Have you implemented a Learning Management System or equivalent to track
+          employee training and certification processes?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+    evidence:
+      - CONTRIBUTING.md
+      - AGENTS.md
+    na: false
+    na_justification: null
+    assessed_on: '2026-09-10'
+  - function: Governance
+    practice: Education & Guidance
+    stream: Organization and Culture
+    stream_id: G-EG-B
+    current_level: 0
+    target_level: 1
+    answers:
+      - level: 1
+        question: Have you identified a Security Champion for each development team?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+      - level: 2
+        question: Does the organization have a Secure Software Center of Excellence (SSCE)?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+      - level: 3
+        question: Is there a centralized portal where developers and application security
+          professionals from different teams and business units are able to communicate
+          and share information?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+    evidence: []
+    na: false
+    na_justification: null
+    assessed_on: '2026-09-10'
+  - function: Design
+    practice: Threat Assessment
+    stream: Application Risk Profile
+    stream_id: D-TA-A
+    current_level: 0
+    target_level: 2
+    answers:
+      - level: 1
+        question: Do you classify applications according to business risk based on a simple
+          and predefined set of questions?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+      - level: 2
+        question: Do you use centralized and quantified application risk profiles to evaluate
+          business risk?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+      - level: 3
+        question: Do you regularly review and update the risk profiles for your applications?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+    evidence: []
+    na: false
+    na_justification: null
+    assessed_on: '2026-09-10'
+  - function: Design
+    practice: Threat Assessment
+    stream: Threat Modeling
+    stream_id: D-TA-B
+    current_level: 0
+    target_level: 2
+    answers:
+      - level: 1
+        question: Do you identify and manage architectural design flaws with threat modeling?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+      - level: 2
+        question: Do you use a standard methodology, aligned with your application risk
+          levels?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+      - level: 3
+        question: Do you regularly review and update the threat modeling methodology for
+          your applications?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+    evidence: []
+    na: false
+    na_justification: null
+    assessed_on: '2026-09-10'
+  - function: Design
+    practice: Security Requirements
+    stream: Software Requirements
+    stream_id: D-SR-A
+    current_level: 1
+    target_level: 2
+    answers:
+      - level: 1
+        question: Do project teams specify security requirements during development?
+        answer: Yes, for some applications
+        rationale: The plan specifies security requirements including auth tokens, HMAC
+          webhooks, SSRF blocking, script-hook defaults, and ASVS L2.
+      - level: 2
+        question: Do you define, structure, and include prioritization in the artifacts
+          of the security requirements gathering process?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+      - level: 3
+        question: Do you use a standard requirements framework to streamline the elicitation
+          of security requirements?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+    evidence:
+      - PLAN.md
+    na: false
+    na_justification: null
+    assessed_on: '2026-09-10'
+  - function: Design
+    practice: Security Requirements
+    stream: Supplier Security
+    stream_id: D-SR-B
+    current_level: 0
+    target_level: 2
+    answers:
+      - level: 1
+        question: Do stakeholders review vendor collaborations for security requirements
+          and methodology?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+      - level: 2
+        question: Do vendors meet the security responsibilities and quality measures of
+          service level agreements defined by the organization?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+      - level: 3
+        question: Are vendors aligned with standard security controls and software development
+          tools and processes that the organization utilizes?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+    evidence: []
+    na: false
+    na_justification: null
+    assessed_on: '2026-09-10'
+  - function: Design
+    practice: Secure Architecture
+    stream: Architecture Design
+    stream_id: D-SA-A
+    current_level: 0
+    target_level: 1
+    answers:
+      - level: 1
+        question: Do teams use security principles during design?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+      - level: 2
+        question: Do you use shared security services during design?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+      - level: 3
+        question: Do you base your design on available reference architectures?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+    evidence: []
+    na: false
+    na_justification: null
+    assessed_on: '2026-09-10'
+  - function: Design
+    practice: Secure Architecture
+    stream: Technology Management
+    stream_id: D-SA-B
+    current_level: 0
+    target_level: 1
+    answers:
+      - level: 1
+        question: Do you evaluate the security quality of important technologies used
+          for development?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+      - level: 2
+        question: Do you have a list of recommended technologies for the organization?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+      - level: 3
+        question: Do you enforce the use of recommended technologies within the organization?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+    evidence: []
+    na: false
+    na_justification: null
+    assessed_on: '2026-09-10'
+  - function: Implementation
+    practice: Secure Build
+    stream: Build Process
+    stream_id: I-SB-A
+    current_level: 2
+    target_level: 2
+    answers:
+      - level: 1
+        question: Is your full build process formally described?
+        answer: Yes, for some applications
+        rationale: The repository defines repeatable build/test steps and the workflow
+          uses full SHA-pinned actions.
+      - level: 2
+        question: Is the build process fully automated?
+        answer: Yes, for some applications
+        rationale: CI automates the repeatable build and test steps for this repository, with the justfile defining the local equivalent.
+      - level: 3
+        question: Do you enforce automated security checks in your build processes?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+    evidence:
+      - .github/workflows/ci.yml
+      - justfile
+    na: false
+    na_justification: null
+    assessed_on: '2026-09-10'
+  - function: Implementation
+    practice: Secure Build
+    stream: Software Dependencies
+    stream_id: I-SB-B
+    current_level: 1
+    target_level: 2
+    answers:
+      - level: 1
+        question: Do you have solid knowledge of the dependencies you rely on?
+        answer: Yes, for some applications
+        rationale: Both dependency lockfiles are committed and Renovate plus repository
+          dependency alerts provide dependency awareness.
+      - level: 2
+        question: Do you handle third-party dependency risk through a formal process?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+      - level: 3
+        question: Do you prevent the build of software if it is affected by vulnerabilities
+          in dependencies?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+    evidence:
+      - backend/uv.lock
+      - web/pnpm-lock.yaml
+      - renovate.json
+      - https://github.com/JustBeanie/tonewatch/security/dependabot
+    na: false
+    na_justification: null
+    assessed_on: '2026-09-10'
+  - function: Implementation
+    practice: Secure Deployment
+    stream: Deployment Process
+    stream_id: I-SD-A
+    current_level: 0
+    target_level: 2
+    answers:
+      - level: 1
+        question: Do you use repeatable deployment processes?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+      - level: 2
+        question: Are deployment processes automated and employing security checks?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+      - level: 3
+        question: Do you consistently validate the integrity of deployed artifacts?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+    evidence: []
+    na: false
+    na_justification: null
+    assessed_on: '2026-09-10'
+  - function: Implementation
+    practice: Secure Deployment
+    stream: Secret Management
+    stream_id: I-SD-B
+    current_level: 0
+    target_level: 2
+    answers:
+      - level: 1
+        question: Do you limit access to application secrets according to the least privilege
+          principle?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+      - level: 2
+        question: Do you inject production secrets into configuration files during deployment?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+      - level: 3
+        question: Do you practice proper lifecycle management for application secrets?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+    evidence: []
+    na: false
+    na_justification: null
+    assessed_on: '2026-09-10'
+  - function: Implementation
+    practice: Defect Management
+    stream: Defect Tracking
+    stream_id: I-DM-A
+    current_level: 1
+    target_level: 2
+    answers:
+      - level: 1
+        question: Do you track all known security defects in accessible locations?
+        answer: Yes, for some applications
+        rationale: Security gaps are tracked in the generated gap register and the repository
+          has security issue tracking conventions.
+      - level: 2
+        question: Do you keep an overview of the state of security defects across the
+          organization?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+      - level: 3
+        question: Do you enforce SLAs for fixing security defects?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+    evidence:
+      - docs/security/gaps.md
+      - https://github.com/JustBeanie/tonewatch/labels/security
+      - https://github.com/JustBeanie/tonewatch/labels/area%3Asecurity
+    na: false
+    na_justification: null
+    assessed_on: '2026-09-10'
+  - function: Implementation
+    practice: Defect Management
+    stream: Metrics and Feedback
+    stream_id: I-DM-B
+    current_level: 0
+    target_level: 2
+    answers:
+      - level: 1
+        question: Do you use basic metrics about recorded security defects to carry out
+          quick-win improvement activities?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+      - level: 2
+        question: Do you improve your security assurance program upon standardized metrics?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+      - level: 3
+        question: Do you regularly evaluate the effectiveness of your security metrics
+          so that their input helps drive your security strategy?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+    evidence: []
+    na: false
+    na_justification: null
+    assessed_on: '2026-09-10'
+  - function: Verification
+    practice: Architecture Assessment
+    stream: Architecture Validation
+    stream_id: V-AA-A
+    current_level: 0
+    target_level: 1
+    answers:
+      - level: 1
+        question: Do you review the application architecture for key security objectives
+          on an ad-hoc basis?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+      - level: 2
+        question: Do you regularly review the security mechanisms of your architecture?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+      - level: 3
+        question: Do you regularly review the effectiveness of the security controls?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+    evidence: []
+    na: false
+    na_justification: null
+    assessed_on: '2026-09-10'
+  - function: Verification
+    practice: Architecture Assessment
+    stream: Architecture Mitigation
+    stream_id: V-AA-B
+    current_level: 0
+    target_level: 1
+    answers:
+      - level: 1
+        question: Do you review the application architecture for mitigations of typical
+          threats on an ad-hoc basis?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+      - level: 2
+        question: Do you regularly evaluate the threats to your architecture?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+      - level: 3
+        question: Do you regularly update your reference architectures based on architecture
+          assessment findings?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+    evidence: []
+    na: false
+    na_justification: null
+    assessed_on: '2026-09-10'
+  - function: Verification
+    practice: Requirements-driven Testing
+    stream: Control Verification
+    stream_id: V-RT-A
+    current_level: 0
+    target_level: 1
+    answers:
+      - level: 1
+        question: Do you test applications for the correct functioning of standard security
+          controls?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+      - level: 2
+        question: Do you consistently write and execute test scripts to verify the functionality
+          of security requirements?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+      - level: 3
+        question: Do you automatically test applications for security regressions?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+    evidence: []
+    na: false
+    na_justification: null
+    assessed_on: '2026-09-10'
+  - function: Verification
+    practice: Requirements-driven Testing
+    stream: Misuse/Abuse Testing
+    stream_id: V-RT-B
+    current_level: 0
+    target_level: 1
+    answers:
+      - level: 1
+        question: Do you test applications using randomization or fuzzing techniques?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+      - level: 2
+        question: Do you create abuse cases from functional requirements and use them
+          to drive security tests?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+      - level: 3
+        question: Do you perform denial of service and security stress testing?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+    evidence: []
+    na: false
+    na_justification: null
+    assessed_on: '2026-09-10'
+  - function: Verification
+    practice: Security Testing
+    stream: Scalable Baseline
+    stream_id: V-ST-A
+    current_level: 1
+    target_level: 2
+    answers:
+      - level: 1
+        question: Do you scan applications with automated security testing tools?
+        answer: Yes, some of them
+        rationale: CodeQL, ruff S rules, and pre-commit security-oriented hooks provide
+          an automated security-testing baseline.
+      - level: 2
+        question: Do you customize the automated security tools to your applications and
+          technology stacks?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+      - level: 3
+        question: Do you integrate automated security testing into the build and deploy
+          process?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+    evidence:
+      - .github/workflows/codeql.yml
+      - backend/pyproject.toml
+      - .pre-commit-config.yaml
+    na: false
+    na_justification: null
+    assessed_on: '2026-09-10'
+  - function: Verification
+    practice: Security Testing
+    stream: Deep Understanding
+    stream_id: V-ST-B
+    current_level: 0
+    target_level: 2
+    answers:
+      - level: 1
+        question: Do you manually review the security quality of selected high-risk components?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+      - level: 2
+        question: Do you perform penetration testing for your applications at regular
+          intervals?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+      - level: 3
+        question: Do you use the results of security testing to improve the development
+          lifecycle?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+    evidence: []
+    na: false
+    na_justification: null
+    assessed_on: '2026-09-10'
+  - function: Operations
+    practice: Incident Management
+    stream: Incident Detection
+    stream_id: O-IM-A
+    current_level: 0
+    target_level: 1
+    answers:
+      - level: 1
+        question: Do you analyze log data for security incidents periodically?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+      - level: 2
+        question: Do you follow a documented process for incident detection?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+      - level: 3
+        question: Do you review and update the incident detection process regularly?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+    evidence: []
+    na: false
+    na_justification: null
+    assessed_on: '2026-09-10'
+  - function: Operations
+    practice: Incident Management
+    stream: Incident Response
+    stream_id: O-IM-B
+    current_level: 1
+    target_level: 1
+    answers:
+      - level: 1
+        question: Do you respond to detected incidents?
+        answer: Yes, for some incidents
+        rationale: The policy directs reporters to GitHub Security Advisories, providing
+          an incident-reporting and response path.
+      - level: 2
+        question: Do you use a repeatable process for incident handling?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+      - level: 3
+        question: Do you have a dedicated incident response team available?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+    evidence:
+      - SECURITY.md
+    na: false
+    na_justification: null
+    assessed_on: '2026-09-10'
+  - function: Operations
+    practice: Environment Management
+    stream: Configuration Hardening
+    stream_id: O-EM-A
+    current_level: 0
+    target_level: 1
+    answers:
+      - level: 1
+        question: Do you harden configurations for key components of your technology stacks?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+      - level: 2
+        question: Do you have hardening baselines for your components?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+      - level: 3
+        question: Do you monitor and enforce conformity with hardening baselines?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+    evidence: []
+    na: false
+    na_justification: null
+    assessed_on: '2026-09-10'
+  - function: Operations
+    practice: Environment Management
+    stream: Patching and Updating
+    stream_id: O-EM-B
+    current_level: 0
+    target_level: 1
+    answers:
+      - level: 1
+        question: Do you identify and patch vulnerable components?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+      - level: 2
+        question: Do you follow an established process for updating components of your
+          technology stacks?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+      - level: 3
+        question: Do you regularly evaluate components and review patch level status?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+    evidence: []
+    na: false
+    na_justification: null
+    assessed_on: '2026-09-10'
+  - function: Operations
+    practice: Operational Management
+    stream: Data Protection
+    stream_id: O-OM-A
+    current_level: 0
+    target_level: 1
+    answers:
+      - level: 1
+        question: Do you protect and handle information according to protection requirements
+          for data stored and processed on each application?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+      - level: 2
+        question: Do you maintain a data catalog, including types, sensitivity levels,
+          and processing and storage locations?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+      - level: 3
+        question: Do you regularly review and update the data catalog and your data protection
+          policies and procedures?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+    evidence: []
+    na: false
+    na_justification: null
+    assessed_on: '2026-09-10'
+  - function: Operations
+    practice: Operational Management
+    stream: System Decommissioning / Legacy Management
+    stream_id: O-OM-B
+    current_level: 0
+    target_level: 1
+    answers:
+      - level: 1
+        question: Do you identify and remove systems, applications, application dependencies,
+          or services that are no longer used, have reached end of life, or are no longer
+          actively developed or supported?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+      - level: 2
+        question: Do you follow an established process for removing all associated resources,
+          as part of decommissioning of unused systems, applications, application dependencies,
+          or services?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+      - level: 3
+        question: Do you regularly evaluate the lifecycle state and support status of
+          every software asset and underlying infrastructure component, and estimate their
+          end of life?
+        answer: 'No'
+        rationale: The evidence does not demonstrate this higher maturity level.
+    evidence: []
+    na: false
+    na_justification: null
+    assessed_on: '2026-09-10'

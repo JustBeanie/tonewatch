@@ -1,0 +1,130 @@
+# Security gaps
+
+Evidence-backed gaps from the S1 baseline. Planned work is intentionally scored as zero.
+
+- DSOMM: **Agentic AI / Data Protection / Basic data leak prevention** (L2) — planned; owner **S2**.
+- DSOMM: **Agentic AI / Guidance / AI usage policy** (L2) — planned; owner **S2**.
+- DSOMM: **Agentic AI / Guidance / Instructed load of security rules** (L2) — planned; owner **S2**.
+- DSOMM: **Agentic AI / Guidance / Inventory of AI agents** (L2) — planned; owner **S2**.
+- DSOMM: **Agentic AI / Guidance / Language and framework specific security rules** (L2) — planned; owner **S2**.
+- DSOMM: **Agentic AI / Guidance / Spec-driven development** (L2) — planned; owner **S2**.
+- DSOMM: **Agentic AI / Guidance / Static load of security rules** (L1) — planned; owner **S2**.
+- DSOMM: **Agentic AI / Guidance / Threat modeling rule** (L2) — planned; owner **S2**.
+- DSOMM: **Agentic AI / Isolation / Permission management for AI agents** (L2) — planned; owner **S2**.
+- DSOMM: **Agentic AI / Isolation / Rate limiting and resource budgets for AI systems** (L2) — planned; owner **S2**.
+- DSOMM: **Agentic AI / Isolation / Untrusted workspace handling for AI agents** (L2) — planned; owner **S2**.
+- DSOMM: **Agentic AI / Isolation / Usage of sandboxing for AI agents** (L1) — planned; owner **S2**.
+- DSOMM: **Agentic AI / Verification / Human review of AI generated plans** (L2) — planned; owner **S2**.
+- DSOMM: **Agentic AI / Verification / Human review of AI generated specifications** (L2) — planned; owner **S2**.
+- DSOMM: **Agentic AI / Verification / Self-verification of AI generated changes** (L2) — planned; owner **S2**.
+- DSOMM: **Agentic AI / Verification / Static and dynamic analysis of AI generated code** (L2) — planned; owner **S2**.
+- DSOMM: **Agentic AI / Verification / Validation of AI-suggested dependencies** (L2) — planned; owner **S2**.
+- DSOMM: **Build and Deployment / Build / Building and testing of artifacts in virtualized environments** (L2) — planned; owner **S2**.
+- DSOMM: **Build and Deployment / Build / Pinning of artifacts** (L2) — planned; owner **S2**.
+- DSOMM: **Build and Deployment / Build / SBOM of components** (L2) — planned; owner **S2**.
+- DSOMM: **Build and Deployment / Deployment / Automated deployment process** (L1) — planned; owner **S2**.
+- DSOMM: **Build and Deployment / Deployment / Defined decommissioning process** (L2) — planned; owner **S2**.
+- DSOMM: **Build and Deployment / Deployment / Defined deployment process** (L1) — planned; owner **S2**.
+- DSOMM: **Build and Deployment / Deployment / Environment depending configuration parameters (secrets)** (L2) — planned; owner **S2**.
+- DSOMM: **Build and Deployment / Deployment / Evaluation of the trust of used components** (L2) — planned; owner **S2**.
+- DSOMM: **Build and Deployment / Deployment / Inventory of production artifacts** (L2) — planned; owner **S2**.
+- DSOMM: **Build and Deployment / Deployment / Inventory of production components** (L1) — planned; owner **S2**.
+- DSOMM: **Build and Deployment / Patch Management / A patch policy is defined** (L1) — planned; owner **S2**.
+- DSOMM: **Build and Deployment / Patch Management / Automated merge of automated PRs** (L2) — planned; owner **S2**.
+- DSOMM: **Build and Deployment / Patch Management / Nightly build of images (base images)** (L2) — planned; owner **S2**.
+- DSOMM: **Build and Deployment / Patch Management / Reduction of the attack surface** (L2) — planned; owner **S2**.
+- DSOMM: **Build and Deployment / Patch Management / Usage of a maximum lifetime for images** (L2) — planned; owner **S2**.
+- DSOMM: **Test and Verification / Application tests / Security unit tests for important components** (L2) — partial; owner **S2**.
+- DSOMM: **Test and Verification / Consolidation / Artifact-based false positive treatment** (L2) — planned; owner **S2**.
+- DSOMM: **Test and Verification / Consolidation / Simple false positive treatment** (L1) — planned; owner **S2**.
+- DSOMM: **Test and Verification / Consolidation / Simple visualization of defects** (L2) — planned; owner **S2**.
+- DSOMM: **Test and Verification / Consolidation / Treatment of defects with high or critical severity** (L1) — planned; owner **S2**.
+- DSOMM: **Test and Verification / Dynamic depth for applications / Coverage of client side dynamic components** (L2) — planned; owner **S2**.
+- DSOMM: **Test and Verification / Dynamic depth for applications / Simple Scan** (L2) — partial; owner **S2**.
+- DSOMM: **Test and Verification / Dynamic depth for applications / Usage of different roles** (L2) — planned; owner **S2**.
+- DSOMM: **Test and Verification / Dynamic depth for infrastructure / Test for exposed services** (L2) — planned; owner **S2**.
+- DSOMM: **Test and Verification / Dynamic depth for infrastructure / Test network segmentation** (L2) — planned; owner **S2**.
+- DSOMM: **Test and Verification / Dynamic depth for infrastructure / Test of the configuration of cloud environments** (L2) — planned; owner **S2**.
+- DSOMM: **Test and Verification / Static depth for applications / Exploit likelihood estimation** (L2) — planned; owner **S2**.
+- DSOMM: **Test and Verification / Static depth for applications / Software Composition Analysis (server side)** (L2) — planned; owner **S2**.
+- DSOMM: **Test and Verification / Static depth for applications / Test for Time to Patch** (L2) — planned; owner **S2**.
+- DSOMM: **Test and Verification / Static depth for applications / Test libyear** (L2) — planned; owner **S2**.
+- DSOMM: **Test and Verification / Static depth for infrastructure / Test cluster deployment resources** (L2) — planned; owner **S2**.
+- DSOMM: **Test and Verification / Static depth for infrastructure / Test for image lifetime** (L2) — planned; owner **S2**.
+- DSOMM: **Test and Verification / Static depth for infrastructure / Test for stored secrets in build artifacts** (L1) — partial; owner **S2**.
+- DSOMM: **Test and Verification / Static depth for infrastructure / Test for stored secrets in code** (L1) — partial; owner **S2**.
+- DSOMM: **Test and Verification / Static depth for infrastructure / Test of virtualized environments** (L2) — planned; owner **S2**.
+- DSOMM: **Test and Verification / Static depth for infrastructure / Test the cloud configuration** (L2) — planned; owner **S2**.
+- DSOMM: **Test and Verification / Static depth for infrastructure / Test the definition of virtualized environments** (L2) — planned; owner **S2**.
+- DSOMM: **Test and Verification / Test Intensity / Default settings for intensity** (L1) — planned; owner **S2**.
+- DSOMM: **Test and Verification / Test Intensity / Regular automated tests** (L2) — partial; owner **S2**.
+- SAMM: **Design / Secure Architecture / Architecture Design** — 0.0 vs 1.0; owner **S2**.
+- SAMM: **Design / Secure Architecture / Technology Management** — 0.0 vs 1.0; owner **S2**.
+- SAMM: **Design / Security Requirements / Software Requirements** — 1.0 vs 2.0; owner **S2**.
+- SAMM: **Design / Security Requirements / Supplier Security** — 0.0 vs 2.0; owner **S2**.
+- SAMM: **Design / Threat Assessment / Application Risk Profile** — 0.0 vs 2.0; owner **S2**.
+- SAMM: **Design / Threat Assessment / Threat Modeling** — 0.0 vs 2.0; owner **S2**.
+- SAMM: **Governance / Education & Guidance / Organization and Culture** — 0.0 vs 1.0; owner **S2**.
+- SAMM: **Governance / Policy & Compliance / Compliance Management** — 0.0 vs 1.0; owner **S2**.
+- SAMM: **Governance / Strategy & Metrics / Measure and Improve** — 0.0 vs 1.0; owner **S2**.
+- SAMM: **Implementation / Defect Management / Defect Tracking** — 1.0 vs 2.0; owner **S2**.
+- SAMM: **Implementation / Defect Management / Metrics and Feedback** — 0.0 vs 2.0; owner **S2**.
+- SAMM: **Implementation / Secure Build / Software Dependencies** — 1.0 vs 2.0; owner **S2**.
+- SAMM: **Implementation / Secure Deployment / Deployment Process** — 0.0 vs 2.0; owner **S2**.
+- SAMM: **Implementation / Secure Deployment / Secret Management** — 0.0 vs 2.0; owner **S2**.
+- SAMM: **Operations / Environment Management / Configuration Hardening** — 0.0 vs 1.0; owner **S2**.
+- SAMM: **Operations / Environment Management / Patching and Updating** — 0.0 vs 1.0; owner **S2**.
+- SAMM: **Operations / Incident Management / Incident Detection** — 0.0 vs 1.0; owner **S2**.
+- SAMM: **Operations / Operational Management / Data Protection** — 0.0 vs 1.0; owner **S2**.
+- SAMM: **Operations / Operational Management / System Decommissioning / Legacy Management** — 0.0 vs 1.0; owner **S2**.
+- SAMM: **Verification / Architecture Assessment / Architecture Mitigation** — 0.0 vs 1.0; owner **S2**.
+- SAMM: **Verification / Architecture Assessment / Architecture Validation** — 0.0 vs 1.0; owner **S2**.
+- SAMM: **Verification / Requirements-driven Testing / Control Verification** — 0.0 vs 1.0; owner **S2**.
+- SAMM: **Verification / Requirements-driven Testing / Misuse/Abuse Testing** — 0.0 vs 1.0; owner **S2**.
+- SAMM: **Verification / Security Testing / Deep Understanding** — 0.0 vs 2.0; owner **S2**.
+- SAMM: **Verification / Security Testing / Scalable Baseline** — 1.0 vs 2.0; owner **S2**.
+- DSOMM: **Implementation / Application Hardening / App. Hardening Level 1 (50%)** (L1) — planned; owner **M5**.
+- DSOMM: **Implementation / Application Hardening / App. Hardening Level 1** (L2) — planned; owner **M5**.
+- DSOMM: **Implementation / Application Hardening / Containers are running as non-root** (L2) — planned; owner **M5**.
+- DSOMM: **Implementation / Application Hardening / Context-aware output encoding** (L1) — planned; owner **M5**.
+- DSOMM: **Implementation / Application Hardening / Parametrization** (L1) — planned; owner **M5**.
+- DSOMM: **Implementation / Development and Source Control / Require a PR before merging** (L2) — partial; owner **M5**.
+- DSOMM: **Implementation / Identity and Access Management / Account inventory** (L2) — planned; owner **M5**.
+- DSOMM: **Implementation / Identity and Access Management / Central identity provider for human access** (L2) — planned; owner **M5**.
+- DSOMM: **Implementation / Identity and Access Management / Enforce server-side authorization on every request** (L1) — planned; owner **M5**.
+- DSOMM: **Implementation / Identity and Access Management / Least-privilege access baseline** (L2) — planned; owner **M5**.
+- DSOMM: **Implementation / Identity and Access Management / MFA for admins** (L1) — planned; owner **M5**.
+- DSOMM: **Implementation / Identity and Access Management / MFA** (L2) — planned; owner **M5**.
+- DSOMM: **Implementation / Identity and Access Management / Simple access control for systems** (L1) — planned; owner **M5**.
+- DSOMM: **Implementation / Infrastructure Hardening / Backup** (L2) — planned; owner **M5**.
+- DSOMM: **Implementation / Infrastructure Hardening / Baseline Hardening of the environment** (L2) — planned; owner **M5**.
+- DSOMM: **Implementation / Infrastructure Hardening / Isolated networks for virtual environments** (L2) — planned; owner **M5**.
+- DSOMM: **Implementation / Infrastructure Hardening / Usage of an security account** (L2) — planned; owner **M5**.
+- DSOMM: **Implementation / Infrastructure Hardening / Usage of containers** (L2) — planned; owner **M5**.
+- DSOMM: **Implementation / Infrastructure Hardening / Usage of edge encryption at transit** (L1) — planned; owner **M5**.
+- DSOMM: **Implementation / Infrastructure Hardening / Usage of encryption at rest** (L2) — planned; owner **M5**.
+- DSOMM: **Implementation / Infrastructure Hardening / Usage of test and production environments** (L2) — planned; owner **M5**.
+- DSOMM: **Implementation / Infrastructure Hardening / Virtual environments are limited** (L2) — planned; owner **M5**.
+- DSOMM: **Information Gathering / Logging / Centralized application logging** (L2) — planned; owner **M5**.
+- DSOMM: **Information Gathering / Logging / Centralized system logging** (L1) — planned; owner **M5**.
+- DSOMM: **Information Gathering / Logging / Logging of security events** (L2) — planned; owner **M5**.
+- DSOMM: **Information Gathering / Monitoring / Alerting** (L2) — planned; owner **M5**.
+- DSOMM: **Information Gathering / Monitoring / Monitoring of costs** (L2) — planned; owner **M5**.
+- DSOMM: **Information Gathering / Monitoring / Simple application metrics** (L1) — planned; owner **M5**.
+- DSOMM: **Information Gathering / Monitoring / Simple budget metrics** (L1) — planned; owner **M5**.
+- DSOMM: **Information Gathering / Monitoring / Simple system metrics** (L1) — planned; owner **M5**.
+- DSOMM: **Information Gathering / Monitoring / Visualized metrics** (L2) — planned; owner **M5**.
+- DSOMM: **Information Gathering / Test KPI / Number of vulnerabilities/severity** (L2) — planned; owner **M5**.
+- DSOMM: **Information Gathering / Test KPI / Number of vulnerabilities/severity/layer** (L2) — planned; owner **M5**.
+- DSOMM: **Information Gathering / Test KPI / Patching mean time to resolution via PR** (L2) — planned; owner **M5**.
+- DSOMM: **Culture and Organization / Design / Conduction of simple threat modeling on technical level** (L1) — planned; owner **S3**.
+- DSOMM: **Culture and Organization / Design / Information security targets are communicated** (L2) — planned; owner **S3**.
+- DSOMM: **Culture and Organization / Education and Guidance / Ad-Hoc Security trainings for software developers** (L1) — planned; owner **S3**.
+- DSOMM: **Culture and Organization / Education and Guidance / Each team has a security champion** (L2) — planned; owner **S3**.
+- DSOMM: **Culture and Organization / Education and Guidance / Regular security training for all** (L2) — planned; owner **S3**.
+- DSOMM: **Culture and Organization / Education and Guidance / Regular security training of security champions** (L2) — planned; owner **S3**.
+- DSOMM: **Culture and Organization / Education and Guidance / Reward of good communication** (L2) — planned; owner **S3**.
+- DSOMM: **Culture and Organization / Education and Guidance / Security code review** (L2) — planned; owner **S3**.
+- DSOMM: **Culture and Organization / Education and Guidance / Security consulting on request** (L1) — planned; owner **S3**.
+- DSOMM: **Culture and Organization / Process / Definition of simple BCDR practices for critical components** (L1) — planned; owner **S3**.
+- DSOMM: **Culture and Organization / Process / Determining the protection requirement** (L2) — planned; owner **S3**.

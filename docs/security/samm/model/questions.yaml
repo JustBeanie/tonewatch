@@ -1,0 +1,1356 @@
+# yamllint disable rule:line-length
+{
+  "source_commit": "f4ed4a13289db54499cb412ec4846ea12e747ac8",
+  "questions": [
+    {
+      "id": "G-SM-1-A",
+      "function": "Governance",
+      "practice": "Strategy & Metrics",
+      "stream": "A",
+      "stream_name": "Create and Promote",
+      "level": 1,
+      "question": "Do you understand the enterprise-wide risk appetite for your applications?",
+      "answer_options": [
+        "No",
+        "Yes, it covers general risks",
+        "Yes, it covers organization-specific risks",
+        "Yes, it covers risks and opportunities"
+      ]
+    },
+    {
+      "id": "G-SM-2-A",
+      "function": "Governance",
+      "practice": "Strategy & Metrics",
+      "stream": "A",
+      "stream_name": "Create and Promote",
+      "level": 2,
+      "question": "Do you have a strategic plan for application security and use it to make decisions?",
+      "answer_options": [
+        "No",
+        "Yes, we have a plan that can be used for decision making",
+        "Yes, we consult the plan before making significant decisions",
+        "Yes, we consult the plan often, and it is aligned with our application security strategy"
+      ]
+    },
+    {
+      "id": "G-SM-3-A",
+      "function": "Governance",
+      "practice": "Strategy & Metrics",
+      "stream": "A",
+      "stream_name": "Create and Promote",
+      "level": 3,
+      "question": "Do you regularly review and update the Strategic Plan for Application Security?",
+      "answer_options": [
+        "No",
+        "Yes, but review is ad-hoc",
+        "Yes, we review it regularly",
+        "Yes, we review it continuously"
+      ]
+    },
+    {
+      "id": "G-SM-1-B",
+      "function": "Governance",
+      "practice": "Strategy & Metrics",
+      "stream": "B",
+      "stream_name": "Measure and Improve",
+      "level": 1,
+      "question": "Do you use a set of metrics to measure the effectiveness and efficiency of the application security program across applications?",
+      "answer_options": [
+        "No",
+        "Yes, for one metrics category",
+        "Yes, for two metrics categories",
+        "Yes, for all three metrics categories"
+      ]
+    },
+    {
+      "id": "G-SM-2-B",
+      "function": "Governance",
+      "practice": "Strategy & Metrics",
+      "stream": "B",
+      "stream_name": "Measure and Improve",
+      "level": 2,
+      "question": "Have you defined Key Performance Indicators (KPIs) from available application security metrics?",
+      "answer_options": [
+        "No",
+        "Yes, for some of the metrics",
+        "Yes, for at least half of the metrics",
+        "Yes, for most or all of the metrics"
+      ]
+    },
+    {
+      "id": "G-SM-3-B",
+      "function": "Governance",
+      "practice": "Strategy & Metrics",
+      "stream": "B",
+      "stream_name": "Measure and Improve",
+      "level": 3,
+      "question": "Do you update the Application Security strategy and roadmap based on application security metrics and KPIs?",
+      "answer_options": [
+        "No",
+        "Yes, but review is ad-hoc",
+        "Yes, we review it regularly",
+        "Yes, we review it continuously"
+      ]
+    },
+    {
+      "id": "G-PC-1-A",
+      "function": "Governance",
+      "practice": "Policy & Compliance",
+      "stream": "A",
+      "stream_name": "Policy and Standards",
+      "level": 1,
+      "question": "Do you have and apply a common set of policies and standards throughout your organization?",
+      "answer_options": [
+        "No",
+        "Yes, for some applications",
+        "Yes, for at least half of the applications",
+        "Yes, for most or all of the applications"
+      ]
+    },
+    {
+      "id": "G-PC-2-A",
+      "function": "Governance",
+      "practice": "Policy & Compliance",
+      "stream": "A",
+      "stream_name": "Policy and Standards",
+      "level": 2,
+      "question": "Do you publish the organization's policies as test scripts or run-books for easy interpretation by development teams?",
+      "answer_options": [
+        "No",
+        "Yes, some content",
+        "Yes, at least half of the content",
+        "Yes, most or all of the content"
+      ]
+    },
+    {
+      "id": "G-PC-3-A",
+      "function": "Governance",
+      "practice": "Policy & Compliance",
+      "stream": "A",
+      "stream_name": "Policy and Standards",
+      "level": 3,
+      "question": "Do you regularly report on policy and standard compliance, and use that information to guide compliance improvement efforts?",
+      "answer_options": [
+        "No",
+        "Yes, but reporting is ad-hoc",
+        "Yes, we report at regular times",
+        "Yes, we report continuously"
+      ]
+    },
+    {
+      "id": "G-PC-1-B",
+      "function": "Governance",
+      "practice": "Policy & Compliance",
+      "stream": "B",
+      "stream_name": "Compliance Management",
+      "level": 1,
+      "question": "Do you have a complete picture of your external compliance obligations?",
+      "answer_options": [
+        "No",
+        "Yes, for some applications",
+        "Yes, for at least half of the applications",
+        "Yes, for most or all of the applications"
+      ]
+    },
+    {
+      "id": "G-PC-2-B",
+      "function": "Governance",
+      "practice": "Policy & Compliance",
+      "stream": "B",
+      "stream_name": "Compliance Management",
+      "level": 2,
+      "question": "Do you have a standard set of security requirements and verification procedures addressing the organization's external compliance obligations?",
+      "answer_options": [
+        "No",
+        "Yes, for some obligations",
+        "Yes, for at least half of the obligations",
+        "Yes, for most or all of the obligations"
+      ]
+    },
+    {
+      "id": "G-PC-3-B",
+      "function": "Governance",
+      "practice": "Policy & Compliance",
+      "stream": "B",
+      "stream_name": "Compliance Management",
+      "level": 3,
+      "question": "Do you regularly report on adherence to external compliance obligations and use that information to guide efforts to close compliance gaps?",
+      "answer_options": [
+        "No",
+        "Yes, but reporting is ad-hoc",
+        "Yes, we report at regular times",
+        "Yes, we report continuously"
+      ]
+    },
+    {
+      "id": "G-EG-1-A",
+      "function": "Governance",
+      "practice": "Education & Guidance",
+      "stream": "A",
+      "stream_name": "Training and Awareness",
+      "level": 1,
+      "question": "Do you require employees involved with application development to take SDLC training?",
+      "answer_options": [
+        "No",
+        "Yes, some of them",
+        "Yes, at least half of them",
+        "Yes, most or all of them"
+      ]
+    },
+    {
+      "id": "G-EG-2-A",
+      "function": "Governance",
+      "practice": "Education & Guidance",
+      "stream": "A",
+      "stream_name": "Training and Awareness",
+      "level": 2,
+      "question": "Is training customized for individual roles such as developers, testers, or security champions?",
+      "answer_options": [
+        "No",
+        "Yes, for some of the training",
+        "Yes, for at least half of the training",
+        "Yes, for most or all of the training"
+      ]
+    },
+    {
+      "id": "G-EG-3-A",
+      "function": "Governance",
+      "practice": "Education & Guidance",
+      "stream": "A",
+      "stream_name": "Training and Awareness",
+      "level": 3,
+      "question": "Have you implemented a Learning Management System or equivalent to track employee training and certification processes?",
+      "answer_options": [
+        "No",
+        "Yes, for some of the training",
+        "Yes, for at least half of the training",
+        "Yes, for most or all of the training"
+      ]
+    },
+    {
+      "id": "G-EG-1-B",
+      "function": "Governance",
+      "practice": "Education & Guidance",
+      "stream": "B",
+      "stream_name": "Organization and Culture",
+      "level": 1,
+      "question": "Have you identified a Security Champion for each development team?",
+      "answer_options": [
+        "No",
+        "Yes, for some teams",
+        "Yes, for at least half of the teams",
+        "Yes, for most or all of the teams"
+      ]
+    },
+    {
+      "id": "G-EG-2-B",
+      "function": "Governance",
+      "practice": "Education & Guidance",
+      "stream": "B",
+      "stream_name": "Organization and Culture",
+      "level": 2,
+      "question": "Does the organization have a Secure Software Center of Excellence (SSCE)?",
+      "answer_options": [
+        "No",
+        "Yes, we started implementing it",
+        "Yes, for part of the organization",
+        "Yes, for the entire organization"
+      ]
+    },
+    {
+      "id": "G-EG-3-B",
+      "function": "Governance",
+      "practice": "Education & Guidance",
+      "stream": "B",
+      "stream_name": "Organization and Culture",
+      "level": 3,
+      "question": "Is there a centralized portal where developers and application security professionals from different teams and business units are able to communicate and share information?",
+      "answer_options": [
+        "No",
+        "Yes, we started implementing it",
+        "Yes, for part of the organization",
+        "Yes, for the entire organization"
+      ]
+    },
+    {
+      "id": "D-TA-1-A",
+      "function": "Design",
+      "practice": "Threat Assessment",
+      "stream": "A",
+      "stream_name": "Application Risk Profile",
+      "level": 1,
+      "question": "Do you classify applications according to business risk based on a simple and predefined set of questions?",
+      "answer_options": [
+        "No",
+        "Yes, some of them",
+        "Yes, at least half of them",
+        "Yes, most or all of them"
+      ]
+    },
+    {
+      "id": "D-TA-2-A",
+      "function": "Design",
+      "practice": "Threat Assessment",
+      "stream": "A",
+      "stream_name": "Application Risk Profile",
+      "level": 2,
+      "question": "Do you use centralized and quantified application risk profiles to evaluate business risk?",
+      "answer_options": [
+        "No",
+        "Yes, for some applications",
+        "Yes, for at least half of the applications",
+        "Yes, for most or all of the applications"
+      ]
+    },
+    {
+      "id": "D-TA-3-A",
+      "function": "Design",
+      "practice": "Threat Assessment",
+      "stream": "A",
+      "stream_name": "Application Risk Profile",
+      "level": 3,
+      "question": "Do you regularly review and update the risk profiles for your applications?",
+      "answer_options": [
+        "No",
+        "Yes, but we do it ad-hoc",
+        "Yes, we do it regularly",
+        "Yes, we do it continuously"
+      ]
+    },
+    {
+      "id": "D-TA-1-B",
+      "function": "Design",
+      "practice": "Threat Assessment",
+      "stream": "B",
+      "stream_name": "Threat Modeling",
+      "level": 1,
+      "question": "Do you identify and manage architectural design flaws with threat modeling?",
+      "answer_options": [
+        "No",
+        "Yes, some of them",
+        "Yes, at least half of them",
+        "Yes, most or all of them"
+      ]
+    },
+    {
+      "id": "D-TA-2-B",
+      "function": "Design",
+      "practice": "Threat Assessment",
+      "stream": "B",
+      "stream_name": "Threat Modeling",
+      "level": 2,
+      "question": "Do you use a standard methodology, aligned with your application risk levels?",
+      "answer_options": [
+        "No",
+        "Yes, for some applications",
+        "Yes, for at least half of the applications",
+        "Yes, for most or all of the applications"
+      ]
+    },
+    {
+      "id": "D-TA-3-B",
+      "function": "Design",
+      "practice": "Threat Assessment",
+      "stream": "B",
+      "stream_name": "Threat Modeling",
+      "level": 3,
+      "question": "Do you regularly review and update the threat modeling methodology for your applications?",
+      "answer_options": [
+        "No",
+        "Yes, but review is ad-hoc",
+        "Yes, we review it regularly",
+        "Yes, we review it continuously"
+      ]
+    },
+    {
+      "id": "D-SR-1-A",
+      "function": "Design",
+      "practice": "Security Requirements",
+      "stream": "A",
+      "stream_name": "Software Requirements",
+      "level": 1,
+      "question": "Do project teams specify security requirements during development?",
+      "answer_options": [
+        "No",
+        "Yes, for some applications",
+        "Yes, for at least half of the applications",
+        "Yes, for most or all of the applications"
+      ]
+    },
+    {
+      "id": "D-SR-2-A",
+      "function": "Design",
+      "practice": "Security Requirements",
+      "stream": "A",
+      "stream_name": "Software Requirements",
+      "level": 2,
+      "question": "Do you define, structure, and include prioritization in the artifacts of the security requirements gathering process?",
+      "answer_options": [
+        "No",
+        "Yes, some of the time",
+        "Yes, at least half of the time",
+        "Yes, most or all of the time"
+      ]
+    },
+    {
+      "id": "D-SR-3-A",
+      "function": "Design",
+      "practice": "Security Requirements",
+      "stream": "A",
+      "stream_name": "Software Requirements",
+      "level": 3,
+      "question": "Do you use a standard requirements framework to streamline the elicitation of security requirements?",
+      "answer_options": [
+        "No",
+        "Yes, for some applications",
+        "Yes, for at least half of the applications",
+        "Yes, for most or all of the applications"
+      ]
+    },
+    {
+      "id": "D-SR-1-B",
+      "function": "Design",
+      "practice": "Security Requirements",
+      "stream": "B",
+      "stream_name": "Supplier Security",
+      "level": 1,
+      "question": "Do stakeholders review vendor collaborations for security requirements and methodology?",
+      "answer_options": [
+        "No",
+        "Yes, some of the time",
+        "Yes, at least half of the time",
+        "Yes, most or all of the time"
+      ]
+    },
+    {
+      "id": "D-SR-2-B",
+      "function": "Design",
+      "practice": "Security Requirements",
+      "stream": "B",
+      "stream_name": "Supplier Security",
+      "level": 2,
+      "question": "Do vendors meet the security responsibilities and quality measures of service level agreements defined by the organization?",
+      "answer_options": [
+        "No",
+        "Yes, some of the time",
+        "Yes, at least half of the time",
+        "Yes, most or all of the time"
+      ]
+    },
+    {
+      "id": "D-SR-3-B",
+      "function": "Design",
+      "practice": "Security Requirements",
+      "stream": "B",
+      "stream_name": "Supplier Security",
+      "level": 3,
+      "question": "Are vendors aligned with standard security controls and software development tools and processes that the organization utilizes?",
+      "answer_options": [
+        "No",
+        "Yes, some of the time",
+        "Yes, at least half of the time",
+        "Yes, most or all of the time"
+      ]
+    },
+    {
+      "id": "D-SA-1-A",
+      "function": "Design",
+      "practice": "Secure Architecture",
+      "stream": "A",
+      "stream_name": "Architecture Design",
+      "level": 1,
+      "question": "Do teams use security principles during design?",
+      "answer_options": [
+        "No",
+        "Yes, for some applications",
+        "Yes, for at least half of the applications",
+        "Yes, for most or all of the applications"
+      ]
+    },
+    {
+      "id": "D-SA-2-A",
+      "function": "Design",
+      "practice": "Secure Architecture",
+      "stream": "A",
+      "stream_name": "Architecture Design",
+      "level": 2,
+      "question": "Do you use shared security services during design?",
+      "answer_options": [
+        "No",
+        "Yes, for some applications",
+        "Yes, for at least half of the applications",
+        "Yes, for most or all of the applications"
+      ]
+    },
+    {
+      "id": "D-SA-3-A",
+      "function": "Design",
+      "practice": "Secure Architecture",
+      "stream": "A",
+      "stream_name": "Architecture Design",
+      "level": 3,
+      "question": "Do you base your design on available reference architectures?",
+      "answer_options": [
+        "No",
+        "Yes, for some applications",
+        "Yes, for at least half of the applications",
+        "Yes, for most or all of the applications"
+      ]
+    },
+    {
+      "id": "D-SA-1-B",
+      "function": "Design",
+      "practice": "Secure Architecture",
+      "stream": "B",
+      "stream_name": "Technology Management",
+      "level": 1,
+      "question": "Do you evaluate the security quality of important technologies used for development?",
+      "answer_options": [
+        "No",
+        "Yes, for some applications",
+        "Yes, for at least half of the applications",
+        "Yes, for most or all of the applications"
+      ]
+    },
+    {
+      "id": "D-SA-2-B",
+      "function": "Design",
+      "practice": "Secure Architecture",
+      "stream": "B",
+      "stream_name": "Technology Management",
+      "level": 2,
+      "question": "Do you have a list of recommended technologies for the organization?",
+      "answer_options": [
+        "No",
+        "Yes, for some of the technology domains",
+        "Yes, for at least half of the technology domains",
+        "Yes, for most or all of the technology domains"
+      ]
+    },
+    {
+      "id": "D-SA-3-B",
+      "function": "Design",
+      "practice": "Secure Architecture",
+      "stream": "B",
+      "stream_name": "Technology Management",
+      "level": 3,
+      "question": "Do you enforce the use of recommended technologies within the organization?",
+      "answer_options": [
+        "No",
+        "Yes, for some applications",
+        "Yes, for at least half of the applications",
+        "Yes, for most or all of the applications"
+      ]
+    },
+    {
+      "id": "I-SB-1-A",
+      "function": "Implementation",
+      "practice": "Secure Build",
+      "stream": "A",
+      "stream_name": "Build Process",
+      "level": 1,
+      "question": "Is your full build process formally described?",
+      "answer_options": [
+        "No",
+        "Yes, for some applications",
+        "Yes, for at least half of the applications",
+        "Yes, for most or all of the applications"
+      ]
+    },
+    {
+      "id": "I-SB-2-A",
+      "function": "Implementation",
+      "practice": "Secure Build",
+      "stream": "A",
+      "stream_name": "Build Process",
+      "level": 2,
+      "question": "Is the build process fully automated?",
+      "answer_options": [
+        "No",
+        "Yes, for some applications",
+        "Yes, for at least half of the applications",
+        "Yes, for most or all of the applications"
+      ]
+    },
+    {
+      "id": "I-SB-3-A",
+      "function": "Implementation",
+      "practice": "Secure Build",
+      "stream": "A",
+      "stream_name": "Build Process",
+      "level": 3,
+      "question": "Do you enforce automated security checks in your build processes?",
+      "answer_options": [
+        "No",
+        "Yes, for some applications",
+        "Yes, for at least half of the applications",
+        "Yes, for most or all of the applications"
+      ]
+    },
+    {
+      "id": "I-SB-1-B",
+      "function": "Implementation",
+      "practice": "Secure Build",
+      "stream": "B",
+      "stream_name": "Software Dependencies",
+      "level": 1,
+      "question": "Do you have solid knowledge of the dependencies you rely on?",
+      "answer_options": [
+        "No",
+        "Yes, for some applications",
+        "Yes, for at least half of the applications",
+        "Yes, for most or all of the applications"
+      ]
+    },
+    {
+      "id": "I-SB-2-B",
+      "function": "Implementation",
+      "practice": "Secure Build",
+      "stream": "B",
+      "stream_name": "Software Dependencies",
+      "level": 2,
+      "question": "Do you handle third-party dependency risk through a formal process?",
+      "answer_options": [
+        "No",
+        "Yes, for some applications",
+        "Yes, for at least half of the applications",
+        "Yes, for most or all of the applications"
+      ]
+    },
+    {
+      "id": "I-SB-3-B",
+      "function": "Implementation",
+      "practice": "Secure Build",
+      "stream": "B",
+      "stream_name": "Software Dependencies",
+      "level": 3,
+      "question": "Do you prevent the build of software if it is affected by vulnerabilities in dependencies?",
+      "answer_options": [
+        "No",
+        "Yes, for some applications",
+        "Yes, for at least half of the applications",
+        "Yes, for most or all of the applications"
+      ]
+    },
+    {
+      "id": "I-SD-1-A",
+      "function": "Implementation",
+      "practice": "Secure Deployment",
+      "stream": "A",
+      "stream_name": "Deployment Process",
+      "level": 1,
+      "question": "Do you use repeatable deployment processes?",
+      "answer_options": [
+        "No",
+        "Yes, for some applications",
+        "Yes, for at least half of the applications",
+        "Yes, for most or all of the applications"
+      ]
+    },
+    {
+      "id": "I-SD-2-A",
+      "function": "Implementation",
+      "practice": "Secure Deployment",
+      "stream": "A",
+      "stream_name": "Deployment Process",
+      "level": 2,
+      "question": "Are deployment processes automated and employing security checks?",
+      "answer_options": [
+        "No",
+        "Yes, for some applications",
+        "Yes, for at least half of the applications",
+        "Yes, for most or all of the applications"
+      ]
+    },
+    {
+      "id": "I-SD-3-A",
+      "function": "Implementation",
+      "practice": "Secure Deployment",
+      "stream": "A",
+      "stream_name": "Deployment Process",
+      "level": 3,
+      "question": "Do you consistently validate the integrity of deployed artifacts?",
+      "answer_options": [
+        "No",
+        "Yes, for some applications",
+        "Yes, for at least half of the applications",
+        "Yes, for most or all of the applications"
+      ]
+    },
+    {
+      "id": "I-SD-1-B",
+      "function": "Implementation",
+      "practice": "Secure Deployment",
+      "stream": "B",
+      "stream_name": "Secret Management",
+      "level": 1,
+      "question": "Do you limit access to application secrets according to the least privilege principle?",
+      "answer_options": [
+        "No",
+        "Yes, for some applications",
+        "Yes, for at least half of the applications",
+        "Yes, for most or all of the applications"
+      ]
+    },
+    {
+      "id": "I-SD-2-B",
+      "function": "Implementation",
+      "practice": "Secure Deployment",
+      "stream": "B",
+      "stream_name": "Secret Management",
+      "level": 2,
+      "question": "Do you inject production secrets into configuration files during deployment?",
+      "answer_options": [
+        "No",
+        "Yes, for some applications",
+        "Yes, for at least half of the applications",
+        "Yes, for most or all of the applications"
+      ]
+    },
+    {
+      "id": "I-SD-3-B",
+      "function": "Implementation",
+      "practice": "Secure Deployment",
+      "stream": "B",
+      "stream_name": "Secret Management",
+      "level": 3,
+      "question": "Do you practice proper lifecycle management for application secrets?",
+      "answer_options": [
+        "No",
+        "Yes, for some applications",
+        "Yes, for at least half of the applications",
+        "Yes, for most or all of the applications"
+      ]
+    },
+    {
+      "id": "I-DM-1-A",
+      "function": "Implementation",
+      "practice": "Defect Management",
+      "stream": "A",
+      "stream_name": "Defect Tracking",
+      "level": 1,
+      "question": "Do you track all known security defects in accessible locations?",
+      "answer_options": [
+        "No",
+        "Yes, for some applications",
+        "Yes, for at least half of the applications",
+        "Yes, for most or all of the applications"
+      ]
+    },
+    {
+      "id": "I-DM-2-A",
+      "function": "Implementation",
+      "practice": "Defect Management",
+      "stream": "A",
+      "stream_name": "Defect Tracking",
+      "level": 2,
+      "question": "Do you keep an overview of the state of security defects across the organization?",
+      "answer_options": [
+        "No",
+        "Yes, for some applications",
+        "Yes, for at least half of the applications",
+        "Yes, for most or all of the applications"
+      ]
+    },
+    {
+      "id": "I-DM-3-A",
+      "function": "Implementation",
+      "practice": "Defect Management",
+      "stream": "A",
+      "stream_name": "Defect Tracking",
+      "level": 3,
+      "question": "Do you enforce SLAs for fixing security defects?",
+      "answer_options": [
+        "No",
+        "Yes, for some applications",
+        "Yes, for at least half of the applications",
+        "Yes, for most or all of the applications"
+      ]
+    },
+    {
+      "id": "I-DM-1-B",
+      "function": "Implementation",
+      "practice": "Defect Management",
+      "stream": "B",
+      "stream_name": "Metrics and Feedback",
+      "level": 1,
+      "question": "Do you use basic metrics about recorded security defects to carry out quick-win improvement activities?",
+      "answer_options": [
+        "No",
+        "Yes, for some applications",
+        "Yes, for at least half of the applications",
+        "Yes, for most or all of the applications"
+      ]
+    },
+    {
+      "id": "I-DM-2-B",
+      "function": "Implementation",
+      "practice": "Defect Management",
+      "stream": "B",
+      "stream_name": "Metrics and Feedback",
+      "level": 2,
+      "question": "Do you improve your security assurance program upon standardized metrics?",
+      "answer_options": [
+        "No",
+        "Yes, for some applications",
+        "Yes, for at least half of the applications",
+        "Yes, for most or all of the applications"
+      ]
+    },
+    {
+      "id": "I-DM-3-B",
+      "function": "Implementation",
+      "practice": "Defect Management",
+      "stream": "B",
+      "stream_name": "Metrics and Feedback",
+      "level": 3,
+      "question": "Do you regularly evaluate the effectiveness of your security metrics so that their input helps drive your security strategy?",
+      "answer_options": [
+        "No",
+        "Yes, for some applications",
+        "Yes, for at least half of the applications",
+        "Yes, for most or all of the applications"
+      ]
+    },
+    {
+      "id": "V-AA-1-A",
+      "function": "Verification",
+      "practice": "Architecture Assessment",
+      "stream": "A",
+      "stream_name": "Architecture Validation",
+      "level": 1,
+      "question": "Do you review the application architecture for key security objectives on an ad-hoc basis?",
+      "answer_options": [
+        "No",
+        "Yes, for some applications",
+        "Yes, for at least half of the applications",
+        "Yes, for most or all of the applications"
+      ]
+    },
+    {
+      "id": "V-AA-2-A",
+      "function": "Verification",
+      "practice": "Architecture Assessment",
+      "stream": "A",
+      "stream_name": "Architecture Validation",
+      "level": 2,
+      "question": "Do you regularly review the security mechanisms of your architecture?",
+      "answer_options": [
+        "No",
+        "Yes, for some applications",
+        "Yes, for at least half of the applications",
+        "Yes, for most or all of the applications"
+      ]
+    },
+    {
+      "id": "V-AA-3-A",
+      "function": "Verification",
+      "practice": "Architecture Assessment",
+      "stream": "A",
+      "stream_name": "Architecture Validation",
+      "level": 3,
+      "question": "Do you regularly review the effectiveness of the security controls?",
+      "answer_options": [
+        "No",
+        "Yes, for some applications",
+        "Yes, for at least half of the applications",
+        "Yes, for most or all of the applications"
+      ]
+    },
+    {
+      "id": "V-AA-1-B",
+      "function": "Verification",
+      "practice": "Architecture Assessment",
+      "stream": "B",
+      "stream_name": "Architecture Mitigation",
+      "level": 1,
+      "question": "Do you review the application architecture for mitigations of typical threats on an ad-hoc basis?",
+      "answer_options": [
+        "No",
+        "Yes, for some applications",
+        "Yes, for at least half of the applications",
+        "Yes, for most or all of the applications"
+      ]
+    },
+    {
+      "id": "V-AA-2-B",
+      "function": "Verification",
+      "practice": "Architecture Assessment",
+      "stream": "B",
+      "stream_name": "Architecture Mitigation",
+      "level": 2,
+      "question": "Do you regularly evaluate the threats to your architecture?",
+      "answer_options": [
+        "No",
+        "Yes, for some applications",
+        "Yes, for at least half of the applications",
+        "Yes, for most or all of the applications"
+      ]
+    },
+    {
+      "id": "V-AA-3-B",
+      "function": "Verification",
+      "practice": "Architecture Assessment",
+      "stream": "B",
+      "stream_name": "Architecture Mitigation",
+      "level": 3,
+      "question": "Do you regularly update your reference architectures based on architecture assessment findings?",
+      "answer_options": [
+        "No",
+        "Yes, for some applications",
+        "Yes, for at least half of the applications",
+        "Yes, for most or all of the applications"
+      ]
+    },
+    {
+      "id": "V-RT-1-A",
+      "function": "Verification",
+      "practice": "Requirements-driven Testing",
+      "stream": "A",
+      "stream_name": "Control Verification",
+      "level": 1,
+      "question": "Do you test applications for the correct functioning of standard security controls?",
+      "answer_options": [
+        "No",
+        "Yes, some of them",
+        "Yes, at least half of them",
+        "Yes, most or all of them"
+      ]
+    },
+    {
+      "id": "V-RT-2-A",
+      "function": "Verification",
+      "practice": "Requirements-driven Testing",
+      "stream": "A",
+      "stream_name": "Control Verification",
+      "level": 2,
+      "question": "Do you consistently write and execute test scripts to verify the functionality of security requirements?",
+      "answer_options": [
+        "No",
+        "Yes, some of them",
+        "Yes, at least half of them",
+        "Yes, most or all of them"
+      ]
+    },
+    {
+      "id": "V-RT-3-A",
+      "function": "Verification",
+      "practice": "Requirements-driven Testing",
+      "stream": "A",
+      "stream_name": "Control Verification",
+      "level": 3,
+      "question": "Do you automatically test applications for security regressions?",
+      "answer_options": [
+        "No",
+        "Yes, for some applications",
+        "Yes, for at least half of the applications",
+        "Yes, for most or all of the applications"
+      ]
+    },
+    {
+      "id": "V-RT-1-B",
+      "function": "Verification",
+      "practice": "Requirements-driven Testing",
+      "stream": "B",
+      "stream_name": "Misuse/Abuse Testing",
+      "level": 1,
+      "question": "Do you test applications using randomization or fuzzing techniques?",
+      "answer_options": [
+        "No",
+        "Yes, for some applications",
+        "Yes, for at least half of the applications",
+        "Yes, for most or all of the applications"
+      ]
+    },
+    {
+      "id": "V-RT-2-B",
+      "function": "Verification",
+      "practice": "Requirements-driven Testing",
+      "stream": "B",
+      "stream_name": "Misuse/Abuse Testing",
+      "level": 2,
+      "question": "Do you create abuse cases from functional requirements and use them to drive security tests?",
+      "answer_options": [
+        "No",
+        "Yes, some of the time",
+        "Yes, at least half of the time",
+        "Yes, most or all of the time"
+      ]
+    },
+    {
+      "id": "V-RT-3-B",
+      "function": "Verification",
+      "practice": "Requirements-driven Testing",
+      "stream": "B",
+      "stream_name": "Misuse/Abuse Testing",
+      "level": 3,
+      "question": "Do you perform denial of service and security stress testing?",
+      "answer_options": [
+        "No",
+        "Yes, some of the time",
+        "Yes, at least half of the time",
+        "Yes, most or all of the time"
+      ]
+    },
+    {
+      "id": "V-ST-1-A",
+      "function": "Verification",
+      "practice": "Security Testing",
+      "stream": "A",
+      "stream_name": "Scalable Baseline",
+      "level": 1,
+      "question": "Do you scan applications with automated security testing tools?",
+      "answer_options": [
+        "No",
+        "Yes, some of them",
+        "Yes, at least half of them",
+        "Yes, most or all of them"
+      ]
+    },
+    {
+      "id": "V-ST-2-A",
+      "function": "Verification",
+      "practice": "Security Testing",
+      "stream": "A",
+      "stream_name": "Scalable Baseline",
+      "level": 2,
+      "question": "Do you customize the automated security tools to your applications and technology stacks?",
+      "answer_options": [
+        "No",
+        "Yes, some of them",
+        "Yes, at least half of them",
+        "Yes, most or all of them"
+      ]
+    },
+    {
+      "id": "V-ST-3-A",
+      "function": "Verification",
+      "practice": "Security Testing",
+      "stream": "A",
+      "stream_name": "Scalable Baseline",
+      "level": 3,
+      "question": "Do you integrate automated security testing into the build and deploy process?",
+      "answer_options": [
+        "No",
+        "Yes, some of it",
+        "Yes, at least half of it",
+        "Yes, most or all of it"
+      ]
+    },
+    {
+      "id": "V-ST-1-B",
+      "function": "Verification",
+      "practice": "Security Testing",
+      "stream": "B",
+      "stream_name": "Deep Understanding",
+      "level": 1,
+      "question": "Do you manually review the security quality of selected high-risk components?",
+      "answer_options": [
+        "No",
+        "Yes, for some components",
+        "Yes, for at least half of the components",
+        "Yes, for most or all of the components"
+      ]
+    },
+    {
+      "id": "V-ST-2-B",
+      "function": "Verification",
+      "practice": "Security Testing",
+      "stream": "B",
+      "stream_name": "Deep Understanding",
+      "level": 2,
+      "question": "Do you perform penetration testing for your applications at regular intervals?",
+      "answer_options": [
+        "No",
+        "Yes, for some applications",
+        "Yes, for at least half of the applications",
+        "Yes, for most or all of the applications"
+      ]
+    },
+    {
+      "id": "V-ST-3-B",
+      "function": "Verification",
+      "practice": "Security Testing",
+      "stream": "B",
+      "stream_name": "Deep Understanding",
+      "level": 3,
+      "question": "Do you use the results of security testing to improve the development lifecycle?",
+      "answer_options": [
+        "No",
+        "Yes, but we improve it ad-hoc",
+        "Yes, we improve it regularly",
+        "Yes, we improve it continuously"
+      ]
+    },
+    {
+      "id": "O-IM-1-A",
+      "function": "Operations",
+      "practice": "Incident Management",
+      "stream": "A",
+      "stream_name": "Incident Detection",
+      "level": 1,
+      "question": "Do you analyze log data for security incidents periodically?",
+      "answer_options": [
+        "No",
+        "Yes, for some applications",
+        "Yes, for at least half of the applications",
+        "Yes, for most or all of the applications"
+      ]
+    },
+    {
+      "id": "O-IM-2-A",
+      "function": "Operations",
+      "practice": "Incident Management",
+      "stream": "A",
+      "stream_name": "Incident Detection",
+      "level": 2,
+      "question": "Do you follow a documented process for incident detection?",
+      "answer_options": [
+        "No",
+        "Yes, for some applications",
+        "Yes, for at least half of the applications",
+        "Yes, for most or all of the applications"
+      ]
+    },
+    {
+      "id": "O-IM-3-A",
+      "function": "Operations",
+      "practice": "Incident Management",
+      "stream": "A",
+      "stream_name": "Incident Detection",
+      "level": 3,
+      "question": "Do you review and update the incident detection process regularly?",
+      "answer_options": [
+        "No",
+        "Yes, for some applications",
+        "Yes, for at least half of the applications",
+        "Yes, for most or all of the applications"
+      ]
+    },
+    {
+      "id": "O-IM-1-B",
+      "function": "Operations",
+      "practice": "Incident Management",
+      "stream": "B",
+      "stream_name": "Incident Response",
+      "level": 1,
+      "question": "Do you respond to detected incidents?",
+      "answer_options": [
+        "No",
+        "Yes, for some incidents",
+        "Yes, for at least half of the incidents",
+        "Yes, for most or all of the incidents"
+      ]
+    },
+    {
+      "id": "O-IM-2-B",
+      "function": "Operations",
+      "practice": "Incident Management",
+      "stream": "B",
+      "stream_name": "Incident Response",
+      "level": 2,
+      "question": "Do you use a repeatable process for incident handling?",
+      "answer_options": [
+        "No",
+        "Yes, for some incident types",
+        "Yes, for at least half of the incident types",
+        "Yes, for most or all of the incident types"
+      ]
+    },
+    {
+      "id": "O-IM-3-B",
+      "function": "Operations",
+      "practice": "Incident Management",
+      "stream": "B",
+      "stream_name": "Incident Response",
+      "level": 3,
+      "question": "Do you have a dedicated incident response team available?",
+      "answer_options": [
+        "No",
+        "Yes, some of the time",
+        "Yes, at least half of the time",
+        "Yes, most or all of the time"
+      ]
+    },
+    {
+      "id": "O-EM-1-A",
+      "function": "Operations",
+      "practice": "Environment Management",
+      "stream": "A",
+      "stream_name": "Configuration Hardening",
+      "level": 1,
+      "question": "Do you harden configurations for key components of your technology stacks?",
+      "answer_options": [
+        "No",
+        "Yes, for some components",
+        "Yes, for at least half of the components",
+        "Yes, for most or all of the components"
+      ]
+    },
+    {
+      "id": "O-EM-2-A",
+      "function": "Operations",
+      "practice": "Environment Management",
+      "stream": "A",
+      "stream_name": "Configuration Hardening",
+      "level": 2,
+      "question": "Do you have hardening baselines for your components?",
+      "answer_options": [
+        "No",
+        "Yes, for some components",
+        "Yes, for at least half of the components",
+        "Yes, for most or all of the components"
+      ]
+    },
+    {
+      "id": "O-EM-3-A",
+      "function": "Operations",
+      "practice": "Environment Management",
+      "stream": "A",
+      "stream_name": "Configuration Hardening",
+      "level": 3,
+      "question": "Do you monitor and enforce conformity with hardening baselines?",
+      "answer_options": [
+        "No",
+        "Yes, for some components",
+        "Yes, for at least half of the components",
+        "Yes, for most or all of the components"
+      ]
+    },
+    {
+      "id": "O-EM-1-B",
+      "function": "Operations",
+      "practice": "Environment Management",
+      "stream": "B",
+      "stream_name": "Patching and Updating",
+      "level": 1,
+      "question": "Do you identify and patch vulnerable components?",
+      "answer_options": [
+        "No",
+        "Yes, for some components",
+        "Yes, for at least half of the components",
+        "Yes, for most or all of the components"
+      ]
+    },
+    {
+      "id": "O-EM-2-B",
+      "function": "Operations",
+      "practice": "Environment Management",
+      "stream": "B",
+      "stream_name": "Patching and Updating",
+      "level": 2,
+      "question": "Do you follow an established process for updating components of your technology stacks?",
+      "answer_options": [
+        "No",
+        "Yes, for some components",
+        "Yes, for at least half of the components",
+        "Yes, for most or all of the components"
+      ]
+    },
+    {
+      "id": "O-EM-3-B",
+      "function": "Operations",
+      "practice": "Environment Management",
+      "stream": "B",
+      "stream_name": "Patching and Updating",
+      "level": 3,
+      "question": "Do you regularly evaluate components and review patch level status?",
+      "answer_options": [
+        "No",
+        "Yes, for some components",
+        "Yes, for at least half of the components",
+        "Yes, for most or all of the components"
+      ]
+    },
+    {
+      "id": "O-OM-1-A",
+      "function": "Operations",
+      "practice": "Operational Management",
+      "stream": "A",
+      "stream_name": "Data Protection",
+      "level": 1,
+      "question": "Do you protect and handle information according to protection requirements for data stored and processed on each application?",
+      "answer_options": [
+        "No",
+        "Yes, for some applications",
+        "Yes, for at least half of the applications",
+        "Yes, for most or all of the applications"
+      ]
+    },
+    {
+      "id": "O-OM-2-A",
+      "function": "Operations",
+      "practice": "Operational Management",
+      "stream": "A",
+      "stream_name": "Data Protection",
+      "level": 2,
+      "question": "Do you maintain a data catalog, including types, sensitivity levels, and processing and storage locations?",
+      "answer_options": [
+        "No",
+        "Yes, for some of our data",
+        "Yes, for at least half of our data",
+        "Yes, for most or all of our data"
+      ]
+    },
+    {
+      "id": "O-OM-3-A",
+      "function": "Operations",
+      "practice": "Operational Management",
+      "stream": "A",
+      "stream_name": "Data Protection",
+      "level": 3,
+      "question": "Do you regularly review and update the data catalog and your data protection policies and procedures?",
+      "answer_options": [
+        "No",
+        "Yes, but we do it ad-hoc",
+        "Yes, we do it regularly",
+        "Yes, we do it continuously"
+      ]
+    },
+    {
+      "id": "O-OM-1-B",
+      "function": "Operations",
+      "practice": "Operational Management",
+      "stream": "B",
+      "stream_name": "System Decommissioning / Legacy Management",
+      "level": 1,
+      "question": "Do you identify and remove systems, applications, application dependencies, or services that are no longer used, have reached end of life, or are no longer actively developed or supported?",
+      "answer_options": [
+        "No",
+        "Yes, for some applications",
+        "Yes, for at least half of the applications",
+        "Yes, for most or all of the applications"
+      ]
+    },
+    {
+      "id": "O-OM-2-B",
+      "function": "Operations",
+      "practice": "Operational Management",
+      "stream": "B",
+      "stream_name": "System Decommissioning / Legacy Management",
+      "level": 2,
+      "question": "Do you follow an established process for removing all associated resources, as part of decommissioning of unused systems, applications, application dependencies, or services?",
+      "answer_options": [
+        "No",
+        "Yes, some of the time",
+        "Yes, at least half of the time",
+        "Yes, most or all of the time"
+      ]
+    },
+    {
+      "id": "O-OM-3-B",
+      "function": "Operations",
+      "practice": "Operational Management",
+      "stream": "B",
+      "stream_name": "System Decommissioning / Legacy Management",
+      "level": 3,
+      "question": "Do you regularly evaluate the lifecycle state and support status of every software asset and underlying infrastructure component, and estimate their end of life?",
+      "answer_options": [
+        "No",
+        "Yes, for some of the assets",
+        "Yes, for at least half of the assets",
+        "Yes, for most or all of the assets"
+      ]
+    }
+  ]
+}

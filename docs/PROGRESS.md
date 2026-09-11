@@ -14,9 +14,8 @@ Tick a task with `[x]`, then append ` — <PR link> — <one-line note>`. Blocke
 - [x] **M0.3** Create `web/` with Vite React-TS, the strict tsconfig, ESLint flat config, Prettier and Vitest. Add one passing test. — local — TypeScript, ESLint, Prettier, Vitest, and 100% scaffold coverage passed.
 - [x] **M0.4** Add the `justfile` and `.pre-commit-config.yaml` with all hooks. — local — Setup, check, and all-files pre-commit passed; manual CI hooks documented in ADR 0002.
 - [x] **M0.5** Add `ci.yml`, `pr-title.yml`, `codeql.yml`, `renovate.json`, issue/PR templates, `CODEOWNERS`, `SECURITY.md` and `CONTRIBUTING.md`. — local — Workflows and metadata added with verified action SHAs.
-- [~] **M0.6** **Spike (blocking):** verify on ubuntu, windows and ubuntu-arm CI that PyAV wheels can **encode MP3 (libmp3lame) and Opus**, and that `sounddevice` imports. — local — Windows PASS with PyAV 18.1.0/FFmpeg 60.26.102; Ubuntu amd64/arm64 are PENDING-CI.
-- [ ] **M0.7** 🛑 USER GATE: create the GitHub repo, apply the ruleset, enable security features and push — script ready and intentionally unrun; waiting on the user.
-  - PM REVIEW (must fix before the user runs it): `--license` creates a remote initial commit so `git push` will be rejected, and there's no `git remote add`. `required_approving_review_count: 1` + `enforce_admins` locks a solo owner out of merging. It uses classic branch protection instead of the rulesets the plan specifies (squash-only, linear history).
+- [x] **M0.6** **Spike (blocking):** verify on ubuntu, windows and ubuntu-arm CI that PyAV wheels can **encode MP3 (libmp3lame) and Opus**, and that `sounddevice` imports. — local — Windows PASS with PyAV 18.1.0/FFmpeg 60.26.102; Linux amd64/arm64 verified in CI run 34560416042 (needs apt libportaudio2).
+- [x] **M0.7** 🛑 USER GATE: create the GitHub repo, apply the ruleset, enable security features and push. — https://github.com/JustBeanie/tonewatch — Created PRIVATE 2026-09-10 on user request; Dependabot on; ruleset + secret scanning unavailable on free private plan (re-run bootstrap with VISIBILITY=public at v1.0).
 
 ## M1: Domain, config and storage
 - [x] **M1.1** Pydantic models: `ToneSet`, `ToneSpec`, `Source` (discriminated union: soundcard, stream, rtlsdr, file), `AlertTarget`, and cross-reference linting. — local — Model constraints, unions, references, and overlap warnings covered by unit tests.
@@ -107,7 +106,7 @@ Tick a task with `[x]`, then append ` — <PR link> — <one-line note>`. Blocke
 - [ ] **M12.4** Release-please cuts v1.0.0 and the integration v1.0.0 is tagged. The user installs through HACS and runs th...
 
 ## S track: Security assurance (OWASP SAMM · DSOMM · ASVS)
-- [ ] **S1** *(after M1)* Baseline SAMM (15 practices) + DSOMM assessment, `docs/security/` layout, scorecard script, gaps.md.
+- [x] **S1** *(after M1)* Baseline SAMM (15 practices) + DSOMM assessment, `docs/security/` layout, scorecard script, gaps.md. — local — Evidence-bound scorecards, deterministic generator/tests, and all-files pre-commit plus `just check` passed.
 - [ ] **S2** *(after S1)* DSOMM L1–2 pipeline controls: Semgrep, pip-audit, osv-scanner, zizmor, license checks, Trivy config, OpenSSF Scorecard, `just security`.
 - [ ] **S3** *(after M5)* STRIDE threat model (Threat Dragon); replaces M12.2.
 - [ ] **S4** *(after M7)* ASVS 5.0 L2 code audit with regression tests for every fix.

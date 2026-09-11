@@ -8,8 +8,8 @@ setup:
     {{pnpm}} --dir web install
 
 lint:
-    {{uv}} run --project backend ruff check backend/src backend/tests backend/scripts
-    {{uv}} run --project backend ruff format --check backend/src backend/tests backend/scripts
+    {{uv}} run --project backend ruff check backend/src backend/tests backend/scripts scripts
+    {{uv}} run --project backend ruff format --check backend/src backend/tests backend/scripts scripts
     {{pnpm}} --dir web lint
     {{pnpm}} --dir web exec prettier --check .
 
@@ -18,7 +18,7 @@ fmt:
     {{pnpm}} --dir web exec prettier --write .
 
 typecheck:
-    {{uv}} run --project backend mypy backend/src backend/tests
+    {{uv}} run --project backend mypy backend/src backend/tests scripts
     {{pnpm}} --dir web exec tsc -b
 
 test:
@@ -28,7 +28,10 @@ test:
 test-web:
     {{pnpm}} --dir web test
 
-check: lint typecheck test test-web
+security-scorecard:
+    {{uv}} run --project backend python scripts/security_scorecard.py --check
+
+check: lint typecheck test test-web security-scorecard
 
 gen-api:
     @echo "API generation starts with M5.6."
