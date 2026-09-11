@@ -1,0 +1,103 @@
+@import "tailwindcss";
+
+:root {
+    font-family: Inter, system-ui, sans-serif;
+    color: #172033;
+    background: #f5f7fb;
+}
+* {
+    box-sizing: border-box;
+}
+body {
+    margin: 0;
+}
+button,
+input,
+select {
+    font: inherit;
+}
+.app {
+    display: flex;
+    min-height: 100vh;
+}
+.sidebar {
+    width: 220px;
+    padding: 24px 16px;
+    background: #172033;
+    color: white;
+}
+.sidebar a {
+    display: block;
+    color: #cbd5e1;
+    padding: 10px;
+    text-decoration: none;
+    border-radius: 8px;
+}
+.sidebar a.active,
+.sidebar a:hover {
+    background: #334155;
+    color: white;
+}
+.content {
+    flex: 1;
+    padding: 32px;
+    max-width: 1200px;
+}
+.grid {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+.card {
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px #17203312;
+}
+.form {
+    display: grid;
+    gap: 12px;
+    max-width: 720px;
+}
+label {
+    display: grid;
+    gap: 4px;
+    font-weight: 600;
+}
+input,
+select {
+    padding: 8px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+}
+button {
+    cursor: pointer;
+    border: 0;
+    border-radius: 6px;
+    padding: 9px 14px;
+    background: #2563eb;
+    color: white;
+}
+.secondary {
+    background: #64748b;
+}
+.danger {
+    background: #dc2626;
+}
+.error {
+    color: #b91c1c;
+}
+@media (prefers-color-scheme: dark) {
+    :root {
+        color: #e2e8f0;
+        background: #0f172a;
+    }
+    .card {
+        background: #1e293b;
+    }
+    input,
+    select {
+        background: #0f172a;
+        color: white;
+    }
+}

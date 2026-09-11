@@ -56,10 +56,11 @@ Tick a task with `[x]`, then append ` — <PR link> — <one-line note>`. Blocke
 - [x] **M5.6** `openapi.json` is exported to `web/src/api/generated` via `just gen-api`, with a CI drift check. — local — Deterministic OpenAPI and Pydantic-derived WebSocket generators, committed artifacts, local drift recipe, and CI job implemented.
 
 ## M6: Web UI
-- [ ] **M6.1** App shell, auth, ingress-aware base path (`base: './'`) and a light/dark theme.
-- [ ] **M6.2** Dashboard: live call feed, channel levels and feed health.
-- [ ] **M6.3** Calls: a list with filters and a detail view with an audio player, matched tone sets and alert attempt resu...
-- [ ] **M6.4** Tone sets: a CRUD form with validation, a "test" button, and import from TTD config (M8.x importer).
+- [~] **M6.1** App shell, auth, ingress-aware base path (`base: './'`) and a light/dark theme. — local — Implemented and covered by the M6a Vitest suite; api-drift remains PM-commit gated.
+- [~] **M6.2** Dashboard: live call feed, channel levels and feed health. — local — Implemented and covered by `dashboard shows live call from ws event`, `level meter is accessible`, and health/level tests; api-drift remains PM-commit gated.
+- [~] **M6.3** Calls: a list with filters and a detail view with an audio player, matched tone sets and alert attempt resu... — local — Implemented and covered by `calls filters sync to url` and `call detail plays api-provided recording url`; api-drift remains PM-commit gated.
+- [~] **M6.4** Tone sets: a CRUD form with validation, a "test" button, and import from TTD config (M8.x importer). — local — Implemented and covered by the named validation, 422, 409, test, and accessibility tests; api-drift remains PM-commit gated.
+  BLOCKED: PM must commit/stage the generated OpenAPI status endpoint artifacts for `just api-drift` to pass; all-file pre-commit is also blocked locally because the uv Python 3.13.13 target link is missing.
 - [ ] **M6.5** Frequency counter / spectrum: a canvas spectrum, dominant frequency readout and "capture tone".
 - [ ] **M6.6** Sources: device picker, stream URL, and RTL-SDR parameters, with live level preview.
 - [ ] **M6.7** Alerts configuration with a "send test" button, and Settings for retention, auth and MQTT.

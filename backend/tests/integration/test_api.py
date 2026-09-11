@@ -26,12 +26,19 @@ async def test_api_auth_crud_headers_and_token() -> None:
         ):
             assert (await client.get("/healthz")).status_code == 200
             assert (await client.get("/readyz")).status_code == 200
+            status = await client.get("/api/auth/status")
+            assert status.json() == {
+                "authenticated": False,
+                "password_required": False,
+                "via": "none",
+            }
             response = await client.get("/api/tonesets")
             assert response.status_code == 401
             token = (root / "api_token").read_text(encoding="ascii").strip()
             headers = {"Authorization": f"Bearer {token}"}
             response = await client.get("/api/tonesets", headers=headers)
             assert response.status_code == 200
+            assert (await client.get("/api/auth/status", headers=headers)).json()["via"] == "bearer"
             assert response.headers["x-content-type-options"] == "nosniff"
             tone = {
                 "id": "fire",

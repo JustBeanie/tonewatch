@@ -6,6 +6,23 @@ from fastapi.responses import JSONResponse
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
+@router.get("/status")
+async def status(request: Request) -> dict[str, bool | str]:
+    """Report whether the browser may enter without submitting a password."""
+    via = "none"
+    if request.app.state.auth.ingress_valid(request):
+        via = "ingress"
+    elif request.app.state.auth.session_valid(request) is not None:
+        via = "session"
+    elif request.headers.get("authorization", "")[7:].strip() == request.app.state.auth.token:
+        via = "bearer"
+    return {
+        "authenticated": via != "none",
+        "password_required": request.app.state.auth.password_hash is not None,
+        "via": via,
+    }
+
+
 def _write_auth(request: Request) -> None:
     request.app.state.auth.authorize(request, state_changing=True)
 

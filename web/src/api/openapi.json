@@ -507,6 +507,39 @@
         ]
       }
     },
+    "/api/auth/status": {
+      "get": {
+        "description": "Report whether the browser may enter without submitting a password.",
+        "operationId": "status_api_auth_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "title": "Response Status Api Auth Status Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Status",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/api/calls": {
       "get": {
         "operationId": "list_calls_api_calls_get",
