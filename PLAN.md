@@ -87,7 +87,7 @@ The working name `tonewatch` is a placeholder. Check the name is free on GitHub,
 ### Monorepo layout
 ```
 tonewatch/
-  AGENTS.md  PLAN.md  README.md  LICENSE (Apache-2.0)  SECURITY.md  CONTRIBUTING.md
+  AGENTS.md  PLAN.md  README.md  LICENSE (MIT)  SECURITY.md  CONTRIBUTING.md
   CODE_OF_CONDUCT.md  CHANGELOG.md  justfile  .pre-commit-config.yaml
   .editorconfig  .gitattributes  .gitignore  renovate.json
   docs/PROGRESS.md            # agent resume log; checkbox per task ID
@@ -196,7 +196,7 @@ These are wired into CI and pre-commit. Items marked ✓ already exist in the pl
 | Container image | Trivy ✓, ➕ Trivy **config** scan (Dockerfile/compose misconfig), hadolint ✓ | docker.yml |
 | Supply chain | SBOM ✓, cosign ✓, provenance ✓, SHA-pinned actions ✓, ➕ **OpenSSF Scorecard** action, ➕ `zizmor` (GitHub Actions security lint) | scorecard.yml, ci.yml |
 | DAST | ➕ **OWASP ZAP baseline + API scan** (against `openapi.json`) run on the compose e2e stack | e2e job |
-| License compliance | ➕ `pip-licenses` + `license-checker`, with a deny list for GPL-incompatible licences in the Apache-2.0 distribution | ci.yml |
+| License compliance | ➕ `pip-licenses` + `license-checker`, with a deny list for strong-copyleft licences (GPL/AGPL) in the MIT-licensed distribution; LGPL allowed only when dynamically linked (e.g. FFmpeg in PyAV wheels, which must be noted in THIRD_PARTY_NOTICES) | ci.yml |
 | Runtime hardening | ➕ Container: non-root ✓, **read-only root fs**, `cap_drop: ALL`, `no-new-privileges`, tmpfs for /tmp | compose files, add-on config |
 
 ### Security review triggers
@@ -204,7 +204,7 @@ Milestones that change the attack surface (M5, M7, M8, M10, M11) each get a **ta
 
 ## GitHub setup (M0)
 
-- **Visibility:** public repo, Apache-2.0 license. Default branch `main`.
+- **Visibility:** private until v1.0, then public. MIT license. Default branch `main`.
 - **Branch ruleset on `main`:**
   - Changes go through a PR.
   - The required checks must pass.

@@ -4,7 +4,8 @@ version = "0.1.0"
 description = "Clean-room two-tone radio notification tool"
 readme = "README.md"
 requires-python = ">=3.13,<3.14"
-license = { text = "Apache-2.0" }
+license = "MIT"
+license-files = ["LICENSE"]
 dependencies = [
   "aiosqlite>=0.22.1",
   "alembic>=1.19.2",
