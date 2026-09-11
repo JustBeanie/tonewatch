@@ -31,11 +31,18 @@
     "eslint-plugin-react-hooks": "latest",
     "jsdom": "latest",
     "markdownlint-cli2": "^0.17.2",
+    "license-checker": "^25.0.1",
     "prettier": "latest",
     "typescript": "~5.7.2",
     "vitest": "latest",
     "@vitest/coverage-v8": "latest"
   },
   "packageManager": "pnpm@10.34.5",
-  "license": "MIT"
+  "license": "MIT",
+  "pnpm": {
+    "overrides": {
+      "js-yaml": ">=4.3.2",
+      "markdown-it": ">=14.2.0"
+    }
+  }
 }

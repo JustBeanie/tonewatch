@@ -7,6 +7,7 @@ import math
 import re
 import sys
 from collections import Counter, defaultdict
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any, TypeVar
 
@@ -139,7 +140,68 @@ def _official_questions() -> dict[tuple[str, str, str, int], dict[str, Any]]:
     }
 
 
+def _validate_suppressions() -> None:
+    accepted_path = ROOT / "docs/security/accepted-risks.md"
+    accepted_text = (
+        accepted_path.read_text(encoding="utf-8") if accepted_path.exists() else ""
+    )
+    accepted: dict[str, date] = {}
+    for match in re.finditer(
+        r"^## (AR-\d+)\s*$.*?^- Expiry: (\d{4}-\d{2}-\d{2})\s*$",
+        accepted_text,
+        re.MULTILINE | re.DOTALL,
+    ):
+        accepted[match.group(1)] = date.fromisoformat(match.group(2))
+
+    suppression = re.compile(r"(?:nosemgrep:|--ignore-vuln).*?(AR-\d+)")
+    scan_roots = [
+        ROOT / ".github",
+        ROOT / "backend/src",
+        ROOT / "scripts",
+        ROOT / "docs/security",
+    ]
+    for scan_root in scan_roots:
+        if not scan_root.exists():
+            continue
+        for path in scan_root.rglob("*"):
+            if (
+                not path.is_file()
+                or any(
+                    part in {".git", ".venv", ".tools", "node_modules", "__pycache__"}
+                    for part in path.parts
+                )
+                or path == accepted_path
+                or path == Path(__file__).resolve()
+            ):
+                continue
+            if path.suffix.lower() not in {
+                ".py",
+                ".yml",
+                ".yaml",
+                ".md",
+                ".toml",
+                ".json",
+            }:
+                continue
+            text = path.read_text(encoding="utf-8", errors="replace")
+            for line_number, line in enumerate(text.splitlines(), start=1):
+                if "nosemgrep:" not in line and "--ignore-vuln" not in line:
+                    continue
+                suppression_match = suppression.search(line)
+                if suppression_match is None:
+                    raise ValueError(
+                        f"suppression lacks accepted-risk id: {path}:{line_number}"
+                    )
+                risk_id = suppression_match.group(1)
+                expiry = accepted.get(risk_id)
+                if expiry is None or expiry < datetime.now(timezone.utc).date():
+                    raise ValueError(
+                        f"suppression references missing or expired risk: {risk_id}"
+                    )
+
+
 def validate() -> tuple[list[SammEntry], list[DsommActivity]]:
+    _validate_suppressions()
     samm = [x for x in _load(ROOT / "docs/security/samm/assessment.yaml", SammEntry)]
     dsomm = [
         x for x in _load(ROOT / "docs/security/dsomm/activities.yaml", DsommActivity)

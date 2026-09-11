@@ -4,10 +4,10 @@
 | --- | ---: | ---: | ---: |
 | Governance | 0.50 | 1.00 | 0.50 |
 | Design | 0.17 | 1.67 | 1.50 |
-| Implementation | 0.67 | 2.00 | 1.33 |
-| Verification | 0.17 | 1.33 | 1.17 |
-| Operations | 0.17 | 1.00 | 0.83 |
+| Implementation | 1.00 | 2.00 | 1.00 |
+| Verification | 0.50 | 1.33 | 0.83 |
+| Operations | 0.33 | 1.00 | 0.67 |
 
-Overall average: **0.33 / 3.00** (target **1.40 / 3.00**).
+Overall average: **0.50 / 3.00** (target **1.40 / 3.00**).
 
 Scores exclude entries marked N/A.

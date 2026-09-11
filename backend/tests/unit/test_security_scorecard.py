@@ -168,3 +168,20 @@ def test_generated_markdown_is_deterministic(
     first = scorecard.render(samm, dsomm)
     second = scorecard.render(samm, dsomm)
     assert first == second
+
+
+def test_suppression_requires_matching_unexpired_risk(
+    fixture_root: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _write_fixture(fixture_root)
+    (fixture_root / "docs/security/accepted-risks.md").write_text(
+        "# Accepted security risks\n\nNo findings.\n", encoding="utf-8"
+    )
+    (fixture_root / ".github").mkdir()
+    (fixture_root / ".github/workflows.yml").write_text(
+        "# nosemgrep: python.lang.security -- AR-404\n", encoding="utf-8"
+    )
+    monkeypatch.setattr(scorecard, "ROOT", fixture_root)
+    monkeypatch.setattr(scorecard, "_official_questions", lambda: _official_fixture(_entries()))
+    with pytest.raises(ValueError, match="missing or expired"):
+        scorecard.validate()

@@ -1,0 +1,106 @@
+name: Security
+
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: "17 3 * * 1"
+
+permissions: {}
+
+jobs:
+  actionlint:
+    permissions: {contents: read}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with: {persist-credentials: false}
+      - name: Lint GitHub Actions workflows
+        run: docker run --rm -v "$PWD:/repo" rhysd/actionlint:latest -color /repo/.github/workflows/*.yml
+
+  gitleaks:
+    permissions: {contents: read}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with: {fetch-depth: 0, persist-credentials: false}
+      - name: Scan full history for secrets
+        run: docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:latest git --source=/repo --no-banner --redact
+
+  semgrep:
+    permissions: {contents: read}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with: {persist-credentials: false}
+      - name: Run Semgrep rulesets
+        run: >-
+          docker run --rm -v "$PWD:/src" semgrep/semgrep:latest
+          semgrep scan --config p/python --config p/typescript
+          --config p/owasp-top-ten --error
+
+  sca:
+    permissions: {contents: read}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with: {persist-credentials: false}
+      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
+      - name: Audit production Python dependencies
+        run: |
+          uv export --project backend --frozen --no-dev --no-emit-project --format requirements-txt > /tmp/requirements.txt
+          uvx --from pip-audit pip-audit -r /tmp/requirements.txt
+      - name: Audit development Python dependencies (informational)
+        continue-on-error: true
+        run: |
+          uv export --project backend --frozen --no-emit-project --format requirements-txt > /tmp/requirements-dev.txt
+          uvx --from pip-audit pip-audit -r /tmp/requirements-dev.txt
+      - name: Audit lockfiles with OSV
+        run: >-
+          docker run --rm -v "$PWD:/src" ghcr.io/google/osv-scanner:latest
+          scan source -r /src/backend/uv.lock /src/web/pnpm-lock.yaml
+
+  zizmor:
+    permissions: {contents: read}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with: {persist-credentials: false}
+      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
+      - run: uvx --from zizmor zizmor .github/workflows
+
+  trivy-config:
+    permissions: {contents: read}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with: {persist-credentials: false}
+      - run: docker run --rm -v "$PWD:/src" aquasec/trivy:latest config /src
+
+  licenses:
+    permissions: {contents: read}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with: {persist-credentials: false}
+      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
+      - uses: pnpm/action-setup@a8198c4bff370c8506180b035930dea56dbd5288 # v5
+        with: {package_json_file: web/package.json}
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with: {node-version: 24, cache: pnpm, cache-dependency-path: web/pnpm-lock.yaml}
+      - run: uv run --project backend --no-dev --with pip-licenses pip-licenses --from=mixed --fail-on="GPL;AGPL"
+      - run: pnpm --dir web install --frozen-lockfile
+      - run: pnpm --dir web exec license-checker --production --failOn "GPL;AGPL"
+
+  local-security:
+    permissions: {contents: read}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with: {persist-credentials: false}
+      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
+      - uses: pnpm/action-setup@a8198c4bff370c8506180b035930dea56dbd5288 # v5
+        with: {package_json_file: web/package.json}
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with: {node-version: 24, cache: pnpm, cache-dependency-path: web/pnpm-lock.yaml}
+      - run: just security

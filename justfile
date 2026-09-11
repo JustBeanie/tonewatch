@@ -1,6 +1,7 @@
 set windows-shell := ["powershell.exe", "-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command"]
 
 uv := if os_family() == "windows" { ".tools/bin/uv.exe" } else { "uv" }
+uvx := if os_family() == "windows" { ".tools/bin/uvx.exe" } else { "uvx" }
 pnpm := if os_family() == "windows" { ".tools/bin/pnpm.cmd" } else { "pnpm" }
 
 setup:
@@ -30,6 +31,19 @@ test-web:
 
 security-scorecard:
     {{uv}} run --project backend python scripts/security_scorecard.py --check
+
+security:
+    {{uv}} export --project backend --frozen --no-dev --no-emit-project --format requirements-txt > .tools/security-requirements.txt
+    {{uv}} run --project backend --with pip-audit pip-audit -r .tools/security-requirements.txt --cache-dir .tools/pip-audit-cache
+    {{uv}} run --project backend --with zizmor zizmor .github/workflows
+    {{pnpm}} --dir web audit --audit-level high
+    {{uv}} run --project backend --no-dev --with pip-licenses pip-licenses --from=mixed --fail-on="GPL;AGPL"
+    {{pnpm}} --dir web exec license-checker --production --failOn "GPL;AGPL"
+    {{uv}} run --project backend python scripts/security_scorecard.py --check
+    @echo "NOTICE: semgrep is CI-only (container required); skipped locally."
+    @echo "NOTICE: osv-scanner is CI-only (container required); skipped locally."
+    @echo "NOTICE: trivy config is CI-only (container required); skipped locally."
+    @echo "NOTICE: gitleaks is CI-only (binary/container required); skipped locally."
 
 check: lint typecheck test test-web security-scorecard
 

@@ -178,8 +178,10 @@ activities:
     dimension: Build and Deployment
     subdimension: Build
     level: 2
-    status: planned
-    evidence: []
+    status: implemented
+    evidence:
+      - .github/workflows/security.yml
+      - .github/workflows/ci.yml
     planned_in: S2
     notes: No current repository evidence; planned work remains outside S1.
   - id: 2858ac12-0179-40d9-9acf-1b839c030473
@@ -241,8 +243,10 @@ activities:
     dimension: Build and Deployment
     subdimension: Deployment
     level: 2
-    status: planned
-    evidence: []
+    status: implemented
+    evidence:
+      - .github/workflows/security.yml
+      - THIRD_PARTY_NOTICES.md
     planned_in: S2
     notes: No current repository evidence; planned work remains outside S1.
   - id: 83057028-0b77-4d2e-8135-40969768ae88
@@ -259,8 +263,10 @@ activities:
     dimension: Build and Deployment
     subdimension: Patch Management
     level: 1
-    status: planned
-    evidence: []
+    status: implemented
+    evidence:
+      - docs/decisions/0003-dependency-updates.md
+      - renovate.json
     planned_in: S2
     notes: No current repository evidence; planned work remains outside S1.
   - id: 8ae0b92c-10e0-4602-ba22-7524d6aed488
@@ -745,8 +751,10 @@ activities:
     dimension: Test and Verification
     subdimension: Consolidation
     level: 1
-    status: planned
-    evidence: []
+    status: implemented
+    evidence:
+      - docs/security/accepted-risks.md
+      - scripts/security_scorecard.py
     planned_in: S2
     notes: No current repository evidence; planned work remains outside S1.
   - id: 44f2c8a9-4aaa-4c72-942d-63f78b89f385
@@ -754,8 +762,10 @@ activities:
     dimension: Test and Verification
     subdimension: Consolidation
     level: 1
-    status: planned
-    evidence: []
+    status: implemented
+    evidence:
+      - .github/workflows/security.yml
+      - docs/security/accepted-risks.md
     planned_in: S2
     notes: No current repository evidence; planned work remains outside S1.
   - id: 8f2b4d5a-3c1e-4b7a-9d8f-2e6c4a1b5d7f
@@ -763,8 +773,10 @@ activities:
     dimension: Test and Verification
     subdimension: Consolidation
     level: 2
-    status: planned
-    evidence: []
+    status: implemented
+    evidence:
+      - docs/security/accepted-risks.md
+      - scripts/security_scorecard.py
     planned_in: S2
     notes: No current repository evidence; planned work remains outside S1.
   - id: 55f4c916-3a34-474d-ad96-9a9f7a4f6a83
@@ -790,9 +802,10 @@ activities:
     dimension: Test and Verification
     subdimension: Dynamic depth for applications
     level: 2
-    status: partial
+    status: implemented
     evidence:
       - .github/workflows/codeql.yml
+      - .github/workflows/security.yml
     planned_in: S2
     notes: Current repository evidence supports this activity at the assessed level;
         S1 records the baseline and S2 adds pipeline controls.
@@ -846,8 +859,9 @@ activities:
     dimension: Test and Verification
     subdimension: Static depth for applications
     level: 2
-    status: planned
-    evidence: []
+    status: implemented
+    evidence:
+      - .github/workflows/security.yml
     planned_in: S2
     notes: No current repository evidence; planned work remains outside S1.
   - id: 13af1227-3dd1-4d4f-a9e9-53deb793c18f
@@ -873,9 +887,10 @@ activities:
     dimension: Test and Verification
     subdimension: Static depth for infrastructure
     level: 1
-    status: partial
+    status: implemented
     evidence:
       - .pre-commit-config.yaml
+      - .github/workflows/security.yml
     planned_in: S2
     notes: Current repository evidence supports this activity at the assessed level;
         S1 records the baseline and S2 adds pipeline controls.
@@ -884,9 +899,10 @@ activities:
     dimension: Test and Verification
     subdimension: Static depth for infrastructure
     level: 1
-    status: partial
+    status: implemented
     evidence:
       - .pre-commit-config.yaml
+      - .github/workflows/security.yml
     planned_in: S2
     notes: Current repository evidence supports this activity at the assessed level;
         S1 records the baseline and S2 adds pipeline controls.

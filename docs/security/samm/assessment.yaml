@@ -343,7 +343,7 @@ entries:
     practice: Secure Build
     stream: Software Dependencies
     stream_id: I-SB-B
-    current_level: 1
+    current_level: 2
     target_level: 2
     answers:
       - level: 1
@@ -353,8 +353,9 @@ entries:
           dependency alerts provide dependency awareness.
       - level: 2
         question: Do you handle third-party dependency risk through a formal process?
-        answer: 'No'
-        rationale: The evidence does not demonstrate this higher maturity level.
+        answer: Yes, for some applications
+        rationale: Security CI runs pip-audit, OSV scanning, web audit, license checks,
+          and Renovate updates against both lockfiles.
       - level: 3
         question: Do you prevent the build of software if it is affected by vulnerabilities
           in dependencies?
@@ -364,6 +365,8 @@ entries:
       - backend/uv.lock
       - web/pnpm-lock.yaml
       - renovate.json
+      - .github/workflows/security.yml
+      - docs/decisions/0003-dependency-updates.md
       - https://github.com/JustBeanie/tonewatch/security/dependabot
     na: false
     na_justification: null
@@ -419,7 +422,7 @@ entries:
     practice: Defect Management
     stream: Defect Tracking
     stream_id: I-DM-A
-    current_level: 1
+    current_level: 2
     target_level: 2
     answers:
       - level: 1
@@ -430,14 +433,17 @@ entries:
       - level: 2
         question: Do you keep an overview of the state of security defects across the
           organization?
-        answer: 'No'
-        rationale: The evidence does not demonstrate this higher maturity level.
+        answer: Yes, for some applications
+        rationale: The generated gaps register and accepted-risk register provide a
+          reviewable overview of scanner findings and their disposition.
       - level: 3
         question: Do you enforce SLAs for fixing security defects?
         answer: 'No'
         rationale: The evidence does not demonstrate this higher maturity level.
     evidence:
       - docs/security/gaps.md
+      - docs/security/accepted-risks.md
+      - scripts/security_scorecard.py
       - https://github.com/JustBeanie/tonewatch/labels/security
       - https://github.com/JustBeanie/tonewatch/labels/area%3Asecurity
     na: false
@@ -521,14 +527,15 @@ entries:
     practice: Requirements-driven Testing
     stream: Control Verification
     stream_id: V-RT-A
-    current_level: 0
+    current_level: 1
     target_level: 1
     answers:
       - level: 1
         question: Do you test applications for the correct functioning of standard security
           controls?
-        answer: 'No'
-        rationale: The evidence does not demonstrate this higher maturity level.
+        answer: Yes, some of them
+        rationale: The security workflow executes dependency, secret, SAST, configuration,
+          license, and workflow-control checks.
       - level: 2
         question: Do you consistently write and execute test scripts to verify the functionality
           of security requirements?
@@ -538,7 +545,8 @@ entries:
         question: Do you automatically test applications for security regressions?
         answer: 'No'
         rationale: The evidence does not demonstrate this higher maturity level.
-    evidence: []
+    evidence:
+      - .github/workflows/security.yml
     na: false
     na_justification: null
     assessed_on: '2026-09-10'
@@ -570,7 +578,7 @@ entries:
     practice: Security Testing
     stream: Scalable Baseline
     stream_id: V-ST-A
-    current_level: 1
+    current_level: 2
     target_level: 2
     answers:
       - level: 1
@@ -581,8 +589,9 @@ entries:
       - level: 2
         question: Do you customize the automated security tools to your applications and
           technology stacks?
-        answer: 'No'
-        rationale: The evidence does not demonstrate this higher maturity level.
+        answer: Yes, some of them
+        rationale: Semgrep uses Python, TypeScript, and OWASP rulesets; dependency and
+          license checks target both project lockfiles and distributions.
       - level: 3
         question: Do you integrate automated security testing into the build and deploy
           process?
@@ -590,6 +599,7 @@ entries:
         rationale: The evidence does not demonstrate this higher maturity level.
     evidence:
       - .github/workflows/codeql.yml
+      - .github/workflows/security.yml
       - backend/pyproject.toml
       - .pre-commit-config.yaml
     na: false
@@ -695,13 +705,14 @@ entries:
     practice: Environment Management
     stream: Patching and Updating
     stream_id: O-EM-B
-    current_level: 0
+    current_level: 1
     target_level: 1
     answers:
       - level: 1
         question: Do you identify and patch vulnerable components?
-        answer: 'No'
-        rationale: The evidence does not demonstrate this higher maturity level.
+        answer: Yes, for some components
+        rationale: Renovate proposes dependency updates and the security workflow audits
+          production and development dependency sets.
       - level: 2
         question: Do you follow an established process for updating components of your
           technology stacks?
@@ -711,7 +722,9 @@ entries:
         question: Do you regularly evaluate components and review patch level status?
         answer: 'No'
         rationale: The evidence does not demonstrate this higher maturity level.
-    evidence: []
+    evidence:
+      - renovate.json
+      - .github/workflows/security.yml
     na: false
     na_justification: null
     assessed_on: '2026-09-10'
