@@ -1,13 +1,17 @@
 name: CodeQL
 on: [push, pull_request]
-permissions: {contents: read, security-events: write}
+permissions: {}
 jobs:
   analyze:
-    permissions: {contents: read, security-events: write}
+    # Code scanning needs GitHub Advanced Security on private repositories, which this
+    # repo does not have (every run failed uploading results). Semgrep in security.yml is
+    # the active SAST control until the repo is made public at v1.0.
+    if: ${{ !github.event.repository.private }}
+    permissions: {actions: read, contents: read, security-events: write}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with: {persist-credentials: false}
       - uses: github/codeql-action/init@c20e34f438d671fc35777cc9820dd7adf8252874 # v3
-        with: {languages: python, javascript-typescript}
+        with: {languages: "python, javascript-typescript"}
       - uses: github/codeql-action/analyze@c20e34f438d671fc35777cc9820dd7adf8252874 # v3
