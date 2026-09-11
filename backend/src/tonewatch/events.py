@@ -13,6 +13,7 @@ class ToneDetected:
     call_id: UUID
     toneset_id: str
     detected_at: datetime
+    source_id: str = ""
 
 
 @dataclass(frozen=True)
@@ -33,6 +34,7 @@ class FeedHealthChanged:
 class CallClosed:
     call_id: UUID
     status: str
+    source_id: str = ""
 
 
 @dataclass(frozen=True)
@@ -72,11 +74,13 @@ class EventBus:
         self._subscribers: set[Subscription] = set()
         self._loop: asyncio.AbstractEventLoop | None = None
 
-    def subscribe(self, event_type: type[Event] | None = None) -> Subscription:
+    def subscribe(
+        self, event_type: type[Event] | None = None, *, maxsize: int | None = None
+    ) -> Subscription:
         """Subscribe to one event type, or all events."""
         with suppress(RuntimeError):
             self._loop = asyncio.get_running_loop()
-        subscription = Subscription(event_type, self._max_queue_size)
+        subscription = Subscription(event_type, maxsize or self._max_queue_size)
         self._subscribers.add(subscription)
         return subscription
 

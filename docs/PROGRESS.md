@@ -38,8 +38,8 @@ Tick a task with `[x]`, then append ` — <PR link> — <one-line note>`. Blocke
 - [x] **M3.3** `soundcard.py` (sounddevice callback → asyncio queue, device selection by name/index, channel select L/R/... — local — Thread-safe bounded callback queue, overflow accounting, device selection, channel handling, and `tonewatch devices` implemented/tested.
 - [x] **M3.4** `stream.py`: PyAV decode of HTTP/Icecast/RTSP with exponential backoff reconnect. Test it against a local s... — local — Real PyAV Ogg/Opus decode through a threaded localhost HTTP server, forced truncated response, reconnect, monotonic time, and discontinuity flag tested.
 - [x] **M3.5** `rtlsdr.py`: an `rtl_fm` subprocess with frequency, gain, ppm and squelch, reading s16le from stdout, resta... — local — Real Python fake `rtl_fm` subprocess records argv, runs twice after exit, verifies 1 kHz PCM, shell-free execution, and reaping.
-- [ ] **M3.6** `pipeline/channel.py` (source → ringbuffer → DSP → recorder) and `supervisor.py`, which runs N channe...
-- [ ] **M3.7** `watchdog.py`: no frames for more than 10 s, flatline (RMS < −80 dBFS) for more than N min, clipping rati...
+- [x] **M3.6** `pipeline/channel.py` (source → ringbuffer → DSP → recorder) and `supervisor.py`, which runs N channe... — local — Concurrent channels, restart/backoff/isolation, call grouping, persistence, and generated-WAV SQLite integration verified.
+- [x] **M3.7** `watchdog.py`: no frames for more than 10 s, flatline (RMS < −80 dBFS) for more than N min, clipping rati... — local — Transition-only health events, hysteresis, clipping/no-data/flatline/disconnect checks, and injected-clock tests verified.
 
 ## M4: Recording
 - [ ] **M4.1** Ring buffer pre-roll, then post-roll with silence early-stop and the max cap.

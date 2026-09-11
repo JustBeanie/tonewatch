@@ -77,6 +77,7 @@ ignore = ["D203", "D213"]
   "TC003",
   "TRY003",
 ]
+"src/tonewatch/pipeline/*.py" = ["D107", "D102", "PLR0913", "TRY003"]
 # DSP: the brief fixes the public constructors' keyword tuning parameters (PLR0913,
 # PLR0917) and the matcher's per-sequence state machine (PLR0912); DSP constants such as
 # window sizes and the 250-3000 Hz band are domain values, not magic numbers (PLR2004).
@@ -94,6 +95,7 @@ ignore = ["D203", "D213"]
 "tests/unit/test_dsp_edges.py" = ["E501"]
 "tests/unit/test_dsp_properties.py" = ["E501"]
 "tests/unit/test_sources.py" = ["ARG005", "PLC0415", "RUF012"]
+"tests/unit/test_pipeline.py" = ["TRY003"]
 
 [tool.ruff.format]
 quote-style = "double"
