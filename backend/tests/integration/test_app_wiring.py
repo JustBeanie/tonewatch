@@ -363,6 +363,21 @@ async def test_retention_runs_in_app_lifespan(
     assert rows == [] and not old_path.exists()
 
 
+async def _wait_for_attempt_phases(app: Any, phases: set[str]) -> list[AlertAttempt]:
+    """Wait for committed attempt rows.
+
+    The dispatcher commits an AlertAttempt only after the webhook responds, so a receiver
+    can see a phase before its row exists (this raced on ubuntu-arm CI).
+    """
+    async with asyncio.timeout(10):
+        while True:
+            async with app.state.session_factory() as session:
+                attempts = list((await session.scalars(select(AlertAttempt))).all())
+            if {attempt.phase for attempt in attempts} >= phases:
+                return attempts
+            await asyncio.sleep(0.05)
+
+
 @pytest.mark.asyncio
 async def test_webhook_alert_fires_for_real_recorded_call(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -429,8 +444,7 @@ async def test_webhook_alert_fires_for_real_recorded_call(
                 response = await client.get(recording_url, headers=headers)
             assert response.status_code == 200
             assert response.headers["content-type"].startswith("audio/")
-            async with app.state.session_factory() as session:
-                attempts = list((await session.scalars(select(AlertAttempt))).all())
+            attempts = await _wait_for_attempt_phases(app, {"pre_alert", "recording_ready"})
     finally:
         server.close()
         await server.wait_closed()
