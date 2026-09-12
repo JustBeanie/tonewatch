@@ -31,6 +31,11 @@ Accepted gaps that must be written into a later brief. Remove an entry once that
   - An open recording isn't finalized on source EOF.
   - `channel.py` has an `except TypeError` hook-signature shim that swallows real errors.
   - Brief: `docs/pm/briefs/W1a.md`.
+- **Test hermeticity + sounddevice / NumPy 2.5, found in the S4 review on 2026-09-11:**
+  - `backend/tests/integration/test_api.py::test_api_resources_and_rejections` configures a `soundcard` source, so on a host with real audio hardware the app opens a PortAudio stream.
+  - sounddevice 0.5.6 sets `ndarray.shape` inside its cffi callback. NumPy 2.5 deprecates that, and under `-W error` it surfaces as `PytestUnraisableExceptionWarning`, which fails intermittently on the PM host. CI runners and the Codex sandbox have no audio device, so they never see it.
+  - **Fix (S4-fix):** tests must never open real devices. Patch the soundcard source factory in that test and add a conftest guard that fails any test importing a live `sounddevice.InputStream`.
+  - **Production:** track the upstream sounddevice fix. A future NumPy that removes the shape setter would break the soundcard source at runtime, so M9 (Windows native) and the HIL checklist must re-verify it.
 - **M10/M11 (HA consumers), from the W1a review:**
   - Alert payloads carry a **relative** `recording_url` (`/api/recordings/{id}`), which a webhook receiver, MQTT/HA entity attribute or phone notification can't fetch.
   - Needs a `public_base_url` setting, or for the add-on the ingress URL / Supervisor-discovered host.

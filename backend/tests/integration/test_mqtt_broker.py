@@ -62,7 +62,8 @@ def _assert_received(received: list[tuple[str, bytes, bool]], call_id: object) -
     assert call_payload["tone_sets"] == ["page"]
     assert call_payload["phase"] == "pre_alert"
     assert call_payload["recording_url"] is None
-    assert call_payload["recording_path"] is None
+    # W1a-fix: filesystem paths never leave the host in external payloads.
+    assert "recording_path" not in call_payload
     assert call_payload["source_id"] == "radio"
     assert call_payload["test"] is False
     assert call_payload["toneset"] == "page"

@@ -75,6 +75,8 @@ def parse_run(log: Path, reviews: dict[str, dict[str, str]]) -> Run | None:
             ev = json.loads(line)
         except json.JSONDecodeError:
             continue
+        if not isinstance(ev, dict):
+            continue
         kind = ev.get("type")
         if kind == "thread.started":
             run.thread = ev.get("thread_id", "")
