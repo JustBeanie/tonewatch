@@ -44,6 +44,10 @@ from tonewatch.config.models import (
 from tonewatch.events import CallClosed, EventBus, RecordingReady, ToneDetected
 from tonewatch.settings import Settings
 
+# Resolved once: on Linux uv venvs sys.executable is a symlink, and resolve_executable()
+# follows symlinks, so allowlists must name the real interpreter directory.
+PYTHON = Path(sys.executable).resolve()
+
 
 def tone_set(*targets: str) -> ToneSet:
     return ToneSet(
@@ -494,10 +498,17 @@ def test_dispatcher_recording_phase_and_target_edges(monkeypatch: pytest.MonkeyP
 def test_script_disabled_unless_allowed_and_enabled(tmp_path: Path) -> None:
     async def run() -> None:
         target = ScriptTarget(
-            id="script", name="Script", executable=sys.executable, enabled=True, args=["-c", "pass"]
+            id="script",
+            name="Script",
+            executable=str(PYTHON),
+            enabled=True,
+            args=["-c", "pass"],
         )
         disabled = await run_script(
-            target, {}, allow_script_targets=False, allowlist_dirs=[Path(sys.executable).parent]
+            target,
+            {},
+            allow_script_targets=False,
+            allowlist_dirs=[PYTHON.parent],
         )
         assert not disabled.ok and "disabled" in (disabled.error or "")
 
@@ -510,7 +521,7 @@ def test_script_executable_must_be_in_allowlist_and_not_symlink_escape(tmp_path:
     )
     with pytest.raises(ValueError):
         resolve_executable(target, [tmp_path])
-    target = ScriptTarget(id="script", name="Script", executable=sys.executable, enabled=True)
+    target = ScriptTarget(id="script", name="Script", executable=str(PYTHON), enabled=True)
     with pytest.raises(ValueError):
         resolve_executable(target, [tmp_path])
 
@@ -522,7 +533,7 @@ def test_script_placeholders_cannot_inject_arguments(tmp_path: Path) -> None:
         target = ScriptTarget(
             id="script",
             name="Script",
-            executable=sys.executable,
+            executable=str(PYTHON),
             enabled=True,
             args=["-c", code, str(output), "{toneset}"],
         )
@@ -530,7 +541,7 @@ def test_script_placeholders_cannot_inject_arguments(tmp_path: Path) -> None:
             target,
             {"toneset": "a --evil; rm -rf /"},
             allow_script_targets=True,
-            allowlist_dirs=[Path(sys.executable).parent],
+            allowlist_dirs=[PYTHON.parent],
         )
         assert result.ok
         assert json.loads(output.read_text(encoding="utf-8")) == ["a --evil; rm -rf /"]
@@ -545,13 +556,16 @@ def test_script_env_excludes_tokens(tmp_path: Path, monkeypatch: pytest.MonkeyPa
         target = ScriptTarget(
             id="script",
             name="Script",
-            executable=sys.executable,
+            executable=str(PYTHON),
             enabled=True,
             args=["-c", code, str(output)],
         )
         monkeypatch.setenv("API_TOKEN", "not-for-script")
         result = await run_script(
-            target, {}, allow_script_targets=True, allowlist_dirs=[Path(sys.executable).parent]
+            target,
+            {},
+            allow_script_targets=True,
+            allowlist_dirs=[PYTHON.parent],
         )
         names = output.read_text(encoding="utf-8")
         assert result.ok and "API_TOKEN" not in names and "SUPERVISOR_TOKEN" not in names
@@ -564,13 +578,16 @@ def test_script_timeout_kills_and_reaps(tmp_path: Path) -> None:
         target = ScriptTarget(
             id="script",
             name="Script",
-            executable=sys.executable,
+            executable=str(PYTHON),
             enabled=True,
             timeout_s=0.05,
             args=["-c", "import time; time.sleep(2)"],
         )
         result = await run_script(
-            target, {}, allow_script_targets=True, allowlist_dirs=[Path(sys.executable).parent]
+            target,
+            {},
+            allow_script_targets=True,
+            allowlist_dirs=[PYTHON.parent],
         )
         assert not result.ok and "timeout" in (result.error or "")
 
@@ -595,12 +612,15 @@ def test_script_nonzero_exit_is_reported(tmp_path: Path) -> None:
         target = ScriptTarget(
             id="script",
             name="Script",
-            executable=sys.executable,
+            executable=str(PYTHON),
             enabled=True,
             args=["-c", "import sys; print('failure'); sys.exit(3)"],
         )
         result = await run_script(
-            target, {}, allow_script_targets=True, allowlist_dirs=[Path(sys.executable).parent]
+            target,
+            {},
+            allow_script_targets=True,
+            allowlist_dirs=[PYTHON.parent],
         )
         assert not result.ok and result.status_code == 3 and "failure" in (result.error or "")
 
