@@ -1,0 +1,192 @@
+import { FormEvent, useEffect, useState } from "react";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router";
+import { request } from "../../api/client";
+type Tone = { frequency: number; tolerance_pct: number; min_s: number; max_s: number };
+type ToneSet = { id: string; name: string; enabled: boolean; sequence: Tone[] };
+export function ToneSets() {
+    const [items, setItems] = useState<ToneSet[]>([]);
+    const reload = () =>
+        request<ToneSet[]>("tonesets")
+            .then(setItems)
+            .catch(() => undefined);
+    useEffect(() => {
+        void reload();
+    }, []);
+    return (
+        <>
+            <h1>Tone sets</h1>
+            <Link to="/tonesets/new">
+                <button>New tone set</button>
+            </Link>
+            {items.map((i) => (
+                <div className="card" key={i.id}>
+                    <b>{i.name}</b>
+                    <label htmlFor={`enabled-${i.id}`}>
+                        Enabled
+                        <input
+                            id={`enabled-${i.id}`}
+                            type="checkbox"
+                            checked={i.enabled}
+                            onChange={() =>
+                                request(`tonesets/${i.id}`, {
+                                    method: "PUT",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ ...i, enabled: !i.enabled }),
+                                }).then(reload)
+                            }
+                        />
+                    </label>
+                    <Link to={`/tonesets/${i.id}/edit`}>Edit</Link>
+                    <button
+                        className="danger"
+                        onClick={async () => {
+                            if (window.confirm(`Delete ${i.name}?`))
+                                try {
+                                    await request(`tonesets/${i.id}`, { method: "DELETE" });
+                                    void reload();
+                                } catch (e) {
+                                    if ((e as { status?: number }).status === 409)
+                                        window.alert(
+                                            "Referenced by: " +
+                                                (
+                                                    (
+                                                        e as {
+                                                            body?: {
+                                                                detail?: { referrers?: string[] };
+                                                            };
+                                                        }
+                                                    ).body?.detail?.referrers ?? []
+                                                ).join(", "),
+                                        );
+                                }
+                        }}
+                    >
+                        Delete
+                    </button>
+                    <button onClick={() => request(`tonesets/${i.id}/test`, { method: "POST" })}>
+                        Test
+                    </button>
+                </div>
+            ))}
+        </>
+    );
+}
+export function ToneSetForm() {
+    const { id } = useParams();
+    const [params] = useSearchParams();
+    const nav = useNavigate();
+    const [name, setName] = useState("");
+    const [tones, setTones] = useState<Tone[]>([
+        {
+            frequency: Number(params.get("freq_hz")) || 1000,
+            tolerance_pct: 1,
+            min_s: 0.5,
+            max_s: 3,
+        },
+    ]);
+    const [error, setError] = useState("");
+    useEffect(() => {
+        if (id)
+            request<ToneSet>(`tonesets/${id}`)
+                .then((i) => {
+                    setName(i.name);
+                    setTones(
+                        i.sequence.map((tone) => ({
+                            frequency:
+                                (tone as Tone & { freq_hz?: number }).freq_hz ?? tone.frequency,
+                            tolerance_pct:
+                                (tone as Tone & { tol_pct?: number }).tol_pct ?? tone.tolerance_pct,
+                            min_s: tone.min_s,
+                            max_s: tone.max_s,
+                        })),
+                    );
+                })
+                .catch(() => undefined);
+    }, [id]);
+    async function save(e: FormEvent) {
+        e.preventDefault();
+        if (
+            tones.some(
+                (t) =>
+                    t.frequency < 250 ||
+                    t.frequency > 3000 ||
+                    t.tolerance_pct < 0.1 ||
+                    t.tolerance_pct > 10 ||
+                    t.max_s < t.min_s,
+            )
+        ) {
+            setError("Check frequency, tolerance, and duration ranges.");
+            return;
+        }
+        try {
+            await request(`tonesets${id ? `/${id}` : ""}`, {
+                method: id ? "PUT" : "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    id: id ?? crypto.randomUUID(),
+                    name,
+                    enabled: true,
+                    sequence: tones.map(({ frequency, tolerance_pct, min_s, max_s }) => ({
+                        freq_hz: frequency,
+                        tol_pct: tolerance_pct,
+                        min_s,
+                        max_s,
+                    })),
+                }),
+            });
+            nav("/tonesets");
+        } catch (e) {
+            const d = (e as { body?: { detail?: { loc?: (string | number)[]; msg?: string }[] } })
+                .body?.detail;
+            setError(
+                d?.map((x) => `${x.loc?.join(".")}: ${x.msg}`).join("; ") ??
+                    "Unable to save tone set",
+            );
+        }
+    }
+    return (
+        <>
+            <h1>{id ? "Edit" : "Create"} tone set</h1>
+            <form className="form" onSubmit={save}>
+                <label htmlFor="name">
+                    Name
+                    <input
+                        id="name"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        required
+                    />
+                </label>
+                {tones.map((t, i) => (
+                    <fieldset key={i}>
+                        <legend>Tone {i + 1}</legend>
+                        {(["frequency", "tolerance_pct", "min_s", "max_s"] as const).map((f) => (
+                            <label key={f} htmlFor={`${f}-${i}`}>
+                                {f}
+                                <input
+                                    id={`${f}-${i}`}
+                                    type="number"
+                                    step="any"
+                                    value={t[f]}
+                                    onChange={(e) =>
+                                        setTones((a) =>
+                                            a.map((x, j) =>
+                                                j === i ? { ...x, [f]: Number(e.target.value) } : x,
+                                            ),
+                                        )
+                                    }
+                                />
+                            </label>
+                        ))}
+                    </fieldset>
+                ))}
+                <button>Save</button>
+                {error && (
+                    <p className="error" role="alert">
+                        {error}
+                    </p>
+                )}
+            </form>
+        </>
+    );
+}

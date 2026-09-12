@@ -56,16 +56,16 @@ Tick a task with `[x]`, then append ` — <PR link> — <one-line note>`. Blocke
 - [x] **M5.6** `openapi.json` is exported to `web/src/api/generated` via `just gen-api`, with a CI drift check. — local — Deterministic OpenAPI and Pydantic-derived WebSocket generators, committed artifacts, local drift recipe, and CI job implemented.
 
 ## M6: Web UI
-- [~] **M6.1** App shell, auth, ingress-aware base path (`base: './'`) and a light/dark theme. — local — Implemented and covered by the M6a Vitest suite; api-drift remains PM-commit gated.
-- [~] **M6.2** Dashboard: live call feed, channel levels and feed health. — local — Implemented and covered by `dashboard shows live call from ws event`, `level meter is accessible`, and health/level tests; api-drift remains PM-commit gated.
-- [~] **M6.3** Calls: a list with filters and a detail view with an audio player, matched tone sets and alert attempt resu... — local — Implemented and covered by `calls filters sync to url` and `call detail plays api-provided recording url`; api-drift remains PM-commit gated.
-- [~] **M6.4** Tone sets: a CRUD form with validation, a "test" button, and import from TTD config (M8.x importer). — local — Implemented and covered by the named validation, 422, 409, test, and accessibility tests; api-drift remains PM-commit gated.
-  BLOCKED: PM must commit/stage the generated OpenAPI status endpoint artifacts for `just api-drift` to pass; all-file pre-commit is also blocked locally because the uv Python 3.13.13 target link is missing.
-- [ ] **M6.5** Frequency counter / spectrum: a canvas spectrum, dominant frequency readout and "capture tone".
-- [ ] **M6.6** Sources: device picker, stream URL, and RTL-SDR parameters, with live level preview.
-- [ ] **M6.7** Alerts configuration with a "send test" button, and Settings for retention, auth and MQTT.
-- [ ] **M6.8** Analyze: upload a WAV and view the segment timeline. This is the debugging page.
-- [ ] **M6.9** Playwright e2e: create a tone set, the compose stack with a file source plays the fixture, the call appears...
+- [x] **M6.1** App shell, auth, ingress-aware base path (`base: './'`) and a light/dark theme. — local — Implemented and covered by the M6a Vitest suite; api-drift PM-verified.
+- [x] **M6.2** Dashboard: live call feed, channel levels and feed health. — local — Implemented and covered by `dashboard shows live call from ws event`, `level meter is accessible`, and health/level tests.
+- [x] **M6.3** Calls: a list with filters and a detail view with an audio player, matched tone sets and alert attempt resu... — local — Implemented and covered by `calls filters sync to url` and `call detail plays api-provided recording url`.
+- [x] **M6.4** Tone sets: a CRUD form with validation, a "test" button, and import from TTD config (M8.x importer). — local — Implemented and covered by the named validation, 422, 409, test, and accessibility tests (TTD import waits on M8.4).
+- [x] **M6.5** Frequency counter / spectrum: canvas plot, dominant frequency, pause/resume, capture tone and topic cleanup. — local — `spectrum subscribes and unsubscribes on unmount`, `capture tone prefills toneset form`, `spectrum live region throttled to 1 per second`.
+- [x] **M6.6** Sources: device picker, stream URL, and RTL-SDR parameters, with live level preview. — local — source CRUD form, MHz-to-Hz conversion, validation, device and level tests.
+- [x] **M6.7** Alerts configuration with a "send test" button, and Settings for retention, auth and MQTT. — local — write-only webhook secret, script warning/403, send test and read-only settings tests.
+- [x] **M6.8** Analyze: upload a WAV and view the segment timeline. This is the debugging page. — local — 20 MB client gate, progress, 413/415 handling, SVG timeline and detections tests.
+- [ ] **M6.9** Playwright e2e: create a tone set, file source plays the fixture, the call appears in under 10 s, and the audio plays.
+  BLOCKED: PM rejected M6b-fix harness (it injected a fake recording into `/api/calls/{id}` and self-terminated after 30 s). Root cause is W1: the app never records. Re-done in W1 against real wiring.
 
 ## M7: Alerts
 - [ ] **M7.1** `dispatcher.py` subscribes to events and maps tone sets to targets. It adds per-target retry with exponenti...

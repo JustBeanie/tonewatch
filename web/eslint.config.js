@@ -6,6 +6,8 @@ export default [
     {
         ignores: [
             "dist",
+            "e2e/**",
+            "playwright.config.ts",
             "coverage",
             "vite.config.ts",
             "vitest.config.ts",

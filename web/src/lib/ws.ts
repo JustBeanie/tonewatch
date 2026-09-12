@@ -68,6 +68,7 @@ export function useSubscription(topic: string): WsMessage | undefined {
         socket.subscribe(topic);
         return () => {
             remove();
+            socket.unsubscribe(topic);
             socket.close();
         };
     }, [topic]);
