@@ -596,10 +596,17 @@ activities:
     dimension: Implementation
     subdimension: Infrastructure Hardening
     level: 2
-    status: planned
-    evidence: []
-    planned_in: M5
-    notes: No current repository evidence; planned work remains outside S1.
+    status: implemented
+    evidence:
+      - docker/compose.soundcard.yml
+      - docker/compose.stream.yml
+      - docker/compose.rtlsdr.yml
+      - backend/tests/unit/test_docker_hardening.py
+      - docs/hil-checklist.md
+    planned_in: S5
+    notes: Compose examples and a parser-based regression test enforce the
+      read-only root, dropped capabilities, no-new-privileges, tmpfs, healthcheck,
+      and published-port baseline.
   - id: 0ff45fb8-7eef-46ed-9b3a-84c955cd7060
     name: Usage of encryption at rest
     dimension: Implementation
@@ -823,10 +830,13 @@ activities:
     dimension: Test and Verification
     subdimension: Dynamic depth for infrastructure
     level: 2
-    status: planned
-    evidence: []
-    planned_in: S2
-    notes: No current repository evidence; planned work remains outside S1.
+    status: partial
+    evidence:
+      - .github/workflows/docker.yml
+      - docker/zap/rules.tsv
+    planned_in: S5
+    notes: The authenticated ZAP baseline and API scans are defined against the
+      hardened container; the first CI execution remains PENDING-CI.
   - id: 6d2c3ac6-8afc-4af6-a5e9-6188341aca01
     name: Test network segmentation
     dimension: Test and Verification

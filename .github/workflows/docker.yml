@@ -60,7 +60,7 @@ jobs:
     timeout-minutes: 15
     permissions: {contents: read}
     steps:
-      - uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with: {name: tonewatch-amd64}
       - run: |
           docker load < <(gzip -dc tonewatch-amd64.tar.gz)
@@ -74,20 +74,106 @@ jobs:
     timeout-minutes: 20
     permissions: {contents: read}
     steps:
-      - uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with: {name: tonewatch-amd64}
       - run: docker load < <(gzip -dc tonewatch-amd64.tar.gz)
       - run: >-
           docker run --rm -v /var/run/docker.sock:/var/run/docker.sock
           aquasec/trivy@sha256:62b1e65e8869bc4b4c6aa4fa2b21595256c7c2f6018a9d9ad61caf87187c1969
           image --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed tonewatch-ci:amd64
+  dast:
+    needs: build-amd64
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions: {contents: read}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with: {persist-credentials: false}
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with: {name: tonewatch-amd64}
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
+      - run: uv sync --project backend
+      - name: Generate the same fixture used by the container e2e job
+        run: |
+          mkdir -p container-fixtures
+          uv run --project backend python scripts/e2e_fixture.py \
+            --fixture "$PWD/container-fixtures/fixture.wav" \
+            --config "$PWD/container-fixtures/config.yaml" \
+            --source-path /fixtures/fixture.wav
+          chmod -R a+rX container-fixtures
+      - name: Start the hardened container under test
+        run: |
+          docker load < <(gzip -dc tonewatch-amd64.tar.gz)
+          docker run -d --name tonewatch-e2e --read-only --tmpfs /tmp --cap-drop ALL \
+            --security-opt no-new-privileges:true -p 8099:8099 -v tonewatch-e2e:/data \
+            -v "$PWD/container-fixtures:/fixtures:ro" -e TONEWATCH_UI_PASSWORD=e2e-password \
+            --entrypoint /bin/sh tonewatch-ci:amd64 -c \
+            "cp /fixtures/config.yaml /data/config.yaml && exec tini -- tonewatch serve"
+          for _ in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:8099/readyz >/dev/null; then break; fi
+            sleep 1
+          done
+          curl --fail http://127.0.0.1:8099/readyz
+      - name: Configure authenticated ZAP requests
+        # The ZAP image runs as its own non-root user, so the mounted work dir must be readable and
+        # writable by it. The token belongs to this throwaway CI container only; it is masked in logs
+        # and the upload below takes reports/ alone, never auth.conf.
+        run: |
+          token="$(docker exec tonewatch-e2e cat /data/api_token)"
+          echo "::add-mask::$token"
+          mkdir -p zap-wrk/reports
+          cp docker/zap/rules.tsv zap-wrk/rules.tsv
+          {
+            echo "replacer.full_list(0).description=ToneWatch bearer token"
+            echo "replacer.full_list(0).enabled=true"
+            echo "replacer.full_list(0).matchtype=REQ_HEADER"
+            echo "replacer.full_list(0).matchstr=Authorization"
+            echo "replacer.full_list(0).regex=false"
+            printf 'replacer.full_list(0).replacement=Bearer %s\n' "$token"
+          } > zap-wrk/auth.conf
+          chmod a+rwx zap-wrk zap-wrk/reports
+          chmod a+r zap-wrk/rules.tsv zap-wrk/auth.conf
+      - name: Run ZAP baseline and API scans
+        run: |
+          set +e
+          baseline_status=0
+          api_status=0
+          docker run --rm --network container:tonewatch-e2e \
+            -v "$PWD/zap-wrk:/zap/wrk:rw" \
+            zaproxy/zap-stable@sha256:781a2bdaea47324e7bab583e2263f21d257b0aee61ed51521a5be45f5f5081ef \
+            zap-baseline.py -t http://127.0.0.1:8099/ \
+            -c rules.tsv \
+            -r reports/baseline.html \
+            -J reports/baseline.json \
+            -z "-configfile /zap/wrk/auth.conf" || baseline_status=$?
+          docker run --rm --network container:tonewatch-e2e \
+            -v "$PWD/zap-wrk:/zap/wrk:rw" \
+            zaproxy/zap-stable@sha256:781a2bdaea47324e7bab583e2263f21d257b0aee61ed51521a5be45f5f5081ef \
+            zap-api-scan.py -t http://127.0.0.1:8099/openapi.json -f openapi \
+            -c rules.tsv \
+            -r reports/api.html \
+            -J reports/api.json \
+            -z "-configfile /zap/wrk/auth.conf" || api_status=$?
+          echo "zap-baseline exit=$baseline_status zap-api-scan exit=$api_status (0 clean, 1 FAIL, 2 WARN, 3 error)"
+          test "$baseline_status" -eq 0
+          test "$api_status" -eq 0
+      - if: always()
+        name: Upload ZAP reports
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: zap-dast-reports
+          path: zap-wrk/reports
+          if-no-files-found: error
+      - if: always()
+        name: Container logs
+        run: docker logs tonewatch-e2e || true
   smoke:
     needs: build-amd64
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions: {contents: read}
     steps:
-      - uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with: {name: tonewatch-amd64}
       - run: docker load < <(gzip -dc tonewatch-amd64.tar.gz)
       - name: Verify installed package is self-contained
@@ -151,9 +237,9 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with: {persist-credentials: false}
-      - uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with: {name: tonewatch-amd64}
-      - uses: astral-sh/setup-uv@e92bafb6253dcd438e0484186d7669ea7a8ca1cc # v6.4.3
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
       - run: uv sync --project backend
       - run: |
           mkdir -p container-fixtures

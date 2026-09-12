@@ -1,0 +1,20 @@
+# ZAP baseline and API scan rule configuration.
+# Medium and High findings are failures; low and informational findings keep
+# ZAP's default reporting behavior. There are no application-specific WARN or
+# IGNORE overrides, so no finding is suppressed.
+10017	FAIL	(Cross-Domain JavaScript Source File Inclusion)
+10020	FAIL	(X-Frame-Options Header Not Set)
+10023	FAIL	(Information Disclosure - Debug Error Messages)
+10024	FAIL	(Information Disclosure - Sensitive Information in URL)
+10025	FAIL	(Information Disclosure - Sensitive Information in HTTP Referrer Header)
+10038	FAIL	(Content Security Policy Header Not Set)
+10054	FAIL	(Cookie without SameSite Attribute)
+10055	FAIL	(Content Security Policy - Wildcard Directive)
+90019	FAIL	(Server Side Include)
+90020	FAIL	(Remote OS Command Injection)
+90021	FAIL	(XPath Injection)
+90022	FAIL	(Application Error Disclosure)
+40012	FAIL	(Cross Site Scripting - Reflected)
+40014	FAIL	(Cross Site Scripting - Persistent)
+40016	FAIL	(Cross Site Scripting - DOM)
+40018	FAIL	(SQL Injection)

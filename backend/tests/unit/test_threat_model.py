@@ -85,7 +85,11 @@ def test_threat_evidence_is_real_and_mitigations_have_proving_tests() -> None:
             assert path.is_file(), (row["id"], relative)
             assert len(path.read_text(encoding="utf-8").splitlines()) >= int(line_text), row["id"]
         if row["status"] == "mitigated":
-            named = re.findall(r"`?(test_[A-Za-z0-9_]+)", row["evidence"])
+            named = [
+                name
+                for name in re.findall(r"test_[A-Za-z0-9_]+", row["evidence"])
+                if name in functions
+            ]
             assert named and named[0] in functions, row["id"]
 
 

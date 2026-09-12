@@ -43,7 +43,7 @@ security:
     {{uv}} export --project backend --frozen --no-dev --no-emit-project --format requirements-txt > .tools/security-requirements.txt
     {{uv}} run --project backend --with pip-audit pip-audit -r .tools/security-requirements.txt --cache-dir .tools/pip-audit-cache
     {{uv}} run --project backend --with zizmor zizmor .github/workflows
-    {{uv}} run --project backend python scripts/check_action_pins.py .github/workflows/docker.yml .github/workflows/release.yml
+    {{uv}} run --project backend python scripts/check_action_pins.py .github/workflows/*.yml
     {{pnpm}} --dir web audit --audit-level high
     {{pnpm}} --dir web licenses list --prod --json > .tools/web-licenses.json
     {{uv}} run --project backend python scripts/license_check.py --python-requirements .tools/security-requirements.txt --web-licenses .tools/web-licenses.json

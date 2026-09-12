@@ -122,6 +122,6 @@ Tick a task with `[x]`, then append ` — <PR link> — <one-line note>`. Blocke
 - [x] **S2** *(after S1)* DSOMM L1–2 pipeline controls: Semgrep, pip-audit, osv-scanner, zizmor, license checks, Trivy config, OpenSSF Scorecard, `just security`. — local — Security workflow, CI-only notices, dependency overrides, suppression validation, scorecard re-assessment, and all-files pre-commit passed; CI-only jobs remain PENDING-CI for PM observation.
 - [ ] **S3** *(after M5)* STRIDE threat model (Threat Dragon); replaces M12.2.
 - [x] **S4** *(after M7)* ASVS 5.0 L2 code audit with regression tests for every fix. — local — ASVS source pinned, 253 tests pass, security/pre-commit/API-drift gates pass, and S4 threats are mitigated or documented as accepted.
-- [ ] **S5** *(after M8)* ZAP baseline/API DAST in e2e + container hardening (read-only fs, cap_drop, no-new-privileges).
+- [~] **S5** *(after M8)* ZAP baseline/API DAST in e2e + container hardening (read-only fs, cap_drop, no-new-privileges). — PENDING-CI — Local tests, evidence hygiene, workflow pinning, HIL checklist, and DAST workflow definition are complete; PM must confirm `docker.yml / dast`.
 - [ ] **S6** *(after M11)* HA integration and add-on security review.
 - [ ] **S7** *(before M12.4)* Final SAMM + DSOMM re-assessment. 🛑 USER GATE: accepted-risk sign-off.

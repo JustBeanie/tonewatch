@@ -101,7 +101,8 @@ async def test_spa_html_csp_allows_self_only() -> None:
         assert "ws:" not in csp and "wss:" not in csp
         assert "'unsafe-inline'" not in csp and "https://" not in csp
         assert (
-            api.headers["content-security-policy"] == "default-src 'none'; frame-ancestors 'self'"
+            api.headers["content-security-policy"]
+            == "default-src 'none'; object-src 'none'; base-uri 'none'; frame-ancestors 'self'"
         )
 
 

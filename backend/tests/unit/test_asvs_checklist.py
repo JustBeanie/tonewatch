@@ -2,6 +2,7 @@
 
 import ast
 import csv
+import hashlib
 import re
 from collections import Counter
 from datetime import UTC, date, datetime, timedelta
@@ -14,6 +15,7 @@ SOURCE = (
 CHECKLIST = ROOT / "docs/security/asvs/checklist.csv"
 GAPS = ROOT / "docs/security/gaps.md"
 ACCEPTED = ROOT / "docs/security/accepted-risks.md"
+SOURCE_README = SOURCE.parent / "README.md"
 
 
 def _tests() -> set[str]:
@@ -49,6 +51,20 @@ def _evidence_parts(value: str) -> tuple[Path, int] | None:
     return ROOT / match[1], int(match[2])
 
 
+def _evidence_path(value: str) -> Path:
+    return ROOT / value.split(":", maxsplit=1)[0]
+
+
+def _snippet_location(row: dict[str, str]) -> tuple[Path, int]:
+    path = _evidence_path(row["evidence (path:line)"])
+    snippet = row["evidence snippet"]
+    text = path.read_text(encoding="utf-8")
+    assert snippet, row["id"]
+    assert text.count(snippet) == 1, row["id"]
+    offset = text.index(snippet)
+    return path, text.count("\n", 0, offset) + 1
+
+
 def _accepted_risks() -> dict[str, date]:
     text = ACCEPTED.read_text(encoding="utf-8")
     risks: dict[str, date] = {}
@@ -72,6 +88,14 @@ def test_asvs_checklist_covers_pinned_l1_l2_requirements() -> None:
     assert not any(row["status"] == "fail" for row in rows)
 
 
+def test_vendored_asvs_csv_matches_pinned_sha256() -> None:
+    text = SOURCE_README.read_text(encoding="utf-8")
+    match = re.search(r"CSV SHA-256:\s*`([0-9a-f]{64})`", text)
+    assert match is not None
+    digest = hashlib.sha256(SOURCE.read_bytes()).hexdigest()
+    assert digest == match.group(1)
+
+
 def test_asvs_evidence_is_specific_and_referential() -> None:
     rows = _checklist_rows()
     tests = _tests()
@@ -86,14 +110,17 @@ def test_asvs_evidence_is_specific_and_referential() -> None:
     for row in rows:
         if row["status"] not in {"pass", "fixed", "accepted"}:
             continue
-        evidence = _evidence_parts(row["evidence (path:line)"])
-        assert evidence is not None, row["id"]
-        path, line = evidence
+        path, line = _snippet_location(row)
         assert path.relative_to(ROOT).as_posix().startswith(("backend/src/", "docs/")), row["id"]
         assert path.is_file(), row["id"]
         lines = path.read_text(encoding="utf-8").splitlines()
         assert len(lines) >= line, row["id"]
         assert lines[line - 1].strip(), row["id"]
+        evidence = _evidence_parts(row["evidence (path:line)"])
+        if evidence is not None:
+            assert evidence == (path, line), row["id"]
+        else:
+            assert row["evidence (path:line)"] == path.relative_to(ROOT).as_posix(), row["id"]
         if row["test (function name)"] != "doc-only":
             assert row["test (function name)"] in tests, row["id"]
 
@@ -139,11 +166,8 @@ def test_asvs_header_evidence_names_the_enforced_header() -> None:
         required = [header for header in headers if header in row["requirement (verbatim)"].lower()]
         if not required:
             continue
-        evidence = _evidence_parts(row["evidence (path:line)"])
-        assert evidence is not None, row["id"]
-        path, line = evidence
-        source_line = path.read_text(encoding="utf-8").splitlines()[line - 1].lower()
-        assert all(header in source_line for header in required), row["id"]
+        snippet = row["evidence snippet"].lower()
+        assert all(header in snippet for header in required), row["id"]
 
 
 def test_asvs_notes_are_not_templated() -> None:

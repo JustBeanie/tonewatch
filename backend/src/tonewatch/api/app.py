@@ -43,7 +43,9 @@ def input_devices() -> list[dict[str, object]]:
 
 def _set_api_csp(response: Any) -> None:
     """Deny all content for non-HTML API responses while forbidding foreign framing."""
-    response.headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'self'"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'none'; object-src 'none'; base-uri 'none'; frame-ancestors 'self'"
+    )
 
 
 def create_app(

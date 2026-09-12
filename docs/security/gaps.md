@@ -35,7 +35,6 @@ Evidence-backed gaps from the S1 baseline. Planned work is intentionally scored 
 - DSOMM: **Test and Verification / Consolidation / Simple visualization of defects** (L2) — planned; owner **S2**.
 - DSOMM: **Test and Verification / Dynamic depth for applications / Coverage of client side dynamic components** (L2) — planned; owner **S2**.
 - DSOMM: **Test and Verification / Dynamic depth for applications / Usage of different roles** (L2) — planned; owner **S2**.
-- DSOMM: **Test and Verification / Dynamic depth for infrastructure / Test for exposed services** (L2) — planned; owner **S2**.
 - DSOMM: **Test and Verification / Dynamic depth for infrastructure / Test network segmentation** (L2) — planned; owner **S2**.
 - DSOMM: **Test and Verification / Dynamic depth for infrastructure / Test of the configuration of cloud environments** (L2) — planned; owner **S2**.
 - DSOMM: **Test and Verification / Static depth for applications / Exploit likelihood estimation** (L2) — planned; owner **S2**.
@@ -59,7 +58,6 @@ Evidence-backed gaps from the S1 baseline. Planned work is intentionally scored 
 - SAMM: **Implementation / Defect Management / Metrics and Feedback** — 1.0 vs 2.0; owner **S2**.
 - SAMM: **Implementation / Secure Deployment / Deployment Process** — 0.0 vs 2.0; owner **S2**.
 - SAMM: **Implementation / Secure Deployment / Secret Management** — 0.0 vs 2.0; owner **S2**.
-- SAMM: **Operations / Environment Management / Configuration Hardening** — 0.0 vs 1.0; owner **S2**.
 - SAMM: **Operations / Incident Management / Incident Detection** — 0.0 vs 1.0; owner **S2**.
 - SAMM: **Operations / Operational Management / Data Protection** — 0.0 vs 1.0; owner **S2**.
 - SAMM: **Operations / Operational Management / System Decommissioning / Legacy Management** — 0.0 vs 1.0; owner **S2**.
@@ -81,7 +79,6 @@ Evidence-backed gaps from the S1 baseline. Planned work is intentionally scored 
 - DSOMM: **Implementation / Infrastructure Hardening / Baseline Hardening of the environment** (L2) — planned; owner **M5**.
 - DSOMM: **Implementation / Infrastructure Hardening / Isolated networks for virtual environments** (L2) — planned; owner **M5**.
 - DSOMM: **Implementation / Infrastructure Hardening / Usage of an security account** (L2) — planned; owner **M5**.
-- DSOMM: **Implementation / Infrastructure Hardening / Usage of containers** (L2) — planned; owner **M5**.
 - DSOMM: **Implementation / Infrastructure Hardening / Usage of edge encryption at transit** (L1) — planned; owner **M5**.
 - DSOMM: **Implementation / Infrastructure Hardening / Usage of encryption at rest** (L2) — planned; owner **M5**.
 - DSOMM: **Implementation / Infrastructure Hardening / Usage of test and production environments** (L2) — planned; owner **M5**.
@@ -109,6 +106,7 @@ Evidence-backed gaps from the S1 baseline. Planned work is intentionally scored 
 - DSOMM: **Culture and Organization / Education and Guidance / Security consulting on request** (L1) — planned; owner **S3**.
 - DSOMM: **Culture and Organization / Process / Definition of simple BCDR practices for critical components** (L1) — planned; owner **S3**.
 - DSOMM: **Culture and Organization / Process / Determining the protection requirement** (L2) — planned; owner **S3**.
+- DSOMM: **Test and Verification / Dynamic depth for infrastructure / Test for exposed services** (L2) — partial; owner **S5**.
 
 ## S3 STRIDE findings
 
@@ -1147,12 +1145,6 @@ Each gap names the pinned requirement, the unmet condition, and a target milesto
 - Why unmet: ToneWatch does not yet enforce a browser-context, CSP sandbox, or attachment control for every direct resource response.
 - Target milestone: S5
 
-## GAP-192 - V3.4.3
-
-- Requirement: Verify that the Content-Security-Policy explicitly includes object-src 'none' and base-uri 'none'.
-- Why unmet: The existing global CSP is restrictive but does not declare those two ASVS-required directives explicitly.
-- Target milestone: S5
-
 ## GAP-193 - V1.3.6
 
 - Requirement: V1.3.6 requires a fully verified SSRF defense for application-initiated requests.
@@ -1206,12 +1198,6 @@ Each gap names the pinned requirement, the unmet condition, and a target milesto
 - Requirement: V3.3.1 requires secure session cookies.
 - Why unmet: Secure-cookie behavior is conditional on HTTPS and is not verified as universal.
 - Target milestone: M12
-
-## GAP-202 - V3.5.1
-
-- Requirement: V3.5.1 requires the applicable anti-forgery control.
-- Why unmet: The CORS test does not directly assert that control.
-- Target milestone: S5
 
 ## GAP-203 - V6.5.2
 

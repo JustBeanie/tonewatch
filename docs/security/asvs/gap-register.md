@@ -1033,12 +1033,6 @@ Each gap names the pinned requirement, the unmet condition, and a target milesto
 - Why unmet: ToneWatch does not yet enforce a browser-context, CSP sandbox, or attachment control for every direct resource response.
 - Target milestone: S5
 
-## GAP-192 - V3.4.3
-
-- Requirement: Verify that the Content-Security-Policy explicitly includes object-src 'none' and base-uri 'none'.
-- Why unmet: The existing global CSP is restrictive but does not declare those two ASVS-required directives explicitly.
-- Target milestone: S5
-
 ## GAP-193 - V1.3.6
 
 - Requirement: V1.3.6 requires a fully verified SSRF defense for application-initiated requests.
@@ -1092,12 +1086,6 @@ Each gap names the pinned requirement, the unmet condition, and a target milesto
 - Requirement: V3.3.1 requires secure session cookies.
 - Why unmet: Secure-cookie behavior is conditional on HTTPS and is not verified as universal.
 - Target milestone: M12
-
-## GAP-202 - V3.5.1
-
-- Requirement: V3.5.1 requires the applicable anti-forgery control.
-- Why unmet: The CORS test does not directly assert that control.
-- Target milestone: S5
 
 ## GAP-203 - V6.5.2
 

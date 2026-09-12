@@ -21,15 +21,10 @@ Accepted gaps that must be written into a later brief. Remove an entry once that
 - **M10 / M11 (HA consumers).** Alert payloads carry a **relative** `recording_url` (`/api/recordings/{id}`), which a webhook receiver, an HA entity attribute or a phone notification can't fetch.
   - Needs a `public_base_url` setting, or for the add-on the ingress URL / Supervisor-discovered host.
   - The M11 integration should resolve `media_content_id` through its authenticated proxy. Decide this in the M10 brief.
-- **S5 — ASVS checklist integrity.**
-  - **Brittle evidence:** evidence is cited as `path:line`, which breaks on every edit to a cited file. PM relocated `api/app.py` rows twice while landing S4 and W1b. Add an `evidence snippet` column that the validator locates (failing if absent or ambiguous), so `path:line` becomes derived.
-  - **Hash guard:** add a test asserting the vendored ASVS CSV sha256 equals the pin in `docs/security/asvs/source/README.md`. The pre-commit global exclude already protects the bytes.
-  - **Converting gaps:** 180 GAP rows need converting chapter by chapter on a gap-by-default rule. The PM reviews every positive row.
-  - **Nits from S4-close:** V3.3.2 (SameSite) cites the CSRF check instead of the `set_cookie` samesite argument, and the V16.5.1 note carries an "applicability justified" phrase.
-- **S5 — action pin hygiene across ALL workflows** (found in the M8-fix review, 2026-09-12). `scripts/check_action_pins.py` currently scans only `docker.yml` and `release.yml`.
-  - `ci.yml`, `security.yml`, `codeql.yml`, `scorecard.yml` and `pr-title.yml` still carry major-only `# vN` comments, which the checker's exact `# vX.Y.Z` rule rejects.
-  - `ci.yml` pins `pnpm/action-setup@a8198c4…`, which is the annotated **tag object** for `v5`, not a commit. The commit is `fc06bc1…`.
-  - **Brief:** re-pin every action to a commit SHA with an exact-tag comment, then run the checker over `.github/workflows/*.yml` in `just security` and the security workflow.
+- **S6/S7 — remaining ASVS GAP rows.** S5 converted V3/V4 only, so 178 GAP rows remain. Convert them chapter by chapter on the gap-by-default rule; the PM reviews every positive row. Every positive row must carry a snippet that *proves* the control (S5 shipped a V3.4.2 snippet that was just a closing paren), and `fixed` means code changed in that milestone, otherwise use `pass`.
+- **S5 follow-up — DAST tuning (watch the first CI run).** `zap-baseline.py` exits 2 on any WARN, including informational alerts, and the job requires exit 0. If the first run is red with exit 2, read the uploaded `zap-dast-reports` and add each real false positive to `docker/zap/rules.tsv` as `IGNORE` with a one-line justification. Never use `-I`, and fix every genuine finding in code.
+- **Pin updates must never downgrade.** When re-pinning a floating `@vN` tag, pin the newest `vN.x.y` commit (S5 silently moved codeql-action 3.38.0 → 3.28.18 and setup-uv 6.8.0 → 6.4.3). The pin checker only runs online on the PM host and in CI (`security.yml / action-pins`); the sandbox run skips it.
+- **Nit:** `storage/migrations/env.py` catches `AttributeError` as well as the context proxy's `NameError`; narrow it.
 - **Later cleanup:** `types-pyyaml` is listed as a runtime dependency in `backend/pyproject.toml`; move it to dev dependencies.
 - **Environment:**
   - The Codex sandbox user owns `.pytest-tmp/`, `backend/.pytest_cache`, `backend/backend/` and `%TEMP%\pytest-of-Beanie`. They are gitignored and harmless, but only that user can delete them.

@@ -618,6 +618,8 @@ entries:
     evidence:
       - .github/workflows/codeql.yml
       - .github/workflows/security.yml
+      - .github/workflows/docker.yml
+      - docker/zap/rules.tsv
       - backend/pyproject.toml
       - .pre-commit-config.yaml
     na: false
@@ -638,7 +640,8 @@ entries:
         question: Do you perform penetration testing for your applications at regular
           intervals?
         answer: 'No'
-        rationale: The evidence does not demonstrate this higher maturity level.
+        rationale: The authenticated ZAP baseline and API scans are defined, but
+          their first CI execution is PENDING-CI, so this level is not claimed yet.
       - level: 3
         question: Do you use the results of security testing to improve the development
           lifecycle?
@@ -648,6 +651,8 @@ entries:
       - docs/security/asvs/checklist.csv
       - docs/security/threat-model/README.md
       - backend/tests/unit/test_s4_security.py
+      - .github/workflows/docker.yml
+      - docker/zap/rules.tsv
     na: false
     na_justification: null
     assessed_on: '2026-09-10'
@@ -670,7 +675,12 @@ entries:
         question: Do you review and update the incident detection process regularly?
         answer: 'No'
         rationale: The evidence does not demonstrate this higher maturity level.
-    evidence: []
+    evidence:
+      - docker/compose.soundcard.yml
+      - docker/compose.stream.yml
+      - docker/compose.rtlsdr.yml
+      - backend/tests/unit/test_docker_hardening.py
+      - docs/hil-checklist.md
     na: false
     na_justification: null
     assessed_on: '2026-09-10'
@@ -703,13 +713,15 @@ entries:
     practice: Environment Management
     stream: Configuration Hardening
     stream_id: O-EM-A
-    current_level: 0
+    current_level: 1
     target_level: 1
     answers:
       - level: 1
         question: Do you harden configurations for key components of your technology stacks?
-        answer: 'No'
-        rationale: The evidence does not demonstrate this higher maturity level.
+        answer: Yes, for some components
+        rationale: The three Compose examples and their regression test define and
+          enforce the read-only root, dropped capabilities, no-new-privileges,
+          tmpfs, healthcheck, and published-port baseline.
       - level: 2
         question: Do you have hardening baselines for your components?
         answer: 'No'
@@ -718,7 +730,12 @@ entries:
         question: Do you monitor and enforce conformity with hardening baselines?
         answer: 'No'
         rationale: The evidence does not demonstrate this higher maturity level.
-    evidence: []
+    evidence:
+      - docker/compose.soundcard.yml
+      - docker/compose.stream.yml
+      - docker/compose.rtlsdr.yml
+      - backend/tests/unit/test_docker_hardening.py
+      - docs/hil-checklist.md
     na: false
     na_justification: null
     assessed_on: '2026-09-10'

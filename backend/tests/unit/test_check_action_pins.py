@@ -41,6 +41,16 @@ def test_lightweight_tag_matching_commit_passes(tmp_path: Path) -> None:
     assert pins.main([_workflow(tmp_path, COMMIT)], runner) == 0
 
 
+def test_action_subpath_uses_parent_repository_tag(tmp_path: Path) -> None:
+    path = tmp_path / "wf.yml"
+    path.write_text(
+        f"jobs:\n  a:\n    steps:\n      - uses: owner/repo/init@{COMMIT} # v1.2.3\n",
+        encoding="utf-8",
+    )
+    runner = _runner(f"{COMMIT}\trefs/tags/v1.2.3\n")
+    assert pins.main([str(path)], runner) == 0
+
+
 def test_annotated_tag_requires_the_peeled_commit(tmp_path: Path) -> None:
     runner = _runner(f"{TAG_OBJECT}\trefs/tags/v1.2.3\n{COMMIT}\trefs/tags/v1.2.3^{{}}\n")
     assert pins.main([_workflow(tmp_path, COMMIT)], runner) == 0
@@ -69,3 +79,15 @@ def test_offline_skips_with_notice(tmp_path: Path, capsys: pytest.CaptureFixture
 
 def test_major_only_label_is_rejected(tmp_path: Path) -> None:
     assert pins.main([_workflow(tmp_path, COMMIT, tag="v5")], _runner("")) == 1
+
+
+def test_glob_paths_are_expanded(tmp_path: Path) -> None:
+    workflow_dir = tmp_path / "workflows"
+    workflow_dir.mkdir()
+    path = workflow_dir / "wf.yml"
+    path.write_text(
+        f"jobs:\n  a:\n    steps:\n      - uses: owner/repo@{COMMIT} # v1.2.3\n",
+        encoding="utf-8",
+    )
+    runner = _runner(f"{COMMIT}\trefs/tags/v1.2.3\n")
+    assert pins.main([str(workflow_dir / "*.yml")], runner) == 0

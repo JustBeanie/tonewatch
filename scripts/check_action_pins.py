@@ -6,10 +6,11 @@ import re
 import subprocess
 import sys
 from collections.abc import Callable
+from glob import glob
 from pathlib import Path
 
 ACTION = re.compile(
-    r"uses:\s+(?P<repo>[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)@(?P<sha>[0-9a-f]{40})\s+#\s+(?P<tag>v\d+\.\d+\.\d+)(?:\s|$)"
+    r"uses:\s+(?P<repo>[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*)@(?P<sha>[0-9a-f]{40})\s+#\s+(?P<tag>v\d+\.\d+\.\d+)(?:\s|$)"
 )
 USES = re.compile(r"^\s*-\s+uses:")
 
@@ -58,6 +59,9 @@ def resolve_tag(repo: str, tag: str, runner: Runner = _run) -> tuple[str, str] |
 
 def main(paths: list[str], runner: Runner = _run) -> int:
     """Validate every action pin; skip with a notice only when GitHub is unreachable."""
+    paths = [
+        match for raw_path in paths for match in (sorted(glob(raw_path)) or [raw_path])
+    ]
     references: list[tuple[str, re.Match[str]]] = []
     for raw_path in paths:
         text = Path(raw_path).read_text(encoding="utf-8")
@@ -70,7 +74,8 @@ def main(paths: list[str], runner: Runner = _run) -> int:
         references.extend((raw_path, match) for match in ACTION.finditer(text))
     failures: list[str] = []
     for raw_path, match in references:
-        repo, sha, tag = match["repo"], match["sha"], match["tag"]
+        repo = "/".join(match["repo"].split("/")[:2])
+        sha, tag = match["sha"], match["tag"]
         try:
             resolved = resolve_tag(repo, tag, runner)
         except OfflineError:

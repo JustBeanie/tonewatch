@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "summary": "ToneWatch M0-M5 STRIDE threat model",
+  "summary": "ToneWatch M0-M8 STRIDE threat model",
   "detail": "Self-hosted ToneWatch deployment with Home Assistant as the primary deployment. Threat status and evidence are maintained in docs/security/threat-model/README.md.",
   "owner": "ToneWatch maintainers",
   "reviewer": "ToneWatch security review",
@@ -79,7 +79,7 @@
         {"id": "TM-021", "category": "Denial of service", "element": "Supervisor / channels", "status": "partial"},
         {"id": "TM-022", "category": "Denial of service", "element": "Auth middleware", "status": "open"},
         {"id": "TM-023", "category": "Elevation of privilege", "element": "Alert dispatcher (M7)", "status": "mitigated"},
-        {"id": "TM-024", "category": "Elevation of privilege", "element": "Container", "status": "planned"},
+        {"id": "TM-024", "category": "Elevation of privilege", "element": "Container", "status": "mitigated"},
         {"id": "TM-025", "category": "Elevation of privilege", "element": "Supervisor discovery client", "status": "planned"},
         {"id": "TM-026", "category": "Elevation of privilege", "element": "Alert dispatcher (M7)", "status": "mitigated"},
         {"id": "TM-027", "category": "Elevation of privilege", "element": "Network stream origin", "status": "open"}
