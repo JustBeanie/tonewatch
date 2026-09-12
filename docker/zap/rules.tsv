@@ -27,3 +27,6 @@
 # The OpenAPI import also probes the SPA shell at /, which is text/html by design; JSON content
 # types are asserted by the API integration tests.
 100001	IGNORE	(Unexpected Content-Type was returned)
+# Informational: the comment heuristic matches the word 'query' inside minified Vite bundle code
+# (a router regex literal), not a real comment; the production build strips source comments.
+10027	IGNORE	(Information Disclosure - Suspicious Comments)
