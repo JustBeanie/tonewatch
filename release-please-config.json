@@ -1,0 +1,5 @@
+{
+  "packages": {"backend": {"component": "backend", "release-type": "python"}},
+  "include-component-in-tag": false,
+  "separate-pull-requests": false
+}

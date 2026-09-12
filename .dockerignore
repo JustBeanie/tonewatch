@@ -1,0 +1,11 @@
+.git
+.tools
+.venv
+backend/.venv
+web/node_modules
+data
+coverage*
+htmlcov
+docs/pm/runs
+web/test-results
+web/playwright-report

@@ -43,6 +43,7 @@ security:
     {{uv}} export --project backend --frozen --no-dev --no-emit-project --format requirements-txt > .tools/security-requirements.txt
     {{uv}} run --project backend --with pip-audit pip-audit -r .tools/security-requirements.txt --cache-dir .tools/pip-audit-cache
     {{uv}} run --project backend --with zizmor zizmor .github/workflows
+    {{uv}} run --project backend python scripts/check_action_pins.py .github/workflows/docker.yml .github/workflows/release.yml
     {{pnpm}} --dir web audit --audit-level high
     {{pnpm}} --dir web licenses list --prod --json > .tools/web-licenses.json
     {{uv}} run --project backend python scripts/license_check.py --python-requirements .tools/security-requirements.txt --web-licenses .tools/web-licenses.json
@@ -72,8 +73,18 @@ e2e:
 bench:
     {{uv}} run --project backend python backend/scripts/run_pytest.py backend/tests/benchmarks --benchmark-only --no-cov
 
+[unix]
 docker-build:
-    @echo "Docker build starts with M8.1."
+    @command -v docker >/dev/null 2>&1 || { echo "Docker is required for docker-build; install Docker Engine." >&2; exit 1; }; docker buildx build --platform linux/amd64,linux/arm64 -f docker/Dockerfile .
 
+[windows]
+docker-build:
+    @if (Get-Command docker -ErrorAction SilentlyContinue) { docker buildx build --platform linux/amd64,linux/arm64 -f docker/Dockerfile . } else { throw "Docker is required for docker-build; install Docker Desktop or Docker Engine." }
+
+[unix]
 compose-up source="stream":
-    @echo "Compose stack starts with M8.2."
+    @requested="{{source}}"; case "$requested" in source=*) requested="${requested#source=}";; esac; case "$requested" in soundcard|stream|rtlsdr) ;; *) echo "source must be soundcard, stream, or rtlsdr" >&2; exit 2;; esac; command -v docker >/dev/null 2>&1 || { echo "Docker is required for compose-up; install Docker Engine." >&2; exit 1; }; docker compose -f "docker/compose.$requested.yml" up
+
+[windows]
+compose-up source="stream":
+    @$requested = "{{source}}"; if ($requested.StartsWith("source=")) { $requested = $requested.Substring(7) }; if ("soundcard","stream","rtlsdr" -notcontains $requested) { throw "source must be soundcard, stream, or rtlsdr" } elseif (Get-Command docker -ErrorAction SilentlyContinue) { docker compose -f "docker/compose.$requested.yml" up } else { throw "Docker is required for compose-up; install Docker Desktop or Docker Engine." }

@@ -1,0 +1,157 @@
+name: Docker
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions: {}
+env:
+  IMAGE: tonewatch-ci
+jobs:
+  build-amd64:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    permissions: {contents: read}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with: {persist-credentials: false}
+      - uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392 # v3.6.0
+      - uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+      - uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25 # v5.4.0
+        with: {context: ., file: docker/Dockerfile, platforms: linux/amd64, tags: tonewatch-ci:amd64, load: true}
+      - run: docker image save tonewatch-ci:amd64 | gzip > tonewatch-amd64.tar.gz
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with: {name: tonewatch-amd64, path: tonewatch-amd64.tar.gz}
+  build-arm64:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions: {contents: read}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with: {persist-credentials: false}
+      - uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392 # v3.6.0
+      - uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+      - uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25 # v5.4.0
+        with:
+          context: .
+          file: docker/Dockerfile
+          platforms: linux/arm64
+          tags: tonewatch-ci:arm64
+          outputs: type=oci,dest=tonewatch-arm64.tar
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with: {name: tonewatch-arm64, path: tonewatch-arm64.tar}
+  compose-config:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions: {contents: read}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with: {persist-credentials: false}
+      - name: Validate Compose files and published port
+        run: |
+          for file in docker/compose.soundcard.yml docker/compose.stream.yml docker/compose.rtlsdr.yml; do
+            docker compose -f "$file" config -q
+            docker compose -f "$file" config --format json > rendered.json
+            jq -e '.services.tonewatch.ports[] | select(.target == 8099 and .published == 8099)' rendered.json >/dev/null
+          done
+  size:
+    needs: build-amd64
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions: {contents: read}
+    steps:
+      - uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
+        with: {name: tonewatch-amd64}
+      - run: |
+          docker load < <(gzip -dc tonewatch-amd64.tar.gz)
+          test "$(docker image inspect tonewatch-ci:amd64 --format '{{.Size}}')" -lt 350000000
+  trivy:
+    needs: build-amd64
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions: {contents: read}
+    steps:
+      - uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
+        with: {name: tonewatch-amd64}
+      - run: docker load < <(gzip -dc tonewatch-amd64.tar.gz)
+      - run: >-
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock
+          aquasec/trivy@sha256:62b1e65e8869bc4b4c6aa4fa2b21595256c7c2f6018a9d9ad61caf87187c1969
+          image --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed tonewatch-ci:amd64
+  smoke:
+    needs: build-amd64
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions: {contents: read}
+    steps:
+      - uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
+        with: {name: tonewatch-amd64}
+      - run: docker load < <(gzip -dc tonewatch-amd64.tar.gz)
+      - name: Verify installed package is self-contained
+        run: >-
+          docker run --rm tonewatch-ci:amd64 python -c
+          "import tonewatch, tonewatch.api.spa; from importlib.resources import files; p=files('tonewatch')/'web_dist'/'index.html'; print(p); assert p.is_file()"
+      - name: Start hardened container with read-only config mount
+        run: |
+          mkdir smoke-data
+          printf 'tone_sets: []\nsources:\n  - id: smoke-file\n    name: Smoke file\n    type: file\n' > smoke-data/config.yaml
+          printf '    enabled: false\n    path: /data/silence.wav\n    tonesets: []\nalert_targets: []\n' >> smoke-data/config.yaml
+          docker volume create tonewatch-smoke
+          docker run -d --name tonewatch-smoke --read-only --tmpfs /tmp --cap-drop ALL --security-opt no-new-privileges:true \
+            -p 8099:8099 -v tonewatch-smoke:/data -v "$PWD/smoke-data/config.yaml:/data/config.yaml:ro" \
+            -e TONEWATCH_UI_PASSWORD=smoke-password tonewatch-ci:amd64
+          for i in {1..60}; do curl --fail http://127.0.0.1:8099/readyz && break || sleep 1; done
+          curl --fail http://127.0.0.1:8099/
+          curl --fail http://127.0.0.1:8099/api/auth/status
+          curl --fail http://127.0.0.1:8099/healthz
+          test "$(docker exec tonewatch-smoke id -u)" = 10001
+          test "$(docker inspect tonewatch-smoke --format '{{.HostConfig.ReadonlyRootfs}}')" = true
+      - name: Verify PyAV HTTPS with product TLS options
+        run: |
+          # github.com is a stable HTTPS endpoint; InvalidDataError means TLS completed
+          # and FFmpeg rejected the HTML payload after certificate verification.
+          docker exec tonewatch-smoke python -c 'import av, certifi
+          from av.error import InvalidDataError
+          options = {"tls_verify": "1", "ca_file": certifi.where()}
+          try:
+              container = av.open("https://github.com", options=options)
+          except InvalidDataError:
+              pass
+          else:
+              container.close()
+              raise SystemExit("expected InvalidDataError after successful HTTPS handshake")'
+      - if: always()
+        run: docker logs tonewatch-smoke || true
+  e2e-container:
+    needs: build-amd64
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions: {contents: read}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with: {persist-credentials: false}
+      - uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
+        with: {name: tonewatch-amd64}
+      - uses: astral-sh/setup-uv@e92bafb6253dcd438e0484186d7669ea7a8ca1cc # v6.4.3
+      - run: uv sync --project backend
+      - run: |
+          mkdir -p container-fixtures
+          uv run --project backend python scripts/e2e_fixture.py \
+            --fixture "$PWD/container-fixtures/fixture.wav" \
+            --config "$PWD/container-fixtures/config.yaml" \
+            --source-path /fixtures/fixture.wav
+          chmod -R a+rX container-fixtures
+      - run: docker load < <(gzip -dc tonewatch-amd64.tar.gz)
+      - run: >-
+          docker run -d --name tonewatch-e2e --read-only --tmpfs /tmp --cap-drop ALL
+          --security-opt no-new-privileges:true -p 8099:8099 -v tonewatch-e2e:/data
+          -v "$PWD/container-fixtures:/fixtures:ro" -e TONEWATCH_UI_PASSWORD=e2e-password
+          --entrypoint /bin/sh tonewatch-ci:amd64 -c
+          "cp /fixtures/config.yaml /data/config.yaml && exec tini -- tonewatch serve"
+      - run: for i in {1..60}; do curl --fail http://127.0.0.1:8099/readyz && break || sleep 1; done
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+        with: {package_json_file: web/package.json}
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with: {node-version: 24, cache: pnpm, cache-dependency-path: web/pnpm-lock.yaml}
+      - run: pnpm --dir web install --frozen-lockfile && pnpm --dir web exec playwright install --with-deps chromium
+      - run: pnpm --dir web exec playwright test
+        env: {TONEWATCH_E2E_URL: http://127.0.0.1:8099, PLAYWRIGHT_CHANNEL: chromium}

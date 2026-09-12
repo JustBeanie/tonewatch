@@ -9,8 +9,10 @@ serves both the API and built SPA on port 8765.
 The launcher does not proxy, intercept, rewrite, mock, or inject any browser
 request or response. Playwright observes the backend's real WebSocket and
 recording responses. Playwright owns teardown; on Windows the launcher handles
-SIGTERM, SIGINT, and stdin close and uses `taskkill /T` to remove the backend
-process tree.
+SIGTERM and SIGINT and uses `taskkill /T` to remove the backend process tree.
+
+The reusable `scripts/e2e_fixture.py` generator is also used by container CI;
+the specs and fixture content stay identical in both modes.
 
 Run from the repository root with `just e2e`. On Windows the recipe selects
 the installed Chrome channel, while CI installs and uses bundled Chromium.

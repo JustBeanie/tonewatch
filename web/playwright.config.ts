@@ -1,6 +1,7 @@
 import { defineConfig } from "playwright/test";
 
 const port = process.env.TONEWATCH_E2E_PORT || "8765";
+const externalURL = process.env.TONEWATCH_E2E_URL;
 
 export default defineConfig({
     testDir: "./e2e",
@@ -9,18 +10,20 @@ export default defineConfig({
     reporter: [["list"], ["html", { outputFolder: "./playwright-report", open: "never" }]],
     outputDir: "./test-results",
     use: {
-        baseURL: `http://127.0.0.1:${port}`,
+        baseURL: externalURL || `http://127.0.0.1:${port}`,
         channel: process.env.PLAYWRIGHT_CHANNEL || undefined,
         trace: "off",
         screenshot: "only-on-failure",
         video: "off",
     },
-    webServer: {
-        command: "node e2e/start.mjs",
-        url: `http://127.0.0.1:${port}/readyz`,
-        reuseExistingServer: false,
-        timeout: 180000,
-        stdout: "pipe",
-        stderr: "pipe",
-    },
+    webServer: externalURL
+        ? undefined
+        : {
+              command: "node e2e/start.mjs",
+              url: `http://127.0.0.1:${port}/readyz`,
+              reuseExistingServer: false,
+              timeout: 180000,
+              stdout: "pipe",
+              stderr: "pipe",
+          },
 });

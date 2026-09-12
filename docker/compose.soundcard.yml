@@ -1,0 +1,23 @@
+name: tonewatch-soundcard
+x-tonewatch: &tonewatch
+  image: ghcr.io/justbeanie/tonewatch:latest
+  # Bind to 127.0.0.1:8099:8099 for local-only access when exposing the UI.
+  ports: ["8099:8099"]
+  read_only: true
+  tmpfs: [/tmp]
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  volumes: [tonewatch-data:/data]
+  restart: unless-stopped
+  healthcheck:
+    test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8099/healthz', timeout=2)"]
+    interval: 30s
+    timeout: 5s
+    retries: 3
+services:
+  tonewatch:
+    <<: *tonewatch
+    devices: ["/dev/snd:/dev/snd"]
+    group_add: [audio]
+volumes:
+  tonewatch-data:

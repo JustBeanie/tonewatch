@@ -1,0 +1,75 @@
+name: Release
+on:
+  push:
+    branches: [main]
+  release:
+    types: [published]
+permissions: {}
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions: {contents: read}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with: {persist-credentials: false}
+      - run: python -m json.tool release-please-config.json >/dev/null
+  release-please:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions: {contents: write, pull-requests: write, issues: write}
+    steps:
+      - uses: googleapis/release-please-action@16a9c90856f42705d54a6fda1823352bdc62cf38 # v4.4.0
+        with: {config-file: release-please-config.json, manifest-file: .release-please-manifest.json}
+  publish:
+    if: github.event.action == 'published'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions: {contents: read, packages: write, id-token: write, attestations: write}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with: {persist-credentials: false}
+      - uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392 # v3.6.0
+      - uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+      - id: meta
+        uses: docker/metadata-action@318604b99e75e41977312d83839a89be02ca4893 # v5.9.0
+        with:
+          images: ghcr.io/justbeanie/tonewatch
+          tags: |
+            type=semver,pattern={{version}},value=${{ github.event.release.tag_name }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ github.event.release.tag_name }}
+            type=raw,value=latest
+      - id: push
+        uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25 # v5.4.0
+        with:
+          context: .
+          file: docker/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          provenance: true
+          sbom: true
+      - uses: sigstore/cosign-installer@dc72c7d5c4d10cd6bcb8cf6e3fd625a9e5e537da # v3.7.0
+      - uses: anchore/sbom-action@f325610c9f50a54015d37c8d16cb3b0e2c8f4de0 # v0.18.0
+        id: sbom
+        with:
+          image: ghcr.io/justbeanie/tonewatch@${{ steps.push.outputs.digest }}
+          format: spdx-json
+          output-file: tonewatch.sbom.spdx.json
+          upload-artifact: false
+      - run: |
+          cosign sign --yes ghcr.io/justbeanie/tonewatch@${IMAGE_DIGEST}
+          cosign attest --yes --type spdxjson --predicate tonewatch.sbom.spdx.json ghcr.io/justbeanie/tonewatch@${IMAGE_DIGEST}
+        env:
+          IMAGE_DIGEST: ${{ steps.push.outputs.digest }}
+      - uses: actions/attest-build-provenance@7668571508540a607bdfd90a87a560489fe372eb # v2.1.0
+        with:
+          subject-name: ghcr.io/justbeanie/tonewatch
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true

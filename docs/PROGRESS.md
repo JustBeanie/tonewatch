@@ -86,9 +86,9 @@ Tick a task with `[x]`, then append ` — <PR link> — <one-line note>`. Blocke
 - [x] **W1b.3** Replace the proxy e2e with Playwright’s real single-port app, fixture generator, UI flows, WebSocket check, CI job, and teardown check. — local — `just e2e` reports 4 passed (3.4m), exit code 0.
 
 ## M8: Docker, release and importer
-- [ ] **M8.1** Multi-stage `Dockerfile`:
-- [ ] **M8.2** Compose examples for soundcard (`devices: /dev/snd`, `group_add: audio`), stream, and rtlsdr (`/dev/bus/usb...
-- [ ] **M8.3** `docker.yml` with buildx multi-arch, cosign, SBOM, provenance and Trivy. On `release.yml`, release-please t...
+- [~] **M8.1** Multi-stage `Dockerfile`: **PENDING-CI** — local pre-commit passed; Docker build and image size remain CI-only.
+- [~] **M8.2** Compose examples for soundcard (`/dev/snd`), stream, and RTL-SDR (`/dev/bus/usb`) with S5 hardening — **PENDING-CI** — compose validation and hardware access remain CI/HIL-only.
+- [~] **M8.3** Multi-arch Docker CI and release workflows with signing, SBOM, provenance, and Trivy — **PENDING-CI** — local security, API drift, e2e assertions, and pre-commit passed; PM must observe Docker and release jobs.
 - [ ] **M8.4** `importers/ttd.py`: 🛑 BLOCKED-ON-USER. The user must supply a sample TTD tones config so the format can ...
 
 ## M9: Windows native

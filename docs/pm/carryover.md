@@ -17,6 +17,10 @@ Accepted gaps that must be written into a later brief. Remove an entry once that
   - **Hash guard:** add a test asserting the vendored ASVS CSV sha256 equals the pin in `docs/security/asvs/source/README.md`. The pre-commit global exclude already protects the bytes.
   - **Converting gaps:** 180 GAP rows need converting chapter by chapter on a gap-by-default rule. The PM reviews every positive row.
   - **Nits from S4-close:** V3.3.2 (SameSite) cites the CSRF check instead of the `set_cookie` samesite argument, and the V16.5.1 note carries an "applicability justified" phrase.
+- **S5 — action pin hygiene across ALL workflows** (found in the M8-fix review, 2026-09-12). `scripts/check_action_pins.py` currently scans only `docker.yml` and `release.yml`.
+  - `ci.yml`, `security.yml`, `codeql.yml`, `scorecard.yml` and `pr-title.yml` still carry major-only `# vN` comments, which the checker's exact `# vX.Y.Z` rule rejects.
+  - `ci.yml` pins `pnpm/action-setup@a8198c4…`, which is the annotated **tag object** for `v5`, not a commit. The commit is `fc06bc1…`.
+  - **Brief:** re-pin every action to a commit SHA with an exact-tag comment, then run the checker over `.github/workflows/*.yml` in `just security` and the security workflow.
 - **Later cleanup:** `types-pyyaml` is listed as a runtime dependency in `backend/pyproject.toml`; move it to dev dependencies.
 - **Environment:**
   - The Codex sandbox user owns `.pytest-tmp/`, `backend/.pytest_cache`, `backend/backend/` and `%TEMP%\pytest-of-Beanie`. They are gitignored and harmless, but only that user can delete them.

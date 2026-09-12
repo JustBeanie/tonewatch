@@ -1,9 +1,9 @@
 """Distribution license policy check (S2).
 
-ToneWatch is MIT-licensed. Runtime dependencies that ship with the app must not be
-strong copyleft (GPL/AGPL). LGPL is allowed, but every LGPL package must be named in
-THIRD_PARTY_NOTICES.md. Development tools (linters, test runners) are not distributed
-and are out of scope.
+ToneWatch is MIT-licensed. GPL/AGPL libraries linked into the application are not
+allowed. GPL/AGPL executables may be bundled as separate programs and invoked as
+subprocesses when their notices are included in THIRD_PARTY_NOTICES.md. LGPL is
+allowed, but every LGPL package must be named there. Development tools are out of scope.
 
 Inputs are produced by the `just security` recipe:
   --python-requirements  output of `uv export --no-dev --no-emit-project`

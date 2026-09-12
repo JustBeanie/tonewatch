@@ -36,12 +36,14 @@ if [ -z "$RESUME" ]; then
     echo "If the /goal line above was not registered as a goal, create one yourself with that objective."
     echo "Do not stop to ask questions: make reasonable decisions, record them, and keep going until the goal is complete or truly blocked."
     echo "Narrate briefly as you go: before each phase of work, send a one-sentence message saying what you are about to do and why."
+    echo "HARD RULES (a violation fails review regardless of results): never edit anything under docs/pm/; never change .pre-commit-config.yaml excludes or otherwise weaken a gate (no skips, deselects, exclusions, widened policies); never delete, truncate or replace files your brief did not ask you to touch; report blockers in your final message instead."
     echo
     cat "$ROOT/docs/pm/briefs/$BRIEF.md"
   } > "$PROMPT_FILE"
 else
   {
     echo "Narrate briefly as you go: before each phase of work, send a one-sentence message saying what you are about to do and why."
+    echo "HARD RULES (a violation fails review regardless of results): never edit anything under docs/pm/; never change .pre-commit-config.yaml excludes or otherwise weaken a gate (no skips, deselects, exclusions, widened policies); never delete, truncate or replace files your brief did not ask you to touch; report blockers in your final message instead."
     echo
     cat "$ROOT/docs/pm/briefs/$BRIEF.md"
   } > "$PROMPT_FILE"
