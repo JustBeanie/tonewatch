@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import html
+import re
 from pathlib import Path
 from urllib.parse import unquote
 
@@ -41,11 +42,18 @@ def _safe_file(root: Path, path: str) -> Path | None:
     return candidate if candidate.is_file() else None
 
 
+# Supervisor ingress paths look like /api/hassio_ingress/<token>; anything else is refused.
+_INGRESS_PATH = re.compile(r"[A-Za-z0-9_/-]{1,256}")
+
+
 def _ingress_prefix(request: Request) -> str:
     auth = getattr(request.app.state, "auth", None)
     if auth is None or not auth.ingress_valid(request):
         return ""
-    return "/" + request.headers["x-ingress-path"].strip("/")
+    segments = request.headers["x-ingress-path"].strip("/")
+    if _INGRESS_PATH.fullmatch(segments) is None:
+        return ""
+    return "/".join(("", segments))
 
 
 def _html_response(root: Path, request: Request) -> Response:

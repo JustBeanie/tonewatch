@@ -178,3 +178,25 @@ async def test_spa_ingress_prefix_base(peer: str, expected: str) -> None:
                 headers={"Accept": "text/html", "X-Ingress-Path": "/api/hassio_ingress/token"},
             )
         assert f'<base href="{expected}">' in response.text
+
+
+@pytest.mark.asyncio
+async def test_spa_ingress_prefix_rejects_malformed_path() -> None:
+    with TemporaryDirectory() as directory:
+        root = Path(directory)
+        dist = root / "dist"
+        write_dist(dist)
+        app = make_app(root / "data", dist, addon_mode=True)
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app, client=("172.30.32.2", 1)),
+            base_url="http://test",
+        ) as client:
+            response = await client.get(
+                "/tonesets/new",
+                headers={
+                    "Accept": "text/html",
+                    "X-Ingress-Path": '/api/hassio_ingress/tok"><script>alert(1)</script>',
+                },
+            )
+        assert '<base href="/">' in response.text
+        assert "<script>alert(1)</script>" not in response.text
