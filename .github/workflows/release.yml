@@ -64,8 +64,8 @@ jobs:
           output-file: tonewatch.sbom.spdx.json
           upload-artifact: false
       - run: |
-          cosign sign --yes ghcr.io/justbeanie/tonewatch@${IMAGE_DIGEST}
-          cosign attest --yes --type spdxjson --predicate tonewatch.sbom.spdx.json ghcr.io/justbeanie/tonewatch@${IMAGE_DIGEST}
+          cosign sign --yes "ghcr.io/justbeanie/tonewatch@${IMAGE_DIGEST}"
+          cosign attest --yes --type spdxjson --predicate tonewatch.sbom.spdx.json "ghcr.io/justbeanie/tonewatch@${IMAGE_DIGEST}"
         env:
           IMAGE_DIGEST: ${{ steps.push.outputs.digest }}
       - uses: actions/attest-build-provenance@7668571508540a607bdfd90a87a560489fe372eb # v2.1.0

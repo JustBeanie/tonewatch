@@ -51,7 +51,8 @@ jobs:
           for file in docker/compose.soundcard.yml docker/compose.stream.yml docker/compose.rtlsdr.yml; do
             docker compose -f "$file" config -q
             docker compose -f "$file" config --format json > rendered.json
-            jq -e '.services.tonewatch.ports[] | select(.target == 8099 and .published == 8099)' rendered.json >/dev/null
+            # compose renders published ports as strings, targets as numbers.
+            jq -e '.services.tonewatch.ports[] | select((.target|tostring) == "8099" and (.published|tostring) == "8099")' rendered.json >/dev/null
           done
   size:
     needs: build-amd64
@@ -63,7 +64,10 @@ jobs:
         with: {name: tonewatch-amd64}
       - run: |
           docker load < <(gzip -dc tonewatch-amd64.tar.gz)
-          test "$(docker image inspect tonewatch-ci:amd64 --format '{{.Size}}')" -lt 350000000
+          size="$(docker image inspect tonewatch-ci:amd64 --format '{{.Size}}')"
+          echo "image size: ${size} bytes ($((size / 1000000)) MB), budget 350 MB"
+          docker history --no-trunc --format '{{.Size}}	{{.CreatedBy}}' tonewatch-ci:amd64 | head -20
+          test "$size" -lt 350000000
   trivy:
     needs: build-amd64
     runs-on: ubuntu-latest
@@ -88,7 +92,7 @@ jobs:
       - run: docker load < <(gzip -dc tonewatch-amd64.tar.gz)
       - name: Verify installed package is self-contained
         run: >-
-          docker run --rm tonewatch-ci:amd64 python -c
+          docker run --rm --entrypoint python tonewatch-ci:amd64 -c
           "import tonewatch, tonewatch.api.spa; from importlib.resources import files; p=files('tonewatch')/'web_dist'/'index.html'; print(p); assert p.is_file()"
       - name: Start hardened container with read-only config mount
         run: |
@@ -99,7 +103,11 @@ jobs:
           docker run -d --name tonewatch-smoke --read-only --tmpfs /tmp --cap-drop ALL --security-opt no-new-privileges:true \
             -p 8099:8099 -v tonewatch-smoke:/data -v "$PWD/smoke-data/config.yaml:/data/config.yaml:ro" \
             -e TONEWATCH_UI_PASSWORD=smoke-password tonewatch-ci:amd64
-          for i in {1..60}; do curl --fail http://127.0.0.1:8099/readyz && break || sleep 1; done
+          for _ in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:8099/readyz >/dev/null; then break; fi
+            sleep 1
+          done
+          curl --fail http://127.0.0.1:8099/readyz
           curl --fail http://127.0.0.1:8099/
           curl --fail http://127.0.0.1:8099/api/auth/status
           curl --fail http://127.0.0.1:8099/healthz
@@ -147,7 +155,13 @@ jobs:
           -v "$PWD/container-fixtures:/fixtures:ro" -e TONEWATCH_UI_PASSWORD=e2e-password
           --entrypoint /bin/sh tonewatch-ci:amd64 -c
           "cp /fixtures/config.yaml /data/config.yaml && exec tini -- tonewatch serve"
-      - run: for i in {1..60}; do curl --fail http://127.0.0.1:8099/readyz && break || sleep 1; done
+      - name: Wait for the container to become ready
+        run: |
+          for _ in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:8099/readyz >/dev/null; then break; fi
+            sleep 1
+          done
+          curl --fail http://127.0.0.1:8099/readyz
       - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
         with: {package_json_file: web/package.json}
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
@@ -155,3 +169,6 @@ jobs:
       - run: pnpm --dir web install --frozen-lockfile && pnpm --dir web exec playwright install --with-deps chromium
       - run: pnpm --dir web exec playwright test
         env: {TONEWATCH_E2E_URL: http://127.0.0.1:8099, PLAYWRIGHT_CHANNEL: chromium}
+      - if: always()
+        name: Container logs
+        run: docker logs tonewatch-e2e || true

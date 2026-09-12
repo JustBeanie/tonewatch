@@ -33,12 +33,13 @@ jobs:
         with: {fetch-depth: 0, persist-credentials: false}
       - name: Scan full history for secrets
         # gitleaks v8.19+ takes the repo as a positional arg; safe.directory because the
-        # container user does not own the runner's checkout.
+        # container user does not own the runner's checkout. --verbose prints file, line and rule
+        # for each finding while --redact still hides the matched value.
         run: >-
           docker run --rm -v "$PWD:/repo"
           -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0=/repo
           zricethezav/gitleaks@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f
-          git --no-banner --redact --exit-code 1 /repo
+          git --no-banner --redact --verbose --exit-code 1 /repo
 
   semgrep:
     permissions: {contents: read}
