@@ -122,13 +122,14 @@ class Supervisor:
         """Apply a source diff without disturbing unchanged channel tasks."""
         desired = {source.id: source for source in config.sources if source.enabled}
         current = dict(self._configs)
+        tone_sets_changed = config.tone_sets != self.config.tone_sets
         for source_id, old in current.items():
-            if source_id not in desired or desired[source_id] != old:
+            if source_id not in desired or desired[source_id] != old or tone_sets_changed:
                 await self._stop_source(source_id)
         self.config = config
         await self.alerts.reload(config)
         for source_id, source in desired.items():
-            if source_id not in current or current[source_id] != source:
+            if source_id not in current or current[source_id] != source or tone_sets_changed:
                 self._start_source(source)
 
     def _start_source(self, source: Source) -> None:

@@ -27,6 +27,17 @@ class RecordingReady:
 
 
 @dataclass(frozen=True)
+class RecordingStored:
+    """Identify a recording after its database row is committed."""
+
+    call_id: UUID
+    recording_id: int
+    format: str
+    source_id: str = ""
+    test: bool = False
+
+
+@dataclass(frozen=True)
 class FeedHealthChanged:
     source_id: str
     healthy: bool
@@ -71,6 +82,7 @@ class SpectrumUpdate:
 Event = (
     ToneDetected
     | RecordingReady
+    | RecordingStored
     | FeedHealthChanged
     | CallClosed
     | ConfigChanged

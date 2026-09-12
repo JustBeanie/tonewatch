@@ -41,7 +41,7 @@ from tonewatch.config.models import (
     ToneSpec,
     WebhookTarget,
 )
-from tonewatch.events import CallClosed, EventBus, RecordingReady, ToneDetected
+from tonewatch.events import CallClosed, EventBus, RecordingReady, RecordingStored, ToneDetected
 from tonewatch.settings import Settings
 
 # Resolved once: on Linux uv venvs sys.executable is a symlink, and resolve_executable()
@@ -476,7 +476,7 @@ def test_dispatcher_recording_phase_and_target_edges(monkeypatch: pytest.MonkeyP
         call_id = uuid4()
         await dispatcher.handle(ToneDetected(call_id, "page", datetime.now(UTC), "radio"))
         payloads.clear()
-        await dispatcher.handle(RecordingReady(call_id, "recording.mp3", "mp3"))
+        await dispatcher.handle(RecordingStored(call_id, 7, "mp3"))
         assert payloads[0]["phase"] == "recording_ready"
         await dispatcher._dispatch("missing", "pre_alert", call_id, {})
         await dispatcher._record(call_id, "hook", "closed", 1, True, object())
@@ -493,6 +493,98 @@ def test_dispatcher_recording_phase_and_target_edges(monkeypatch: pytest.MonkeyP
         assert (await mqtt_dispatcher._send(mqtt_target, {})).ok
 
     asyncio.run(run())
+
+
+def test_external_alert_payloads_never_contain_filesystem_paths(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    async def run() -> None:
+        webhook_payloads: list[dict[str, object]] = []
+        mqtt_payloads: list[dict[str, object]] = []
+        discovery_payloads: list[object] = []
+
+        async def sender(
+            _target: WebhookTarget,
+            payload: dict[str, object],
+            _settings: Settings,
+            **_kwargs: object,
+        ) -> Any:
+            webhook_payloads.append(payload)
+            return type("Result", (), {"ok": True, "status_code": 200, "error": None})()
+
+        class Publisher:
+            @property
+            def availability_topic(self) -> str:
+                return "tonewatch/instance/availability"
+
+            async def publish_call(self, payload: dict[str, object]) -> None:
+                mqtt_payloads.append(payload)
+
+            async def publish(self, _topic: str, payload: object, *, retain: bool = False) -> None:
+                del retain
+                discovery_payloads.append(payload)
+
+        monkeypatch.setattr("tonewatch.alerts.dispatcher.send_webhook", sender)
+        root = tmp_path / "recordings"
+        config = AppConfig(
+            tone_sets=[tone_set("hook", "mqtt")],
+            alert_targets=[
+                WebhookTarget(id="hook", name="Hook", url=AnyUrl("https://example.com")),
+                MqttTarget(id="mqtt", name="MQTT"),
+            ],
+        )
+        dispatcher = AlertDispatcher(config, EventBus(), settings=Settings(recordings_root=root))
+        dispatcher._mqtt["mqtt"] = cast("MqttPublisher", Publisher())
+        call_id = uuid4()
+        path = str(root / "2026" / "09" / "11" / "call.mp3")
+        await dispatcher.handle(ToneDetected(call_id, "page", datetime.now(UTC), "radio"))
+        await dispatcher.handle(RecordingReady(call_id, path, "mp3", "radio"))
+        await dispatcher.handle(RecordingStored(call_id, 7, "mp3", "radio"))
+        await dispatcher.handle(CallClosed(call_id, "recorded", "radio"))
+        discovery = HADiscovery(cast("Any", Publisher()), "instance")
+        await discovery.publish(config)
+
+        serialized = json.dumps([webhook_payloads, mqtt_payloads, discovery_payloads])
+        assert str(root) not in serialized
+        assert str(root / "2026") not in serialized
+        assert all("recording_path" not in payload for payload in webhook_payloads + mqtt_payloads)
+        assert all("recording_path" not in json.dumps(payload) for payload in discovery_payloads)
+
+    asyncio.run(run())
+
+
+def test_dispatcher_does_not_swallow_session_errors(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    async def run() -> None:
+        async def sender(
+            _target: WebhookTarget,
+            _payload: dict[str, object],
+            _settings: Settings,
+            **_kwargs: object,
+        ) -> Any:
+            return type("Result", (), {"ok": True, "status_code": 200, "error": None})()
+
+        def broken_session() -> Any:
+            raise AttributeError
+
+        monkeypatch.setattr("tonewatch.alerts.dispatcher.send_webhook", sender)
+        dispatcher = AlertDispatcher(
+            AppConfig(
+                tone_sets=[tone_set("hook")],
+                alert_targets=[
+                    WebhookTarget(id="hook", name="Hook", url=AnyUrl("https://example.com"))
+                ],
+            ),
+            EventBus(),
+            broken_session,
+            settings=Settings(),
+        )
+        await dispatcher.handle(ToneDetected(uuid4(), "page", datetime.now(UTC), "radio"))
+
+    with caplog.at_level("ERROR", logger="tonewatch.alerts"):
+        asyncio.run(run())
+    assert "alert attempt persistence failed" in caplog.text
 
 
 def test_script_disabled_unless_allowed_and_enabled(tmp_path: Path) -> None:

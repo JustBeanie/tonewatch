@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import secrets
 from collections import defaultdict
 from collections.abc import Awaitable, Callable
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
-
-from sqlalchemy import select
 
 from tonewatch.alerts.ha_discovery import HADiscovery
 from tonewatch.alerts.mqtt import MqttPublisher
@@ -21,16 +20,18 @@ from tonewatch.events import (
     EventBus,
     FeedHealthChanged,
     RecordingReady,
+    RecordingStored,
     Subscription,
     ToneDetected,
 )
-from tonewatch.storage.models import AlertAttempt, Recording
+from tonewatch.storage.models import AlertAttempt
 
 if TYPE_CHECKING:
     from uuid import UUID
 
 Sleep = Callable[[float], Awaitable[None]]
 Jitter = Callable[[float], float]
+LOGGER = logging.getLogger("tonewatch.alerts")
 
 
 class AlertDispatcher:
@@ -50,10 +51,12 @@ class AlertDispatcher:
     ) -> None:
         self.config, self.bus, self.session_factory = config, bus, session_factory
         self.settings, self.instance_id = settings, instance_id
+        self.logger = LOGGER
         self.sleep, self.jitter, self.timeout_s = sleep, jitter or self._jitter, timeout_s
         self.subscription: Subscription | None = None
         self.task: asyncio.Task[None] | None = None
         self._deliveries: set[asyncio.Task[None]] = set()
+        self._event_chains: dict[UUID, asyncio.Task[None]] = {}
         self._seen: set[tuple[UUID, str, str]] = set()
         self._calls: dict[UUID, dict[str, Any]] = defaultdict(
             lambda: {"tone_sets": [], "test": False, "source_id": "", "recording_path": None}
@@ -127,11 +130,28 @@ class AlertDispatcher:
             if isinstance(event, FeedHealthChanged):
                 await self._health(event)
                 continue
-            if not isinstance(event, (ToneDetected, RecordingReady, CallClosed)):
+            if not isinstance(event, (ToneDetected, RecordingReady, RecordingStored, CallClosed)):
                 continue
-            task = asyncio.create_task(self.handle(event), name="tonewatch-alert-event")
+            previous = self._event_chains.get(event.call_id)
+
+            async def process(
+                previous: asyncio.Task[None] | None = previous,
+                event: ToneDetected | RecordingReady | RecordingStored | CallClosed = event,
+            ) -> None:
+                if previous is not None:
+                    await asyncio.gather(previous, return_exceptions=True)
+                await self.handle(event)
+
+            task = asyncio.create_task(process(), name="tonewatch-alert-event")
             self._deliveries.add(task)
-            task.add_done_callback(self._deliveries.discard)
+
+            def finished(done: asyncio.Task[None], call_id: UUID = event.call_id) -> None:
+                self._deliveries.discard(done)
+                if self._event_chains.get(call_id) is done:
+                    self._event_chains.pop(call_id, None)
+
+            self._event_chains[event.call_id] = task
+            task.add_done_callback(finished)
 
     async def _health(self, event: FeedHealthChanged) -> None:
         await asyncio.gather(
@@ -142,7 +162,9 @@ class AlertDispatcher:
             return_exceptions=True,
         )
 
-    async def handle(self, event: ToneDetected | RecordingReady | CallClosed) -> None:
+    async def handle(
+        self, event: ToneDetected | RecordingReady | RecordingStored | CallClosed
+    ) -> None:
         """Process one domain event, primarily useful for deterministic tests."""
         phase: str
         call_id: UUID
@@ -156,11 +178,16 @@ class AlertDispatcher:
             state.update(source_id=event.source_id, test=state["test"] or test)
             detected_at = event.detected_at
         elif isinstance(event, RecordingReady):
-            call_id, phase = event.call_id, "recording_ready"
+            call_id = event.call_id
             state = self._calls[call_id]
             state["recording_path"] = event.path
+            return
+        elif isinstance(event, RecordingStored):
+            call_id, phase = event.call_id, "recording_ready"
+            state = self._calls[call_id]
+            state.update(source_id=event.source_id, test=state["test"] or event.test)
             test, detected_at = bool(state["test"]), None
-            recording_url = await self._recording_url(event)
+            recording_url = f"/api/recordings/{event.recording_id}"
         else:
             call_id, phase, test = event.call_id, "closed", event.test
             state = self._calls[call_id]
@@ -176,7 +203,20 @@ class AlertDispatcher:
             recording_url=recording_url,
         )
         await asyncio.gather(
-            *(self._dispatch(target_id, phase, call_id, payload) for target_id in target_ids),
+            *(
+                self._dispatch(
+                    target_id,
+                    phase,
+                    call_id,
+                    payload,
+                    recording_path=(
+                        state.get("recording_path")
+                        if isinstance(state.get("recording_path"), str)
+                        else None
+                    ),
+                )
+                for target_id in target_ids
+            ),
             return_exceptions=True,
         )
 
@@ -203,37 +243,21 @@ class AlertDispatcher:
             "tone_sets": list(state["tone_sets"]),
             "phase": phase,
             "detected_at": detected_at.isoformat() if detected_at else None,
-            "recording_url": recording_url or state.get("recording_path"),
-            "recording_path": state.get("recording_path"),
+            "recording_url": recording_url,
             "source_id": state.get("source_id", ""),
             "test": bool(state.get("test") or test),
         }
         payload["toneset"] = state["tone_sets"][0] if state["tone_sets"] else ""
         return payload
 
-    async def _recording_url(self, event: RecordingReady) -> str | None:
-        """Resolve a persisted recording to the authenticated API route."""
-        if self.session_factory is None:
-            return None
-        for _ in range(100):
-            try:
-                async with self.session_factory() as session:
-                    row = (
-                        await session.scalars(
-                            select(Recording)
-                            .where(Recording.call_id == event.call_id, Recording.path == event.path)
-                            .order_by(Recording.id.desc())
-                        )
-                    ).first()
-            except AttributeError:
-                return None
-            if row is not None:
-                return f"/api/recordings/{row.id}"
-            await asyncio.sleep(0)
-        return None
-
     async def _dispatch(
-        self, target_id: str, phase: str, call_id: UUID, payload: dict[str, object]
+        self,
+        target_id: str,
+        phase: str,
+        call_id: UUID,
+        payload: dict[str, object],
+        *,
+        recording_path: str | None = None,
     ) -> None:
         key = (call_id, target_id, phase)
         if key in self._seen:
@@ -244,7 +268,9 @@ class AlertDispatcher:
             return
         for attempt_no in range(1, 6):
             try:
-                outcome = await asyncio.wait_for(self._send(target, payload), self.timeout_s)
+                outcome = await asyncio.wait_for(
+                    self._send(target, payload, recording_path=recording_path), self.timeout_s
+                )
             except TimeoutError:
                 outcome = WebhookResult(False, error="target timeout")
             except Exception as exc:
@@ -256,22 +282,26 @@ class AlertDispatcher:
             if attempt_no < 5:
                 await self.sleep(self.jitter(float(2 ** (attempt_no - 1))))
 
-    async def _send(self, target: AlertTarget, payload: dict[str, object]) -> Any:
+    async def _send(
+        self, target: AlertTarget, payload: dict[str, object], *, recording_path: str | None = None
+    ) -> Any:
         if isinstance(target, MqttTarget):
             await self._mqtt[target.id].publish_call(payload)
             return WebhookResult(True, status_code=0)
         if isinstance(target, WebhookTarget):
-            recording_path = payload.get("recording_path")
             return await send_webhook(
                 target,
                 payload,
                 self.settings,
-                recording_path=recording_path if isinstance(recording_path, str) else None,
+                recording_path=recording_path,
             )
         if isinstance(target, ScriptTarget):
+            script_payload = dict(payload)
+            if recording_path is not None:
+                script_payload["recording_path"] = recording_path
             return await run_script(
                 target,
-                payload,
+                script_payload,
                 allow_script_targets=bool(getattr(self.settings, "allow_script_targets", False)),
                 allowlist_dirs=list(getattr(self.settings, "script_allowlist_dirs", [])),
             )
@@ -291,17 +321,22 @@ class AlertDispatcher:
         error = getattr(result, "error", None)
         if error is not None:
             error = str(error)[:500]
-        async with self.session_factory() as session:
-            session.add(
-                AlertAttempt(
-                    call_id=call_id,
-                    target_id=target_id,
-                    phase=phase,
-                    attempt_no=attempt_no,
-                    ok=ok,
-                    status_code=getattr(result, "status_code", None),
-                    error=error,
-                    created_at=datetime.now().astimezone(),
+        try:
+            async with self.session_factory() as session:
+                session.add(
+                    AlertAttempt(
+                        call_id=call_id,
+                        target_id=target_id,
+                        phase=phase,
+                        attempt_no=attempt_no,
+                        ok=ok,
+                        status_code=getattr(result, "status_code", None),
+                        error=error,
+                        created_at=datetime.now().astimezone(),
+                    )
                 )
+                await session.commit()
+        except Exception:
+            self.logger.exception(
+                "alert attempt persistence failed", extra={"call_id": str(call_id)}
             )
-            await session.commit()
