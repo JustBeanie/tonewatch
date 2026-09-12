@@ -67,6 +67,63 @@ def test_file_fast_mode_timestamps_and_loop(tmp_path: Path) -> None:
     assert all(frame.samples.dtype == np.float32 for frame in frames)
 
 
+def test_file_loop_keeps_stream_time_monotonic_across_wraps(tmp_path: Path) -> None:
+    """Looping must not rewind stream time: calls, cooldowns and post-roll run on it."""
+    samples = np.linspace(-0.5, 0.5, 800, dtype=np.float32)
+    path = tmp_path / "input.wav"
+    write_wav(path, samples)
+
+    async def run() -> list[AudioFrame]:
+        source = FileAudioSource(config_file(str(path), loop=True), chunk_size=400)
+        await source.open()
+        frames = []
+        async for frame in source:
+            frames.append(frame)
+            if len(frames) == 10:
+                await source.close()
+        return frames
+
+    frames = asyncio.run(run())
+    times = [frame.stream_time_s for frame in frames]
+    # 800 samples at 8 kHz resample to 1600 at 16 kHz: four 400-sample chunks per pass.
+    assert np.allclose(times, [index * 0.025 for index in range(10)])
+    assert np.all(np.diff(times) > 0)
+
+
+def test_file_loop_realtime_pacing_continues_after_first_pass(tmp_path: Path) -> None:
+    """Every pass is paced; the second pass must not run unthrottled."""
+    samples = np.linspace(-0.5, 0.5, 800, dtype=np.float32)
+    path = tmp_path / "input.wav"
+    write_wav(path, samples)
+    now = [0.0]
+    delays: list[float] = []
+
+    async def sleep(delay: float) -> None:
+        delays.append(delay)
+        now[0] += delay
+
+    async def run() -> None:
+        source = FileAudioSource(
+            config_file(str(path), realtime=True, loop=True),
+            chunk_size=400,
+            clock=lambda: now[0],
+            sleep=sleep,
+        )
+        await source.open()
+        count = 0
+        async for _frame in source:
+            count += 1
+            if count == 10:
+                await source.close()
+
+    asyncio.run(run())
+    # Frame k is due at k * 25 ms on a clock that only advances by sleeping, so every
+    # frame after the first waits 25 ms, including those after the wrap at frame 4.
+    assert delays[0] == 0
+    assert all(abs(delay - 0.025) < 1e-9 for delay in delays[1:])
+    assert abs(now[0] - 0.225) < 1e-9
+
+
 @given(rate=st.sampled_from([8000, 22050, 44100, 48000]), channels=st.integers(1, 2))
 def test_resampler_preserves_duration_and_frequency(rate: int, channels: int) -> None:
     count = rate // 2

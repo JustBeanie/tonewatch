@@ -113,6 +113,7 @@ class FileAudioSource:
             await self.open()
         assert self._samples is not None
         position = 0
+        emitted = 0
         started = self._clock()
         while not self._closed:
             if position >= self._samples.size:
@@ -121,10 +122,13 @@ class FileAudioSource:
                 position = 0
             end = min(position + self.chunk_size, self._samples.size)
             chunk = self._samples[position:end]
+            # Stream time counts every emitted sample, so looping never rewinds the timeline that
+            # calls, cooldowns and post-roll deadlines run on, and every pass stays paced.
+            stream_time_s = emitted / 16_000
             if self.config.realtime:
-                due = started + position / 16_000
-                await self._sleep(max(0.0, due - self._clock()))
-            yield AudioFrame(chunk, position / 16_000, self.config.id)
+                await self._sleep(max(0.0, started + stream_time_s - self._clock()))
+            yield AudioFrame(chunk, stream_time_s, self.config.id)
+            emitted += end - position
             position = end
 
 
