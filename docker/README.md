@@ -7,6 +7,13 @@ file for that source). Open <http://127.0.0.1:8099/> after startup. Stream input
 `/dev/snd`; RTL-SDR uses `/dev/bus/usb` and the host must blacklist
 `dvb_usb_rtl28xxu`.
 
+The final image size is enforced below 350,000,000 uncompressed bytes by the
+`docker.yml` size job, which prints the exact byte count and `docker history`.
+The pre-cleanup diagnostic measured 353,979,998 bytes; its largest layers were
+the `/opt/venv` copy at about 218 MB, the Python base at about 48 MB, and the
+APT runtime packages at about 9.5 MB. The removed packaging tools are in the
+Python base layer; the CI size log is authoritative for the final byte count.
+
 Published images are pushed to GHCR and signed and attested in the release
 workflow. For this private repository, GHCR pushes still work, but GitHub's
 public attestation UI may not be available.

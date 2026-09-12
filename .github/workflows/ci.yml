@@ -3,6 +3,36 @@ on: [push, pull_request]
 permissions:
   contents: read
 jobs:
+  runtime-closure:
+    permissions: {contents: read}
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with: {persist-credentials: false}
+      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libportaudio2
+      - name: Install only runtime dependencies and import every module
+        run: |
+          venv="$RUNNER_TEMP/tonewatch-runtime-venv"
+          requirements="$RUNNER_TEMP/tonewatch-runtime-requirements.txt"
+          dist="$RUNNER_TEMP/tonewatch-runtime-dist"
+          uv venv --python 3.13 "$venv"
+          uv export --project backend --frozen --no-dev --no-emit-project --format requirements-txt > "$requirements"
+          uv pip install --python "$venv/bin/python" -r "$requirements"
+          uv build --project backend --wheel --out-dir "$dist"
+          uv pip install --python "$venv/bin/python" "$dist"/*.whl
+          "$venv/bin/python" - <<'PY'
+          import importlib
+          import pkgutil
+          import tonewatch
+
+          modules = [tonewatch.__name__]
+          modules.extend(module.name for module in pkgutil.walk_packages(tonewatch.__path__, "tonewatch."))
+          for name in modules:
+              importlib.import_module(name)
+          print(f"imported {len(modules)} runtime modules")
+          PY
   test-python:
     permissions: {contents: read}
     timeout-minutes: 20

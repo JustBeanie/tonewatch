@@ -91,9 +91,23 @@ jobs:
         with: {name: tonewatch-amd64}
       - run: docker load < <(gzip -dc tonewatch-amd64.tar.gz)
       - name: Verify installed package is self-contained
-        run: >-
-          docker run --rm --entrypoint python tonewatch-ci:amd64 -c
-          "import tonewatch, tonewatch.api.spa; from importlib.resources import files; p=files('tonewatch')/'web_dist'/'index.html'; print(p); assert p.is_file()"
+        run: |
+          docker run --rm --entrypoint python tonewatch-ci:amd64 - <<'PY'
+          import av
+          import certifi
+          import importlib.util
+          import numpy
+          import sounddevice
+          import tonewatch
+          import tonewatch.api.spa
+          from importlib.resources import files
+
+          web_index = files("tonewatch") / "web_dist" / "index.html"
+          assert web_index.is_file()
+          assert certifi.where()
+          assert importlib.util.find_spec("scipy.signal") is None
+          print(web_index)
+          PY
       - name: Start hardened container with read-only config mount
         run: |
           mkdir smoke-data

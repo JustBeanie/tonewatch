@@ -27,7 +27,16 @@ def run_migrations_online() -> None:
             context.run_migrations()
 
 
-if context.is_offline_mode():
-    run_migrations_offline()
-else:
-    run_migrations_online()
+def run_migrations() -> None:
+    """Run under Alembic while remaining safe for runtime import discovery."""
+    try:
+        offline = context.is_offline_mode()
+    except (AttributeError, NameError):
+        return
+    if offline:
+        run_migrations_offline()
+    else:
+        run_migrations_online()
+
+
+run_migrations()

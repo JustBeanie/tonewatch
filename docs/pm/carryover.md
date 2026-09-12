@@ -4,6 +4,11 @@ Accepted gaps that must be written into a later brief. Remove an entry once that
 
 ## Open
 
+- 🛑 **USER DECISION: release-please can't open PRs.** Since `d05564e`, `release.yml / release-please` fails with "GitHub Actions is not permitted to create or approve pull requests". Before failing, it pushed branch `release-please--branches--main`.
+  - **Option 1:** enable *Settings → Actions → General → Allow GitHub Actions to create and approve pull requests*.
+  - **Option 2:** give that job a fine-grained PAT secret with `contents` + `pull-requests` write.
+  - This is a repository setting, so it needs the user's explicit OK. Until then that job stays red, and it doesn't block other work.
+
 - **M8 (Docker) — HTTPS in the image.** The image's PyAV wheel must open **public** HTTPS with the product options (`tls_verify=1` + certifi `ca_file`). Linux wheels honour `ca_file` (CI run 34673148889), but the image may ship a different wheel. *In `docs/pm/briefs/M8.md`.*
 - **M9 (Windows native).**
   - **MQTT selector thread:** `test_mqtt_real_broker_via_selector_thread` has an unconditional `@pytest.mark.skip`, so it runs on **no** platform, and the Windows selector-thread MQTT path has only a fake-client test. The M9 brief must require a real round-trip on windows-latest (amqtt in its own `SelectorEventLoop` thread, or a mosquitto binary) and remove the skip. The Linux real-broker test passes on ubuntu and ubuntu-arm.

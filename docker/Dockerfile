@@ -25,7 +25,17 @@ LABEL org.opencontainers.image.source="https://github.com/JustBeanie/tonewatch" 
       org.opencontainers.image.licenses="MIT"
 RUN apt-get update \
     && apt-get install --no-install-recommends -y libportaudio2 rtl-sdr tini ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && rm -rf \
+        /usr/local/lib/python3.13/site-packages/pip \
+        /usr/local/lib/python3.13/site-packages/pip-*.dist-info \
+        /usr/local/lib/python3.13/site-packages/pkg_resources \
+        /usr/local/lib/python3.13/site-packages/setuptools \
+        /usr/local/lib/python3.13/site-packages/setuptools-*.dist-info \
+        /usr/local/lib/python3.13/site-packages/wheel \
+        /usr/local/lib/python3.13/site-packages/wheel-*.dist-info \
+        /usr/local/lib/python3.13/ensurepip \
+    && rm -f /usr/local/bin/easy_install* /usr/local/bin/pip*
 RUN groupadd --gid 10001 tonewatch \
     && useradd --uid 10001 --gid 10001 --create-home --shell /usr/sbin/nologin tonewatch \
     && usermod --append --groups audio,plugdev tonewatch \

@@ -11,7 +11,9 @@ dependencies = [
   "aiomqtt>=2.4",
   "alembic>=1.19.2",
   "av>=14.0",
+  "certifi>=2024.8.30",
   "fastapi>=0.115",
+  "httpx>=0.28",
   "numpy>=2.1",
   "pydantic>=2.13.5",
   "pydantic-settings>=2.15.0",
@@ -43,7 +45,6 @@ dev = [
   "pytest-timeout>=2.3",
   "pytest-benchmark>=5.1",
   "hypothesis>=6.100",
-  "httpx>=0.28",
   "amqtt>=0.11",
   "ruff>=0.8",
 ]

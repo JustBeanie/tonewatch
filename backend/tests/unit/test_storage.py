@@ -1,6 +1,7 @@
 """M1.3 database tests."""
 
 import asyncio
+import importlib
 from datetime import UTC, datetime
 from pathlib import Path
 from uuid import uuid4
@@ -55,6 +56,11 @@ def test_initial_migration_matches_metadata(tmp_path: Path) -> None:
         migration_context = MigrationContext.configure(connection)
         assert compare_metadata(migration_context, Base.metadata) == []
     engine.dispose()
+
+
+def test_migration_environment_is_safe_to_import() -> None:
+    """Runtime import discovery can inspect the Alembic environment module."""
+    importlib.import_module("tonewatch.storage.migrations.env")
 
 
 def test_upgrade_from_0001_database_adds_phase_column(tmp_path: Path) -> None:
