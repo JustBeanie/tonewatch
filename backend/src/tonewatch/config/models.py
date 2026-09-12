@@ -1,5 +1,6 @@
 """Validated, immutable ToneWatch configuration models."""
 
+from string import Formatter
 from typing import Annotated, Literal
 
 from pydantic import (
@@ -112,8 +113,18 @@ class MqttTarget(FrozenModel):
     id: Slug
     name: str = Field(min_length=1)
     broker: str = "localhost"
+    host: str | None = None
+    port: int = Field(default=1883, ge=1, le=65535)
+    tls: bool = False
+    username: str | None = None
+    password: str | None = None
     topic: str = "tonewatch"
     enabled: bool = True
+
+    @property
+    def hostname(self) -> str:
+        """Return the explicit host, or the legacy broker value."""
+        return self.host or self.broker
 
 
 class WebhookTarget(FrozenModel):
@@ -123,6 +134,7 @@ class WebhookTarget(FrozenModel):
     url: AnyUrl
     secret: str = ""
     include_audio: bool = False
+    allow_insecure_http: bool = False
     enabled: bool = True
 
 
@@ -134,6 +146,21 @@ class ScriptTarget(FrozenModel):
     args: list[str] = []
     timeout_s: Positive = 30
     enabled: bool = False
+
+    @field_validator("args")
+    @classmethod
+    def validate_args(cls, value: list[str]) -> list[str]:
+        """Reject format fields that could silently become configuration bugs."""
+        allowed = {"call_id", "toneset", "recording_path", "source_id", "phase"}
+        for template in value:
+            try:
+                fields = Formatter().parse(template)
+                for _literal, field_name, _format_spec, _conversion in fields:
+                    if field_name is not None and field_name not in allowed:
+                        raise ValueError(f"unsupported script placeholder: {{{field_name}}}")
+            except ValueError as exc:
+                raise ValueError(f"invalid script args template: {template!r}: {exc}") from exc
+        return value
 
 
 AlertTarget = Annotated[MqttTarget | WebhookTarget | ScriptTarget, Field(discriminator="type")]

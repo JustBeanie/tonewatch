@@ -23,6 +23,12 @@ class Settings(BaseSettings):
     addon_mode: bool = False
     zeroconf_enabled: bool = True
     allow_script_targets: bool = False
+    script_allowlist_dirs: list[Path] = Field(default_factory=list)
+    webhook_block_private: bool = False
+    webhook_allow_redirects: bool = False
+    webhook_attachment_max_bytes: int = Field(default=10 * 1024 * 1024, ge=0)
+    ha_integration_enabled: bool = False
+    instance_id: str | None = None
     ui_password: str | None = None
     recordings_root: Path | None = None
     retention: RetentionPolicy = Field(default_factory=RetentionPolicy)

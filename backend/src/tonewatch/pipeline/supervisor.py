@@ -8,6 +8,7 @@ import time
 from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any
 
+from tonewatch.alerts.dispatcher import AlertDispatcher
 from tonewatch.events import EventBus, FeedHealthChanged
 from tonewatch.pipeline.channel import Channel
 from tonewatch.pipeline.persistence import PersistenceSubscriber
@@ -40,6 +41,8 @@ class Supervisor:
         channel_factory: ChannelFactory | None = None,
         shutdown_timeout_s: float = 5,
         retention_service: RetentionService | None = None,
+        settings: Any = None,
+        instance_id: str = "default",
     ) -> None:
         self.config, self.bus, self.session_factory = config, bus, session_factory
         self.clock, self.sleep = clock, sleep
@@ -52,6 +55,15 @@ class Supervisor:
         self._configs: dict[str, Source] = {}
         self._stopping = False
         self.persistence = PersistenceSubscriber(bus, session_factory)
+        self.alerts = AlertDispatcher(
+            config,
+            bus,
+            session_factory,
+            settings=settings,
+            instance_id=instance_id,
+            sleep=sleep,
+            jitter=self.jitter,
+        )
         self.retention_service = retention_service
         self._retention_task: asyncio.Task[None] | None = None
 
@@ -61,6 +73,7 @@ class Supervisor:
             return
         self._stopping = False
         await self.persistence.start()
+        await self.alerts.start()
         if self.retention_service is not None:
             self._retention_task = asyncio.create_task(
                 retention_loop(self.retention_service, self.session_factory, sleep=self.sleep),
@@ -73,6 +86,7 @@ class Supervisor:
     async def stop(self) -> None:
         """Cancel all channel tasks within the bounded shutdown period."""
         self._stopping = True
+        await self.alerts.stop()
         await self.persistence.drain()
         tasks = tuple(self._tasks.values())
         for task in tasks:
@@ -105,6 +119,7 @@ class Supervisor:
             if source_id not in desired or desired[source_id] != old:
                 await self._stop_source(source_id)
         self.config = config
+        await self.alerts.reload(config)
         for source_id, source in desired.items():
             if source_id not in current or current[source_id] != source:
                 self._start_source(source)

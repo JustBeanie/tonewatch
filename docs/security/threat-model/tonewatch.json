@@ -78,10 +78,10 @@
         {"id": "TM-020", "category": "Denial of service", "element": "Retention job", "status": "mitigated"},
         {"id": "TM-021", "category": "Denial of service", "element": "Supervisor / channels", "status": "partial"},
         {"id": "TM-022", "category": "Denial of service", "element": "Auth middleware", "status": "open"},
-        {"id": "TM-023", "category": "Elevation of privilege", "element": "Alert dispatcher (M7)", "status": "planned"},
+        {"id": "TM-023", "category": "Elevation of privilege", "element": "Alert dispatcher (M7)", "status": "mitigated"},
         {"id": "TM-024", "category": "Elevation of privilege", "element": "Container", "status": "planned"},
         {"id": "TM-025", "category": "Elevation of privilege", "element": "Supervisor discovery client", "status": "planned"},
-        {"id": "TM-026", "category": "Elevation of privilege", "element": "Alert dispatcher (M7)", "status": "planned"},
+        {"id": "TM-026", "category": "Elevation of privilege", "element": "Alert dispatcher (M7)", "status": "mitigated"},
         {"id": "TM-027", "category": "Elevation of privilege", "element": "Network stream origin", "status": "open"}
       ]
     }

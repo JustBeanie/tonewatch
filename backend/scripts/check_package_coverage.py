@@ -7,8 +7,8 @@ from typing import Any
 
 REPORT = Path("coverage.json")
 SOURCE_ROOT = Path("backend/src/tonewatch")
-PACKAGES = ("dsp", "pipeline", "sources", "recording")
-MINIMUMS = {"dsp": 95.0, "pipeline": 95.0, "sources": 90.0, "recording": 90.0}
+PACKAGES = ("dsp", "pipeline", "sources", "recording", "alerts")
+MINIMUMS = {"dsp": 95.0, "pipeline": 95.0, "sources": 90.0, "recording": 90.0, "alerts": 90.0}
 MODULE_GATES = {
     "api": (SOURCE_ROOT / "api").rglob("*.py"),
     "integrations": (SOURCE_ROOT / "integrations").rglob("*.py"),

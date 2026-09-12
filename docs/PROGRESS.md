@@ -68,11 +68,11 @@ Tick a task with `[x]`, then append ` — <PR link> — <one-line note>`. Blocke
   BLOCKED: PM rejected M6b-fix harness (it injected a fake recording into `/api/calls/{id}` and self-terminated after 30 s). Root cause is W1: the app never records. Re-done in W1 against real wiring.
 
 ## M7: Alerts
-- [ ] **M7.1** `dispatcher.py` subscribes to events and maps tone sets to targets. It adds per-target retry with exponenti...
-- [ ] **M7.2** `mqtt.py` (aiomqtt): LWT availability topic, `tonewatch/<instance>/call` and `.../health/<channel>` topics,...
-- [ ] **M7.3** `ha_discovery.py`: a device per instance, an `event` entity per tone set (event_types `pre_alert`, `recordi...
-- [ ] **M7.4** `webhook.py`: JSON POST with an HMAC-SHA256 signature header, timeout, and an optional multipart audio atta...
-- [ ] **M7.5** `script.py`: off by default. It uses an allowlisted executable path and an argv list with `{call_id}`/`{rec...
+- [x] **M7.1** `dispatcher.py` subscribes to events and maps tone sets to targets. It adds per-target retry with exponenti... — local — 37 M7 tests cover dedupe, retries, concurrency, test payloads, and attempt rows.
+- [x] **M7.2** `mqtt.py` (aiomqtt): LWT availability topic, `tonewatch/<instance>/call` and `.../health/<channel>` topics,... — local — MQTT publisher, Supervisor credential fallback, bounded outbox; M7-fix: real amqtt broker test `test_mqtt_real_broker_call_health_lwt_and_discovery` (skipped on win32, PENDING Linux CI) and Windows selector-loop client thread.
+- [x] **M7.3** `ha_discovery.py`: a device per instance, an `event` entity per tone set (event_types `pre_alert`, `recordi... — local — Stable discovery payloads, availability, and retained deletion clears covered.
+- [x] **M7.4** `webhook.py`: JSON POST with an HMAC-SHA256 signature header, timeout, and an optional multipart audio atta... — local — URL safety, pinned DNS, redirects, signatures, response cap, attachment root/cap, and secret redaction covered.
+- [x] **M7.5** `script.py`: off by default. It uses an allowlisted executable path and an argv list with `{call_id}`/`{rec... — local — Allowlist, symlink escape, argv injection, env isolation, bounded output, and timeout reap covered.
 
 ## M8: Docker, release and importer
 - [ ] **M8.1** Multi-stage `Dockerfile`:

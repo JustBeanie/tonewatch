@@ -54,6 +54,7 @@ class AlertAttempt(Base):
         ForeignKey("calls.id", ondelete="CASCADE"), nullable=False
     )
     target_id: Mapped[str] = mapped_column(String(100), nullable=False)
+    phase: Mapped[str] = mapped_column(String(40), nullable=False, default="unknown")
     attempt_no: Mapped[int] = mapped_column(Integer, nullable=False)
     ok: Mapped[bool] = mapped_column(Boolean, nullable=False)
     status_code: Mapped[int | None] = mapped_column(Integer)

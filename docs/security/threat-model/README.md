@@ -4,7 +4,7 @@ Open `tonewatch.json` in [OWASP Threat Dragon](https://threatdragon.org/): use *
 
 ## Scope and assumptions
 
-This review covers the M0-M5 implementation as of 2026-09-11. ToneWatch is self-hosted for one household or department, with Home Assistant as the primary deployment. LAN traffic is not assumed confidential unless TLS is supplied by the deployment or HA ingress. The HA integration and alert dispatcher are threat-listed but are future M11/M7 surfaces and are not treated as implemented controls. Host filesystem permissions, container isolation, and Supervisor policy are deployment responsibilities unless explicitly evidenced here.
+This review covers the M0-M7 implementation as of 2026-09-11. ToneWatch is self-hosted for one household or department, with Home Assistant as the primary deployment. LAN traffic is not assumed confidential unless TLS is supplied by the deployment or HA ingress. Host filesystem permissions, container isolation, and Supervisor policy are deployment responsibilities unless explicitly evidenced here.
 
 The stream SSRF finding is concrete: a user who can write a `StreamSource` can set `url` to an internal HTTP endpoint such as `http://169.254.169.254/`; `StreamAudioSource` passes the URL directly to `av.open` in `backend/src/tonewatch/sources/stream.py:18-23`, and the config model only validates URL syntax. Minimal reproduction: save a config containing `{"type":"stream","url":"http://169.254.169.254/latest/meta-data/"}` (or an internal service URL), start the channel, and observe the application host/container making the request. No network allowlist or private-address rejection exists today.
 
@@ -36,10 +36,10 @@ Evidence uses repository-relative `path:line`; “no proving test” is intentio
 | TM-020 | Denial of service | Retention job | Recordings fill the disk despite retention policy or unsafe paths. | med | high | mitigated | `backend/src/tonewatch/recording/retention.py:37`; `test_retention_deletes_oldest_and_refuses_escape` | M5 |
 | TM-021 | Denial of service | Supervisor / channels | Many tone sets or channels consume CPU, memory, and bounded event queues. | med | med | partial | `backend/src/tonewatch/events.py:104`; no proving test | S4 |
 | TM-022 | Denial of service | Auth middleware | Login-throttle state grows without a global bound when keyed by spoofed IPs. | med | med | open | `backend/src/tonewatch/api/auth.py:84`; no proving test | S4 |
-| TM-023 | Elevation of privilege | Alert dispatcher (M7) | Script alert targets execute attacker-controlled arguments or binaries as the container user. | med | high | planned | `backend/src/tonewatch/api/routes/config.py:125`; no proving test | M7 |
+| TM-023 | Elevation of privilege | Alert dispatcher (M7) | Script alert targets execute attacker-controlled arguments or binaries as the container user. | med | high | mitigated | `backend/src/tonewatch/alerts/script.py:52`; `test_script_executable_must_be_in_allowlist_and_not_symlink_escape` | M7 |
 | TM-024 | Elevation of privilege | Container | A root container turns an application compromise into host compromise. | low | high | planned | `PLAN.md:100`; no proving test | M8 |
 | TM-025 | Elevation of privilege | Supervisor discovery client | HA add-on permissions (`hassio_api`, `map: media:rw`) exceed least privilege after compromise. | low | high | planned | `backend/src/tonewatch/integrations/supervisor.py:24`; no proving test | M10 |
-| TM-026 | Elevation of privilege | Alert dispatcher (M7) | Webhook targets permit SSRF to internal services or cloud metadata. | med | high | planned | `backend/src/tonewatch/api/routes/config.py:125`; no proving test | M7 |
+| TM-026 | Elevation of privilege | Alert dispatcher (M7) | Webhook targets permit SSRF to internal services or cloud metadata. | med | high | mitigated | `backend/src/tonewatch/alerts/urlsafety.py:160`; `test_urlsafety_blocks_loopback_linklocal_metadata_and_encodings` | M7 |
 | TM-027 | Elevation of privilege | Network stream origin | A configured stream URL can target localhost, `169.254.169.254`, or private services (SSRF). | high | high | open | `backend/src/tonewatch/sources/stream.py:20`; no proving test | S4 |
 
 ## Accepted risks

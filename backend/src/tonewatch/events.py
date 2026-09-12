@@ -22,6 +22,8 @@ class RecordingReady:
     call_id: UUID
     path: str
     format: str
+    source_id: str = ""
+    test: bool = False
 
 
 @dataclass(frozen=True)

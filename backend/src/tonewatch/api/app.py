@@ -23,7 +23,7 @@ from tonewatch.config.models import AppConfig
 from tonewatch.config.store import ConfigStore
 from tonewatch.events import EventBus
 from tonewatch.integrations.supervisor import register_supervisor_discovery
-from tonewatch.integrations.zeroconf import ZeroconfAdvertiser
+from tonewatch.integrations.zeroconf import ZeroconfAdvertiser, instance_id
 from tonewatch.logging import clear_request_id, configure_logging, set_request_id
 from tonewatch.pipeline.supervisor import Supervisor
 from tonewatch.sources.soundcard import input_devices as _input_devices
@@ -146,7 +146,13 @@ def create_app(
                 await upgrade_database(app.state.engine)
             app.state.config = config_store.load()
             if app.state.supervisor is None:
-                app.state.supervisor = Supervisor(app.state.config, bus, sessions)
+                app.state.supervisor = Supervisor(
+                    app.state.config,
+                    bus,
+                    sessions,
+                    settings=settings,
+                    instance_id=str(settings.instance_id or instance_id(settings.data_dir)),
+                )
             await app.state.supervisor.start()
             await advertiser.start()
             await register_supervisor_discovery(
