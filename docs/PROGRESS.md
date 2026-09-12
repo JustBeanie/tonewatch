@@ -92,9 +92,9 @@ Tick a task with `[x]`, then append ` — <PR link> — <one-line note>`. Blocke
 - [x] **M8.4** `importers/tones_cfg.py` — PM review passed (fix3); host ci-local green — Clean-room preview/apply importer with CLI/API/UI flows, pure-ASGI body limit (no truncated apply on oversized streams), synthetic CRLF/missing-tolerance fixtures and private-fixture structural test.
 
 ## M9: Windows native
-- [~] **M9.1** PyInstaller onedir spec bundles the Docker-equivalent web UI staging, sounddevice PortAudio data, PyAV DLLs, certifi, migrations, and SQLAlchemy/aiosqlite imports — local — PENDING-CI; local build and frozen smoke pass.
-- [~] **M9.2** `tonewatch service install|uninstall|start|stop|status` uses a pywin32 wrapper with graceful lifespan shutdown and an ADR — local — PENDING-CI; fake-manager and shutdown seam tests pass.
-- [~] **M9.3** `windows.yml` builds, smoke-tests, exercises the service lifecycle and schannel HTTPS, and uploads the zip — local — PENDING-CI; workflow lint and local frozen smoke pass.
+- [x] **M9.1** PyInstaller onedir spec bundles the Docker-equivalent web UI staging, sounddevice PortAudio data, PyAV DLLs, certifi, migrations, and SQLAlchemy/aiosqlite imports — local — CI green on GitHub (250221e); local build and frozen smoke pass.
+- [x] **M9.2** `tonewatch service install|uninstall|start|stop|status` uses a pywin32 wrapper with graceful lifespan shutdown and an ADR — local — CI green on GitHub (250221e); fake-manager and shutdown seam tests pass.
+- [x] **M9.3** `windows.yml` builds, smoke-tests, exercises the service lifecycle and schannel HTTPS, and uploads the zip — local — CI green on GitHub (250221e); workflow lint and local frozen smoke pass.
 
 ## M10: HA add-on (in `JustBeanie/ha-addons`)
 - [ ] **M10.1** `tonewatch/config.yaml` settings:
@@ -124,7 +124,7 @@ Tick a task with `[x]`, then append ` — <PR link> — <one-line note>`. Blocke
 - [ ] **M12.1** mkdocs-material site: install guides (Docker, Pi, add-on, Windows), finding tone frequencies, tuning purity...
 - [ ] **M12.2** Threat model doc: exposed API, token storage, the script hook, and webhook SSRF, with an allowlist and bloc...
 - [ ] **M12.3** README disclaimer: this is a supplemental notification tool, not a certified primary alerting system, and r...
-- [x] **M12.5** Clean-room naming scrub: rename the importer, route, CLI, fixtures and docs to neutral wording; add a pygrep gate. — local — Inventory is clean, audit migration and ASVS/threat-model evidence updated, pre-commit/just check green, and ci-local completed with four Playwright e2e tests on port 8799.
+- [x] **M12.5** Clean-room naming scrub: rename the importer, route, CLI, fixtures and docs to neutral wording; add a pygrep gate. — local — Inventory is clean, audit migration and ASVS/threat-model evidence updated, pre-commit/just check green, and ci-local completed with four Playwright e2e tests on port 8799. PM: the proposed audit-event data migration was removed before landing (the importer never shipped in a release); the gate now also covers docs/pm.
 - [ ] **M12.4** Release-please cuts v1.0.0 and the integration v1.0.0 is tagged. The user installs through HACS and runs th...
 
 ## S track: Security assurance (OWASP SAMM · DSOMM · ASVS)

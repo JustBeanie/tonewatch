@@ -48,7 +48,7 @@ M6.1, M6.2, M6.3, M6.4, and dependency hygiene. **Not** the spectrum, sources, a
    - Client-side validation mirrors the pydantic constraints (frequency 250–3000, tolerance 0.1–10, max ≥ min). Server 422 errors map onto fields by `loc`.
    - Delete asks for confirmation. A **409** shows the referrer list the API returns.
    - A **Test** button calls `POST /api/tonesets/{id}/test` and shows the resulting call appearing in the live feed.
-   - TTD import is **out of scope** (blocked on the user's sample file, M8.4); show the button disabled with a tooltip.
+   - legacy tones.cfg import is **out of scope** (blocked on the user's sample file, M8.4); show the button disabled with a tooltip.
 
 ## Accessibility
 The `jsx-a11y` strict rules pass. Every form input has a label, and focus is managed on route change and dialog open. Add `@axe-core/react` or `vitest-axe` checks for the dashboard, calls list, call detail and tone set form, asserting no violations.

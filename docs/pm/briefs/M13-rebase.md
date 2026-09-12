@@ -8,13 +8,13 @@ The PM reviewed M13-fix and it **passed**. All seven findings are verified in co
 
 The PM has stash-rebased the worktree onto current `main` (`3cbeab9`). Since your last base, main gained:
 - **M8.4, `7ca38fa`: legacy tones.cfg importer.**
-  - `importers/ttd.py`
-  - `api/routes/import_ttd.py`
-  - the `_TtdBodyLimitMiddleware` pure-ASGI body limit and `MAX_TTD_IMPORT_BYTES` in `api/app.py`
+  - `importers/tones_cfg.py`
+  - `api/routes/import_tones_cfg.py`
+  - the `_TonesCfgBodyLimitMiddleware` pure-ASGI body limit and `MAX_TONES_CFG_IMPORT_BYTES` in `api/app.py`
   - `save_config(..., audit=False)` in `api/deps.py`
   - the import CLI in `__main__.py`
   - the import preview/apply UI in `web/src/features/tonesets/ToneSets.tsx`
-  - the `/api/import/ttd` OpenAPI entries
+  - the `/api/import/tones-cfg` OpenAPI entries
   - threat-model entry `TM-029`
   - ASVS rows
 - **M9-ci-fix, `9d5e0ef`.**
@@ -35,7 +35,7 @@ These files have **conflict markers**:
 ## Required
 1. **Resolve every conflict and keep both sides' behaviour.**
    - `api/app.py` keeps all of these:
-     - the importer router and `_TtdBodyLimitMiddleware` registration
+     - the importer router and `_TonesCfgBodyLimitMiddleware` registration
      - `configure_logging(..., data_dir=settings.data_dir)`
      - your discovered-tones router and discovery wiring
      - the S5 security headers and 422 login handling

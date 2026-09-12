@@ -50,7 +50,7 @@ Accepted gaps that must be written into a later brief. Remove an entry once that
   - **Image visibility:** keep the GHCR package **PRIVATE until v1.0**, consistent with the private repo. Don't flip it. Revisit at M12.4 together with repo visibility.
   - **Consequences:** M10b's `image` resolution job stays red, and the add-on can't install from the store, until then.
   - **When flipping later:** it's irreversible (a public package can never go private) and UI-only (no REST endpoint; the PM `gh` token lacks `read:packages`).
-- **M8.4 unblocked (2026-09-12).** The user's TTD install was found at `Desktop\Stuff\fire\TwoToneDetect73g\`. Its `tones.cfg` holds the user's email, so it's a gitignored private fixture only.
+- **M8.4 unblocked (2026-09-12).** The user's legacy tones.cfg install was found at `Desktop\Stuff\fire\legacy-notifier install\`. Its `tones.cfg` holds the user's email, so it's a gitignored private fixture only.
   - **Running:** brief `docs/pm/briefs/M8.4.md`, dispatched in worktree `tonewatch-m84`.
   - **At M8.4 landing:** remove the M8.4 BLOCKED line in PROGRESS.md.
 - **M13 tone auto-discovery added to PLAN.md** (user request 2026-09-12), in parallel with M9/M10 and before M11.

@@ -8,7 +8,7 @@ repos:
         entry: '(?i)two[ _-]?tone[ _-]?detect|\b\x74\x74\x64\b'
         language: pygrep
         types: [text]
-        exclude: ^(?:docs/pm/|backend/tests/fixtures/private/)
+        exclude: ^backend/tests/fixtures/private/
       - id: ruff
         name: ruff
         entry: uv run --project backend ruff check
