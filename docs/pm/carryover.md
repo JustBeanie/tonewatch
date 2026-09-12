@@ -28,6 +28,20 @@ Accepted gaps that must be written into a later brief. Remove an entry once that
     - **Verification:** `just ci-local` (pre-commit → check → security → api-drift → e2e) is the only gate, run by the PM before every push.
     - **Paused (Docker isn't installed on the PM host):** image build and 350 MB size budget, trivy, ZAP dast, container e2e/smoke, Linux and ARM pytest, and the release publish. Engineers' `PENDING-CI` items stay pending.
     - **Resuming:** when CI returns, re-enable the workflows, dispatch CI/Docker/Security on main, then rerun Release 34696778462 for v0.2.0.
+- **State 2026-09-12 ~08:30.**
+  - **Landed on main** (local `ci-local` green; Actions disabled):
+    - `933807a` version test
+    - `89b3795` looping file source fix
+    - `f524529` CI diet
+    - `897fa56` M9 Windows
+    - `504d9b6` PM docs
+  - **Workflows disabled:** new ones auto-enable, so `windows.yml` and `security-deps.yml` were disabled after landing (security-deps had two billing-failed runs).
+  - **Running (luna high, 3 parallel; limits session 8% / weekly 6%):**
+    - M13 in `tonewatch-m13`
+    - M8.4-fix (resume `01a095b3…`) in `tonewatch-m84`: `__main__.py` rebase conflict + Content-Length 500/negative + private `_receive` + CRLF/missing-tolerance fixtures
+    - M10a-rebase (resume `01a094ed…`) in `tonewatch-m10a`: conflicts in `__main__.py`, `alerts/mqtt.py`, `settings.py`, ASVS checklist
+  - **Stash backups:** each rebased worktree keeps its `stash@{0}`, plus tar/diff backups in the PM scratchpad.
+  - **Uncommitted PM files in main:** `briefs/M8.4-fix.md`, `reviews.csv` M8.4 row, ledger. Commit them with the next landing, never while a dispatcher might regenerate the ledger.
 - **Codex limits (user request 2026-09-12).** `docs/pm/limits.py` reads session (5 h) and weekly (7 d) usage via the Codex app-server `account/rateLimits/read`. First reading: plus plan, session 7%, weekly 6%, weekly reset Sat 2026-09-19 02:08 MDT. The scheduling policy lives in PM memory (`tonewatch_delegate_to_engineers.md`).
   - **Until the dispatch.sh change:** run it before every dispatch and at every review.
   - **TODO when NO dispatch is running:** edit `docs/pm/dispatch.sh` to append a `limits.py` reading to the run log and report at start and end. Bash reads a running script incrementally, so never edit dispatch.sh while any dispatcher process is alive; check for `dispatch.sh` in the process list first.

@@ -425,7 +425,7 @@ Finds tone pages that no configured tone set matches, so users can see what is b
   - **Retention and privacy:** clips count toward recording retention and are deleted with their cluster. The same privacy notes apply as for recordings.
 - **M13.4** **API + WS.**
   - `GET /api/discovered-tones` (filters: source, since, status).
-  - `POST /api/discovered-tones/{id}/promote` returns a pre-filled `ToneSet` draft: frequencies, tolerance derived from the cluster's observed spread (clamped), durations and name "Discovered 612.4/1743.0 Hz".
+  - `POST /api/discovered-tones/{id}/promote` returns a pre-filled `ToneSet` draft: frequencies, tolerance derived from the cluster's observed spread (clamped), durations and name "Discovered 612.4/2222.2 Hz".
   - `POST .../dismiss` and `DELETE`.
   - Clip download with Range.
   - WS `tone_discovered` event.
@@ -454,6 +454,7 @@ Finds tone pages that no configured tone set matches, so users can see what is b
 - **M12.1** mkdocs-material site: install guides (Docker, Pi, add-on, Windows), finding tone frequencies, tuning purity/tolerance, troubleshooting missed pages with `analyze`, and HA recipes. Publish with GitHub Pages.
 - **M12.2** Update the S3 threat model for anything added since. Confirm the webhook SSRF allowlist blocks link-local and metadata IPs by default.
 - **M12.3** README disclaimer: this is a **supplemental notification tool, not a certified primary alerting system**, and recording or rebroadcasting radio traffic may be regulated locally.
+- **M12.5** *(after M8.4, M10a, M13 land; before M12.4)* Clean-room naming scrub: no tracked reference to the legacy product name or its abbreviation. Rename the importer, route, CLI, audit event, fixtures and docs to neutral `tones.cfg` wording, and add a pre-commit pygrep gate. Brief: `docs/pm/briefs/M12.5-name-scrub.md`.
 - **M12.4** Release-please cuts v1.0.0 and the integration v1.0.0 is tagged. The user installs through HACS and runs the checklist.
 
 ### S track: Security assurance (OWASP SAMM · DSOMM · ASVS)
