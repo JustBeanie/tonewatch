@@ -10,9 +10,16 @@ Instructions for autonomous coding agents working on this repo. The full spec is
    - commit secrets or real radio recordings
    - run `gh-bootstrap.sh`, push to GHCR, create repos, or publish releases
    - edit `PLAN.md` decisions; propose changes in `docs/decisions/NNNN-*.md` instead
+   - edit anything under `docs/pm/**` (briefs, carryover, reviews, ledger). Those are PM-owned. Report status only in your final message.
+   - delete, truncate or overwrite files your brief didn't ask you to touch, including user data under recordings or media roots and ignore files such as `.prettierignore`. Extend them; don't replace them.
+   - "fix" a failing gate by weakening it: skipping or deselecting tests, rewriting lockfiles by hand, reformatting vendored upstream files, or widening a security policy such as a CSP
 6. **Updating the log.** When a task is done, tick it in `PROGRESS.md` with the PR link and one line of notes. When blocked, add a `BLOCKED:` line with the exact question, then move to the next unblocked task.
 7. **When uncertain about external behavior** (a PyAV encoder, Supervisor API, or HA entity schema), write a spike test or ADR proving it before building on it.
 8. **Stop condition.** Stop when every non-gated task is checked, or when only 🛑/BLOCKED tasks remain. Then write a summary at the top of `PROGRESS.md`.
+9. **Test rules learned in review.**
+   - Integration tests wait for the persisted state they assert, such as a DB row or a file on disk, with a bounded timeout, never for a proxy event or a fixed sleep.
+   - Before finishing, run `rg -n "skipif\(\s*sys.platform"` and update any platform-skipped test that touches the code you changed. It will run on CI even if it can't run locally.
+   - Tests must never open real devices, real network services outside `127.0.0.1`, or wall-clock waits longer than needed. Pytest enforces a per-test timeout (120 s), so a hang fails as a named test.
 
 **Dependency order:** M0 → M1 → S1 → S2 → M2 → M3 → M4 → M5 → S3 → (M6 ∥ M7) → S4 → M8 → S5 → (M9 ∥ M10) → M11 → S6 → M12 (S7 before M12.4). M2 can start right after M1.1.
 
