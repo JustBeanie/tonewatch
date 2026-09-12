@@ -1,5 +1,37 @@
 name: CI
-on: [push, pull_request]
+# Actions-minutes diet (2026-09-12, user decision after the private-repo quota ran out): main-only
+# pushes, docs-only changes skipped, superseded runs cancelled. docs/security/** still triggers
+# because the ASVS and threat-model tests validate it.
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "docs/pm/**"
+      - "docs/*.md"
+      - "docs/decisions/**"
+      - "PLAN.md"
+      - "AGENTS.md"
+      - "README.md"
+      - "CONTRIBUTING.md"
+      - "SECURITY.md"
+      - "THIRD_PARTY_NOTICES.md"
+  pull_request:
+    paths-ignore:
+      - "docs/pm/**"
+      - "docs/*.md"
+      - "docs/decisions/**"
+      - "PLAN.md"
+      - "AGENTS.md"
+      - "README.md"
+      - "CONTRIBUTING.md"
+      - "SECURITY.md"
+      - "THIRD_PARTY_NOTICES.md"
+  schedule:
+    - cron: "23 4 * * 1"
+  workflow_dispatch:
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
@@ -38,7 +70,10 @@ jobs:
     timeout-minutes: 20
     strategy:
       fail-fast: false
-      matrix: {os: [ubuntu-latest, windows-latest, ubuntu-24.04-arm]}
+      matrix:
+        # Pushes to main test Linux only: the PM host runs the full suite on Windows before every
+        # push. Windows (billed 2x) and ARM run on pull requests, weekly and on manual dispatch.
+        os: ${{ github.event_name == 'push' && fromJSON('["ubuntu-latest"]') || fromJSON('["ubuntu-latest", "windows-latest", "ubuntu-24.04-arm"]') }}
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0

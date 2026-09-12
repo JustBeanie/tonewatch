@@ -55,6 +55,13 @@ security:
 
 check: lint typecheck test test-web security-scorecard
 
+precommit:
+    {{uvx}} --python 3.13.13 pre-commit run --all-files
+
+# Local CI while GitHub Actions is disabled: run before every push. Container-only checks
+# (image build/size, trivy, semgrep, osv-scanner, gitleaks history, ZAP) are paused until CI returns.
+ci-local: precommit check security api-drift e2e
+
 gen-api:
     {{uv}} run --project backend python backend/scripts/export_openapi.py
     {{uv}} run --project backend python backend/scripts/generate_ws_messages.py

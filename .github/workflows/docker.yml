@@ -1,8 +1,29 @@
 name: Docker
+# Actions-minutes diet (2026-09-12): only when the image's inputs change, weekly, or on dispatch.
 on:
   push:
     branches: [main]
+    paths:
+      - "docker/**"
+      - "backend/**"
+      - "!backend/tests/**"
+      - "web/**"
+      - "scripts/e2e_fixture.py"
+      - ".github/workflows/docker.yml"
   pull_request:
+    paths:
+      - "docker/**"
+      - "backend/**"
+      - "!backend/tests/**"
+      - "web/**"
+      - "scripts/e2e_fixture.py"
+      - ".github/workflows/docker.yml"
+  schedule:
+    - cron: "41 4 * * 1"
+  workflow_dispatch:
+concurrency:
+  group: docker-${{ github.ref }}
+  cancel-in-progress: true
 permissions: {}
 env:
   IMAGE: tonewatch-ci

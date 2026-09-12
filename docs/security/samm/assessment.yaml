@@ -371,6 +371,7 @@ entries:
       - web/pnpm-lock.yaml
       - renovate.json
       - .github/workflows/security.yml
+      - .github/workflows/security-deps.yml
       - docs/decisions/0003-dependency-updates.md
       - https://github.com/JustBeanie/tonewatch/security/dependabot
     na: false
@@ -561,6 +562,7 @@ entries:
         rationale: The evidence does not demonstrate this higher maturity level.
     evidence:
       - .github/workflows/security.yml
+      - .github/workflows/security-deps.yml
       - docs/security/asvs/checklist.csv
       - backend/tests/unit/test_asvs_checklist.py
     na: false
@@ -618,6 +620,7 @@ entries:
     evidence:
       - .github/workflows/codeql.yml
       - .github/workflows/security.yml
+      - .github/workflows/security-deps.yml
       - .github/workflows/docker.yml
       - docker/zap/rules.tsv
       - backend/pyproject.toml
@@ -763,6 +766,7 @@ entries:
     evidence:
       - renovate.json
       - .github/workflows/security.yml
+      - .github/workflows/security-deps.yml
     na: false
     na_justification: null
     assessed_on: '2026-09-10'

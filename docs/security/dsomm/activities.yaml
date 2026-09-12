@@ -246,6 +246,7 @@ activities:
     status: implemented
     evidence:
       - .github/workflows/security.yml
+      - .github/workflows/security-deps.yml
       - THIRD_PARTY_NOTICES.md
     planned_in: S2
     notes: No current repository evidence; planned work remains outside S1.
@@ -772,6 +773,7 @@ activities:
     status: implemented
     evidence:
       - .github/workflows/security.yml
+      - .github/workflows/security-deps.yml
       - docs/security/accepted-risks.md
     planned_in: S2
     notes: No current repository evidence; planned work remains outside S1.
@@ -872,6 +874,7 @@ activities:
     status: implemented
     evidence:
       - .github/workflows/security.yml
+      - .github/workflows/security-deps.yml
     planned_in: S2
     notes: No current repository evidence; planned work remains outside S1.
   - id: 13af1227-3dd1-4d4f-a9e9-53deb793c18f
