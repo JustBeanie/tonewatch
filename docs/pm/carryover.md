@@ -94,3 +94,12 @@ Accepted gaps that must be written into a later brief. Remove an entry once that
 - Never replace ignore files; extend them. Never reformat vendored or upstream files. Never weaken a gate, whether skips, hand-edited lockfiles or a widened CSP.
 - Integration tests wait for **persisted** state with a bounded timeout. Update platform-skipped (`skipif sys.platform`) tests touching changed code. Tests never open real devices.
 - Every CI job has `timeout-minutes`, and pytest enforces a 120 s per-test timeout with faulthandler.
+
+## Update 2026-09-12 12:50: repo public, CI re-enabled
+- Repo is PUBLIC as of 12:40, at the user's request. The GHCR package stays private until v1.0.
+- The user re-enabled CI, which supersedes the local-only decision. Public repos get free standard runners. All 9 workflows are enabled.
+- Dispatched on `bd9a200`: ci, security, security-deps, docker, windows. Security jobs pass, so there is no billing block.
+- Keep `just ci-local` before PM landings.
+- Rerun Release 34696778462 (v0.2.0) once CI is green. No tags exist yet.
+- CI-diet triggers (paths filters, reduced push matrix) are kept for now. Revisit if full-matrix-on-push is wanted.
+- M12.5 naming scrub is queued after M8.4, M10a and M13 land.
