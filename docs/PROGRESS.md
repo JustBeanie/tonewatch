@@ -64,8 +64,7 @@ Tick a task with `[x]`, then append ` — <PR link> — <one-line note>`. Blocke
 - [x] **M6.6** Sources: device picker, stream URL, and RTL-SDR parameters, with live level preview. — local — source CRUD form, MHz-to-Hz conversion, validation, device and level tests.
 - [x] **M6.7** Alerts configuration with a "send test" button, and Settings for retention, auth and MQTT. — local — write-only webhook secret, script warning/403, send test and read-only settings tests.
 - [x] **M6.8** Analyze: upload a WAV and view the segment timeline. This is the debugging page. — local — 20 MB client gate, progress, 413/415 handling, SVG timeline and detections tests.
-- [ ] **M6.9** Playwright e2e: create a tone set, file source plays the fixture, the call appears in under 10 s, and the audio plays.
-  BLOCKED: PM rejected M6b-fix harness (it injected a fake recording into `/api/calls/{id}` and self-terminated after 30 s). Root cause is W1: the app never records. Re-done in W1 against real wiring.
+- [x] **M6.9** Playwright e2e: create a tone set, file source plays the fixture, the call appears in under 10 s, and the audio plays. — local — Real single-port backend run: 4 Playwright specs passed with Chrome.
 
 ## M7: Alerts
 - [x] **M7.1** `dispatcher.py` subscribes to events and maps tone sets to targets. It adds per-target retry with exponenti... — local — 37 M7 tests cover dedupe, retries, concurrency, test payloads, and attempt rows.
@@ -82,6 +81,9 @@ Tick a task with `[x]`, then append ` — <PR link> — <one-line note>`. Blocke
 - [x] **W1a.4** Finish recordings on EOF, recorder stop, source error, and bounded shutdown cancellation. — local — `test_source_eof_during_post_roll_finalizes_recording`, `test_channel_finalizes_recording_on_source_error`, `test_shutdown_slow_encoder_still_leaves_consistent_recording_state`, `test_shutdown_never_cancels_inflight_persistence_commit`, `test_persistence_stop_while_busy_leaves_no_pending_tasks`, `test_app_shutdown_leaves_no_tonewatch_tasks`, and `test_startup_reconciles_orphan_recording_files`; policy is recorded in ADR 0006.
 - [x] **W1a.5** Replace the recorder hook fallback with the typed five argument protocol and propagate hook errors. — local — `test_recorder_hook_type_error_propagates`.
 - [x] **W1a.6** Resolve persisted recordings to authenticated API URLs before real webhook `recording_ready` delivery. — local — `test_webhook_alert_fires_for_real_recorded_call`, `test_recording_ready_alert_waits_for_persisted_row_without_polling`, `test_external_alert_payloads_never_contain_filesystem_paths`, and `test_dispatcher_does_not_swallow_session_errors`.
+- [x] **W1b.1** Serve the built SPA from the backend with API-safe history fallback, CSP, cache headers, and traversal protection. — local — SPA integration tests pass.
+- [x] **W1b.2** Make root and trusted-ingress deep links resolve their assets without harness HTML injection. — local — Base-path ADR and backend deep-link/ingress tests pass.
+- [x] **W1b.3** Replace the proxy e2e with Playwright’s real single-port app, fixture generator, UI flows, WebSocket check, CI job, and teardown check. — local — `just e2e` reports 4 passed (3.4m), exit code 0.
 
 ## M8: Docker, release and importer
 - [ ] **M8.1** Multi-stage `Dockerfile`:

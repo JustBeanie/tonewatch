@@ -5,6 +5,7 @@ permissions:
 jobs:
   test-python:
     permissions: {contents: read}
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix: {os: [ubuntu-latest, windows-latest, ubuntu-24.04-arm]}
@@ -21,6 +22,7 @@ jobs:
       - run: uv run --project backend python backend/scripts/check_package_coverage.py
   lint-python:
     permissions: {contents: read}
+    timeout-minutes: 10
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
@@ -30,6 +32,7 @@ jobs:
       - run: uv run --project backend ruff format --check backend scripts docs/pm
   typecheck:
     permissions: {contents: read}
+    timeout-minutes: 10
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
@@ -39,6 +42,7 @@ jobs:
       - run: uv run --project backend mypy backend/src backend/tests
   lint-web:
     permissions: {contents: read}
+    timeout-minutes: 10
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
@@ -52,6 +56,7 @@ jobs:
       - run: pnpm --dir web exec prettier --check .
   test-web:
     permissions: {contents: read}
+    timeout-minutes: 10
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
@@ -65,6 +70,7 @@ jobs:
       - run: pnpm --dir web test
   api-client-drift:
     permissions: {contents: read}
+    timeout-minutes: 10
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
@@ -80,3 +86,28 @@ jobs:
       # The runner image has no `just`; rust-just is its official PyPI distribution.
       - run: uvx --from rust-just just gen-api
       - run: git diff --exit-code -- web/src/api
+  e2e:
+    permissions: {contents: read}
+    timeout-minutes: 20
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with: {persist-credentials: false}
+      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
+      - uses: pnpm/action-setup@a8198c4bff370c8506180b035930dea56dbd5288 # v5
+        with: {package_json_file: web/package.json}
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with: {node-version: 24, cache: pnpm, cache-dependency-path: web/pnpm-lock.yaml}
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libportaudio2
+      - run: uv sync --project backend
+      - run: pnpm --dir web install --frozen-lockfile
+      - run: pnpm --dir web exec playwright install --with-deps chromium
+      - run: uvx --from rust-just just e2e
+      - if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: playwright-results
+          path: |
+            web/test-results
+            web/playwright-report
+          if-no-files-found: ignore

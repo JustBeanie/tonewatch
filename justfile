@@ -3,6 +3,8 @@ set windows-shell := ["powershell.exe", "-NoLogo", "-NoProfile", "-ExecutionPoli
 uv := if os_family() == "windows" { ".tools/bin/uv.exe" } else { "uv" }
 uvx := if os_family() == "windows" { ".tools/bin/uvx.exe" } else { "uvx" }
 pnpm := if os_family() == "windows" { ".tools/bin/pnpm.cmd" } else { "pnpm" }
+export PLAYWRIGHT_CHANNEL := if os_family() == "windows" { "chrome" } else { "" }
+export TONEWATCH_E2E_PORT := if os_family() == "windows" { "8790" } else { "8765" }
 
 setup:
     {{uv}} sync --project backend
@@ -21,6 +23,7 @@ fmt:
 typecheck:
     {{uv}} run --project backend mypy backend/src backend/tests scripts
     {{pnpm}} --dir web exec tsc -b
+    {{pnpm}} --dir web exec tsc -p tsconfig.e2e.json --noEmit
 
 test:
     {{uv}} run --project backend python backend/scripts/run_pytest.py
@@ -64,7 +67,7 @@ dev:
     @echo "Development server starts with M5.1 and M6.1."
 
 e2e:
-    @echo "End-to-end tests start with M6.9."
+    {{pnpm}} --dir web exec playwright test
 
 bench:
     {{uv}} run --project backend python backend/scripts/run_pytest.py backend/tests/benchmarks --benchmark-only --no-cov

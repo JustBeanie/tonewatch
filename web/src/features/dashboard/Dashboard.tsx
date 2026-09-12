@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { request } from "../../api/client";
-import { useSubscription } from "../../lib/ws";
+import { useConnectionStatus, useSubscription } from "../../lib/ws";
 type Call = { id: string; started_at: string; source_id: string; status: string };
 export function Dashboard() {
     const event = useSubscription("events"),
         level = useSubscription("levels");
+    const connection = useConnectionStatus();
     const [calls, setCalls] = useState<Call[]>([]);
     useEffect(() => {
         request<{ items?: Call[] }>("calls?limit=50")
@@ -29,6 +30,9 @@ export function Dashboard() {
     return (
         <>
             <h1>Dashboard</h1>
+            <p role="status" aria-label="Live connection">
+                Live connection: {connection}
+            </p>
             {event?.type === "FeedHealthChanged" && (
                 <p role="status">Feed health: {String(event.data?.reason ?? "")}</p>
             )}

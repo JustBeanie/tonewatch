@@ -11,6 +11,16 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from tonewatch.recording.retention import RetentionPolicy
 
 
+def _default_web_root() -> Path | None:
+    package_root = Path(__file__).resolve().parent / "web_dist"
+    if package_root.is_dir():
+        return package_root
+    source_root = Path(__file__).resolve().parents[3] / "web" / "dist"
+    if source_root.is_dir():
+        return source_root
+    return None
+
+
 class Settings(BaseSettings):
     """Application settings, overridable with TONEWATCH_ environment variables."""
 
@@ -32,6 +42,7 @@ class Settings(BaseSettings):
     ha_integration_enabled: bool = False
     instance_id: str | None = None
     ui_password: str | None = None
+    web_root: Path | None = Field(default_factory=_default_web_root)
     recordings_root: Path | None = None
     retention: RetentionPolicy = Field(default_factory=RetentionPolicy)
 

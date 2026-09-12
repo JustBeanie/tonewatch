@@ -21,6 +21,7 @@ from tonewatch.api.routes.config import router as config_router
 from tonewatch.api.routes.recordings import router as recordings_router
 from tonewatch.api.routes.system import router as system_router
 from tonewatch.api.routes.ws import router as ws_router
+from tonewatch.api.spa import SPA_CSP, register_spa, serve_spa
 from tonewatch.config.models import AppConfig
 from tonewatch.config.store import ConfigStore
 from tonewatch.events import EventBus
@@ -38,6 +39,11 @@ MAX_ANALYZE_BYTES = 20 * 1024 * 1024 + 64 * 1024
 def input_devices() -> list[dict[str, object]]:
     """Compatibility export for the device CLI/API boundary."""
     return _input_devices()
+
+
+def _set_api_csp(response: Any) -> None:
+    """Deny all content for non-HTML API responses while forbidding foreign framing."""
+    response.headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'self'"
 
 
 def create_app(
@@ -78,6 +84,7 @@ def create_app(
         ws_router,
     ):
         app.include_router(router)
+    register_spa(app, settings.web_root)
     app.state.settings = settings
     app.state.ready = False
     app.state.config = AppConfig()
@@ -128,6 +135,8 @@ def create_app(
                         request._receive = replay_receive
             if response is None:
                 response = await call_next(request)
+            if response.status_code == 404 and request.method == "GET":
+                response = await serve_spa(request, app.state.spa_root)
         except HTTPException as exc:
             response = JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
         except Exception:
@@ -139,7 +148,10 @@ def create_app(
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["Referrer-Policy"] = "no-referrer"
         response.headers["X-Frame-Options"] = "SAMEORIGIN"
-        response.headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'self'"
+        if response.headers.get("content-type", "").startswith("text/html"):
+            response.headers["Content-Security-Policy"] = SPA_CSP
+        else:
+            _set_api_csp(response)
         structlog.get_logger("tonewatch.api").info(
             "request",
             method=request.method,

@@ -9,3 +9,5 @@ vitest.config.js
 src/api/generated/
 src/api/openapi.json
 src/api/ws-messages.ts
+playwright-report/
+test-results/

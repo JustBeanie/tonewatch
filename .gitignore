@@ -14,11 +14,15 @@ backend/.pytest-tmp/
 web/node_modules/
 web/dist/
 web/coverage/
+web/test-results/
+web/playwright-report/
 web/*.tsbuildinfo
 web/*.d.ts
 web/vite.config.js
 web/vitest.config.js
 .env
+# Local runtime data from `tonewatch serve` (holds api_token and the SQLite DB)
+/data/
 *.wav
 backend/tests/fixtures/private/
 # PM run logs (large JSONL event streams)
