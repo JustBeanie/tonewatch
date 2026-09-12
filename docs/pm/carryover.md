@@ -103,3 +103,10 @@ Accepted gaps that must be written into a later brief. Remove an entry once that
 - Rerun Release 34696778462 (v0.2.0) once CI is green. No tags exist yet.
 - CI-diet triggers (paths filters, reduced push matrix) are kept for now. Revisit if full-matrix-on-push is wanted.
 - M12.5 naming scrub is queued after M8.4, M10a and M13 land.
+
+## Release-please: why v0.2.0 never tagged (found 2026-09-12 13:40)
+- The Release workflow runs green on every push to main, but `publish` is skipped and there are no tags or releases.
+- release-please v17.1.3 finds merged PR #1 ("chore: release main", label `autorelease: pending`, merge commit `e3397e6`). It then logs `PR component: undefined does not match configured component: backend` and builds 0 releases.
+- `release-please-config.json` is unchanged since M8 (`component: backend`, `include-component-in-tag: false`, a single package). The PR title and body carry no component, so the merged PR never matches.
+- **Next:** fix the config from the exact release-please source, so future release PRs match. Then either let release-please tag v0.2.0 from PR #1, or create tag v0.2.0 at `e3397e6` plus a GitHub release, relabel PR #1 `autorelease: tagged`, and dispatch Release with `tag=v0.2.0` to publish the (private) GHCR image. Do this only after Docker and Windows CI are green (M9-ci-fix).
+- Also add `backend/uv.lock` to release-please extra-files (the stale-lock-after-bump issue).
