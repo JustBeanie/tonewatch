@@ -20,4 +20,6 @@ Docker is the primary deployment path. Native Windows users can install the
 onedir build from the [Windows installation guide](docs/windows.md).
 
 ToneWatch is intended as a supplemental notification tool, not a certified
-primary alerting system.
+primary alerting system. Recording or rebroadcasting radio traffic may be
+regulated where you live; you are responsible for complying with the rules
+that apply to you.

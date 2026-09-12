@@ -1,28 +1,24 @@
 name: CI
 # Actions-minutes diet (2026-09-12, user decision after the private-repo quota ran out): main-only
-# pushes, docs-only changes skipped, superseded runs cancelled. docs/security/** still triggers
-# because the ASVS and threat-model tests validate it.
+# pushes, superseded runs cancelled. Public documentation changes run the strict docs build below;
+# docs/security/** still triggers because the ASVS and threat-model tests validate it.
 on:
   push:
     branches: [main]
     paths-ignore:
       - "docs/pm/**"
-      - "docs/*.md"
       - "docs/decisions/**"
       - "PLAN.md"
       - "AGENTS.md"
-      - "README.md"
       - "CONTRIBUTING.md"
       - "SECURITY.md"
       - "THIRD_PARTY_NOTICES.md"
   pull_request:
     paths-ignore:
       - "docs/pm/**"
-      - "docs/*.md"
       - "docs/decisions/**"
       - "PLAN.md"
       - "AGENTS.md"
-      - "README.md"
       - "CONTRIBUTING.md"
       - "SECURITY.md"
       - "THIRD_PARTY_NOTICES.md"
@@ -119,6 +115,15 @@ jobs:
       - run: pnpm --dir web install --frozen-lockfile
       - run: pnpm --dir web lint
       - run: pnpm --dir web exec prettier --check .
+  docs:
+    permissions: {contents: read}
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with: {persist-credentials: false}
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
+      - run: uv run --project backend --group docs --frozen mkdocs build --strict
   test-web:
     permissions: {contents: read}
     timeout-minutes: 10

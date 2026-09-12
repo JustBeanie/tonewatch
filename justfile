@@ -60,7 +60,10 @@ runtime-export-check:
     {{uv}} export --project backend --frozen --no-dev --no-emit-project --format requirements-txt > .tools/runtime-requirements.txt
     {{uv}} run --project backend python scripts/check_runtime_export.py .tools/runtime-requirements.txt
 
-check: lint typecheck test test-web security-scorecard
+docs:
+    {{uv}} run --project backend --group docs mkdocs build --strict
+
+check: lint typecheck test test-web security-scorecard docs
 
 precommit:
     {{uvx}} --python 3.13.13 pre-commit run --all-files

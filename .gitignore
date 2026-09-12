@@ -18,6 +18,7 @@ web/test-results/
 web/playwright-report/
 web/*.tsbuildinfo
 web/*.d.ts
+site/
 web/vite.config.js
 web/vitest.config.js
 backend/src/tonewatch/web_dist/

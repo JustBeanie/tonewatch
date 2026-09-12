@@ -1,0 +1,24 @@
+site_name: ToneWatch
+strict: true
+site_dir: site
+exclude_docs: |
+  pm/**
+  security/**
+  decisions/**
+  PROGRESS.md
+  hil-checklist.md
+  benchmarks.md
+nav:
+  - Home: index.md
+  - Install:
+      - Docker: install/docker.md
+      - Raspberry Pi: install/raspberry-pi.md
+      - Home Assistant add-on: install/home-assistant-addon.md
+      - Windows: windows.md
+  - Use ToneWatch:
+      - Find tone frequencies: guide/finding-frequencies.md
+      - Discovered tones: guide/discovered-tones.md
+      - Tune detection: guide/tuning.md
+      - Troubleshoot missed pages: guide/troubleshooting.md
+      - Import tones.cfg: guide/importing-tones-cfg.md
+  - Home Assistant: guide/home-assistant.md
