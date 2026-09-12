@@ -1,6 +1,7 @@
 """Tests for the bootstrap command-line interface."""
 
 import sys
+from importlib import metadata
 
 import pytest
 
@@ -9,8 +10,14 @@ from tonewatch.__main__ import main
 
 
 def test_version_is_defined() -> None:
-    """The package exposes a semantic version."""
-    assert __version__ == "0.1.0"
+    """The package version is X.Y.Z and matches its installed metadata.
+
+    release-please bumps the version, so the test must not hardcode one.
+    """
+    parts = __version__.split(".")
+    assert len(parts) == 3
+    assert all(part.isdigit() for part in parts)
+    assert __version__ == metadata.version("tonewatch")
 
 
 def test_version_option(
