@@ -7,14 +7,14 @@ import logging
 import sys
 from pathlib import Path
 from threading import Event
-from typing import TYPE_CHECKING
+from types import SimpleNamespace
+from typing import Any
+
+import pytest
 
 from tonewatch import service
 from tonewatch.logging import configure_logging
 from tonewatch.settings import Settings
-
-if TYPE_CHECKING:
-    import pytest
 
 
 def test_frozen_data_dir_uses_programdata_only_when_unset(
@@ -57,6 +57,93 @@ class FakeServiceManager:
     def status(self) -> str:
         self.calls.append(("status", None, None))
         return "running"
+
+
+class FakeScm:
+    """Minimal SCM API that exposes a scripted sequence of service states."""
+
+    SERVICE_START = 1
+    SERVICE_STOP = 2
+    SERVICE_QUERY_STATUS = 4
+    SERVICE_RUNNING = 4
+    SERVICE_STOPPED = 1
+    SERVICE_START_PENDING = 2
+    SERVICE_STOP_PENDING = 3
+    SERVICE_CONTINUE_PENDING = 5
+    SERVICE_PAUSE_PENDING = 6
+    SERVICE_PAUSED = 7
+    SC_MANAGER_CONNECT = 8
+    SERVICE_CONTROL_STOP = 9
+
+    def __init__(self, states: list[int]) -> None:
+        self.states = states
+        self.start_called = False
+        self.stop_called = False
+
+    def OpenSCManager(self, *_args: object) -> object:  # noqa: N802 -- fake pywin32 API.
+        return SimpleNamespace(kind="manager")
+
+    def OpenService(self, *_args: object) -> object:  # noqa: N802 -- fake pywin32 API.
+        return SimpleNamespace(kind="service")
+
+    def CloseServiceHandle(self, _handle: object) -> None:  # noqa: N802 -- fake pywin32 API.
+        return None
+
+    def StartService(self, *_args: object) -> None:  # noqa: N802 -- fake pywin32 API.
+        self.start_called = True
+
+    def ControlService(self, *_args: object) -> None:  # noqa: N802 -- fake pywin32 API.
+        self.stop_called = True
+
+    def QueryServiceStatus(self, _handle: object) -> tuple[int, int, int, int, int, int, int]:  # noqa: N802 -- fake pywin32 API.
+        state = self.states.pop(0) if len(self.states) > 1 else self.states[0]
+        return (0, state, 0, 0, 0, 0, 0)
+
+
+def test_windows_service_stop_waits_for_stopped(monkeypatch: pytest.MonkeyPatch) -> None:
+    scm = FakeScm([FakeScm.SERVICE_RUNNING, FakeScm.SERVICE_STOP_PENDING, FakeScm.SERVICE_STOPPED])
+    monkeypatch.setattr(service, "win32service", scm)
+    manager = service._WindowsServiceManager()
+
+    manager.stop()
+
+    assert scm.stop_called
+
+
+def test_windows_service_stop_timeout_is_clear_and_bounded(monkeypatch: pytest.MonkeyPatch) -> None:
+    scm = FakeScm([FakeScm.SERVICE_STOP_PENDING])
+    monkeypatch.setattr(service, "win32service", scm)
+    monkeypatch.setattr(service, "SERVICE_STATE_TIMEOUT_S", 0.01)
+    manager = service._WindowsServiceManager()
+
+    with pytest.raises(service.ServiceStateTimeoutError, match="did not reach stopped"):
+        manager.stop()
+
+
+def test_windows_service_start_waits_for_running(monkeypatch: pytest.MonkeyPatch) -> None:
+    scm = FakeScm([FakeScm.SERVICE_START_PENDING, FakeScm.SERVICE_RUNNING])
+    monkeypatch.setattr(service, "win32service", scm)
+    manager = service._WindowsServiceManager()
+
+    manager.start()
+
+    assert scm.start_called
+
+
+def test_windows_service_status_uses_exact_state_names(monkeypatch: pytest.MonkeyPatch) -> None:
+    states = {
+        FakeScm.SERVICE_RUNNING: "running",
+        FakeScm.SERVICE_STOPPED: "stopped",
+        FakeScm.SERVICE_START_PENDING: "start_pending",
+        FakeScm.SERVICE_STOP_PENDING: "stop_pending",
+        FakeScm.SERVICE_CONTINUE_PENDING: "continue_pending",
+        FakeScm.SERVICE_PAUSE_PENDING: "pause_pending",
+        FakeScm.SERVICE_PAUSED: "paused",
+    }
+    for state, expected in states.items():
+        scm = FakeScm([state])
+        monkeypatch.setattr(service, "win32service", scm)
+        assert service._WindowsServiceManager().status() == expected
 
 
 def test_service_install_passes_frozen_executable_and_data_dir(tmp_path: Path) -> None:
@@ -180,6 +267,33 @@ def test_service_logging_routes_detached_stdio_to_data_dir(
         assert len(handlers) == 1
         assert isinstance(handlers[0], logging.FileHandler)
         assert (tmp_path / "tonewatch.log").is_file()
+    finally:
+        for handler in logging.getLogger().handlers:
+            handler.close()
+        logging.getLogger().handlers[:] = previous_handlers
+
+
+def test_windows_service_logs_start_and_shutdown_when_stdio_is_detached(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The SCM host records lifecycle lines even when Windows detaches stdio."""
+    previous_handlers = logging.getLogger().handlers[:]
+    try:
+        monkeypatch.setattr(sys, "stdout", None)
+        monkeypatch.setattr(sys, "stderr", None)
+        monkeypatch.setattr(service.Settings, "load", lambda: Settings(data_dir=tmp_path))
+
+        def fake_run(coro: Any) -> None:
+            coro.close()
+
+        monkeypatch.setattr(service.asyncio, "run", fake_run)
+        instance = object.__new__(service.ToneWatchService)
+        instance._stop_requested = Event()
+        instance.SvcDoRun()
+
+        log = (tmp_path / "tonewatch.log").read_text(encoding="utf-8")
+        assert "service starting" in log
+        assert "service stopped" in log
     finally:
         for handler in logging.getLogger().handlers:
             handler.close()

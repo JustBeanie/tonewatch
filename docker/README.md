@@ -14,12 +14,26 @@ the `/opt/venv` copy at about 218 MB, the Python base at about 48 MB, and the
 APT runtime packages at about 9.5 MB. The removed packaging tools are in the
 Python base layer; the CI size log is authoritative for the final byte count.
 
-The runtime stage upgrades the packages already present in the pinned Debian
-base image in the same APT layer before installing ToneWatch's runtime packages.
+The runtime stage explicitly upgrades the four packages currently flagged by
+Trivy in the pinned Debian base image, in the same APT layer before installing
+ToneWatch's runtime packages:
+
+```text
+apt-get install --only-upgrade --no-install-recommends -y \
+  gzip libpcre2-8-0 libsqlite3-0 perl-base
+```
+
 This closes fixed Debian security updates that may land in `trixie-security`
-before the upstream Python image digest is refreshed. Once the pinned upstream
-digest includes those fixes, the explicit upgrade can be removed and the image
-should be rebuilt and rescanned.
+before the upstream Python image digest is refreshed. The list is intentionally
+next to the Dockerfile command: CI's Trivy `--exit-code 1` remains the guard for
+any future finding, which must be investigated and added explicitly if needed.
+Once the pinned upstream digest includes these fixes, the explicit upgrade can
+be removed and the image should be rebuilt and rescanned.
+
+The builder trims third-party `tests/`, `test/`, `__pycache__/` and numpy C
+headers before copying the venv, then strips unneeded symbols from shared
+objects. These files are not imported at runtime; the in-image import walk,
+container smoke, e2e and DAST checks cover the retained runtime closure.
 
 Published images are pushed to GHCR and signed and attested in the release
 workflow. The repository is public; the GHCR package stays private until v1.0,

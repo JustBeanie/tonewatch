@@ -7,16 +7,22 @@ import importlib
 import os
 import sys
 import threading
+import time
 from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Protocol
 
+import structlog
+
+from tonewatch.logging import configure_logging
 from tonewatch.settings import Settings
 
 SERVICE_NAME = "ToneWatch"
 SERVICE_DISPLAY_NAME = "ToneWatch"
 SERVICE_DESCRIPTION = "ToneWatch radio notification service"
 ERROR_SERVICE_DOES_NOT_EXIST = 1060
+SERVICE_STATE_TIMEOUT_S = 30.0
+SERVICE_STATE_POLL_S = 0.1
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -50,6 +56,17 @@ class ServiceMissingError(RuntimeError):
 
 class ServiceUnavailableError(RuntimeError):
     """Raised when a Windows-only service operation is requested elsewhere."""
+
+
+class ServiceStateTimeoutError(RuntimeError):
+    """Raised when the SCM does not reach a requested state in time."""
+
+    def __init__(self, expected_name: str, last_state: str) -> None:
+        """Build a clear bounded-wait failure message."""
+        super().__init__(
+            f"service {SERVICE_NAME} did not reach {expected_name} within "
+            f"{SERVICE_STATE_TIMEOUT_S:g}s (last state: {last_state})"
+        )
 
 
 class ServiceManager(Protocol):
@@ -114,7 +131,14 @@ class ToneWatchService(_ServiceFramework):
 
     def SvcDoRun(self) -> None:  # noqa: N802 -- pywin32 requires this callback name.
         """Run the application until the SCM sends a stop control."""
-        asyncio.run(serve_until_stopped(Settings.load(), self._stop_requested))
+        settings = Settings.load()
+        configure_logging(settings.log_level, json=True, data_dir=settings.data_dir)
+        logger = structlog.get_logger("tonewatch.service")
+        logger.info("service starting", data_dir=str(settings.data_dir))
+        try:
+            asyncio.run(serve_until_stopped(settings, self._stop_requested))
+        finally:
+            logger.info("service stopped")
 
 
 class _WindowsServiceManager:
@@ -178,9 +202,10 @@ class _WindowsServiceManager:
 
     def start(self) -> None:
         """Start the registered service."""
-        handle = self._open(win32service.SERVICE_START)
+        handle = self._open(win32service.SERVICE_START | win32service.SERVICE_QUERY_STATUS)
         try:
             win32service.StartService(handle, None)
+            self._wait_for_state(handle, win32service.SERVICE_RUNNING, "running")
         finally:
             win32service.CloseServiceHandle(handle)
 
@@ -190,7 +215,9 @@ class _WindowsServiceManager:
         try:
             state = win32service.QueryServiceStatus(handle)[1]
             if state != win32service.SERVICE_STOPPED:
-                win32service.ControlService(handle, win32service.SERVICE_CONTROL_STOP)
+                if state != win32service.SERVICE_STOP_PENDING:
+                    win32service.ControlService(handle, win32service.SERVICE_CONTROL_STOP)
+                self._wait_for_state(handle, win32service.SERVICE_STOPPED, "stopped")
         finally:
             win32service.CloseServiceHandle(handle)
 
@@ -201,12 +228,35 @@ class _WindowsServiceManager:
             state = win32service.QueryServiceStatus(handle)[1]
         finally:
             win32service.CloseServiceHandle(handle)
-        return {
-            win32service.SERVICE_STOPPED: "stopped",
-            win32service.SERVICE_START_PENDING: "start-pending",
-            win32service.SERVICE_STOP_PENDING: "stop-pending",
-            win32service.SERVICE_RUNNING: "running",
-        }.get(state, f"state-{state}")
+        return self._state_name(state)
+
+    @classmethod
+    def _state_name(cls, state: int) -> str:
+        names = (
+            ("SERVICE_STOPPED", "stopped"),
+            ("SERVICE_START_PENDING", "start_pending"),
+            ("SERVICE_STOP_PENDING", "stop_pending"),
+            ("SERVICE_RUNNING", "running"),
+            ("SERVICE_CONTINUE_PENDING", "continue_pending"),
+            ("SERVICE_PAUSE_PENDING", "pause_pending"),
+            ("SERVICE_PAUSED", "paused"),
+        )
+        for constant, name in names:
+            if getattr(win32service, constant, None) == state:
+                return name
+        return f"state-{state}"
+
+    @classmethod
+    def _wait_for_state(cls, handle: Any, expected: int, expected_name: str) -> None:
+        deadline = time.monotonic() + SERVICE_STATE_TIMEOUT_S
+        while True:
+            state = win32service.QueryServiceStatus(handle)[1]
+            if state == expected:
+                return
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise ServiceStateTimeoutError(expected_name, cls._state_name(state))
+            time.sleep(min(SERVICE_STATE_POLL_S, remaining))
 
     @staticmethod
     def _open(access: int) -> Any:
