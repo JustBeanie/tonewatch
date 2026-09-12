@@ -53,6 +53,17 @@ class CallRecorder:
         self._captured_end_s = 0.0
         self._hit_cap = False
 
+    async def __call__(
+        self,
+        frame: AudioFrame,
+        ring: RingBuffer,
+        output: EngineOutput,
+        call: RecorderCall | None,
+        lifecycle: str,
+    ) -> None:
+        """Adapt the recorder to the channel's typed asynchronous hook."""
+        self.process(frame, ring, output, call, lifecycle)
+
     def process(
         self,
         frame: AudioFrame,
@@ -181,26 +192,47 @@ class CallRecorder:
     async def finish(self) -> RecordingResult | None:
         if self.call is None:
             return None
-        samples = self._trim()
-        start = self.call.started_at.astimezone(UTC)
-        title = f"{', '.join(sorted(self.call.toneset_ids))} {start.isoformat()}"
+        call = self.call
         try:
+            samples = self._trim()
+            start = call.started_at.astimezone(UTC)
+            title = f"{', '.join(sorted(call.toneset_ids))} {start.isoformat()}"
             files = await self.encoder.encode(
                 samples,
-                call_id=str(self.call.id),
+                call_id=str(call.id),
                 call_start=start,
                 formats=self.formats,
                 title=title,
-                toneset_ids=self.call.toneset_ids,
-                source_id=self.call.source_id,
+                toneset_ids=call.toneset_ids,
+                source_id=call.source_id,
             )
         except Exception:
-            self.logger.exception("recording encoding failed", extra={"call_id": str(self.call.id)})
+            self.logger.exception("recording encoding failed", extra={"call_id": str(call.id)})
             if self.bus is not None:
-                self.bus.publish(CallClosed(self.call.id, "failed", self.call.source_id))
+                self.bus.publish(CallClosed(call.id, "failed", call.source_id))
+            self._reset()
             raise
         if self.bus is not None:
             for item in files:
-                self.bus.publish(RecordingReady(self.call.id, str(item.path), item.format))
-            self.bus.publish(CallClosed(self.call.id, "recorded", self.call.source_id))
-        return RecordingResult(str(self.call.id), tuple(files))
+                self.bus.publish(
+                    RecordingReady(call.id, str(item.path), item.format, call.source_id)
+                )
+            self.bus.publish(CallClosed(call.id, "recorded", call.source_id))
+        result = RecordingResult(str(call.id), tuple(files))
+        self._reset()
+        return result
+
+    def _reset(self) -> None:
+        """Clear one completed call so the channel can record its next call."""
+        self.samples = []
+        self.start_s = None
+        self.last_detection_s = None
+        self.max_s = 0.0
+        self.post_s = 0.0
+        self.silence_stop_s = 0.0
+        self.formats = set()
+        self.spans = []
+        self.call = None
+        self._silence_s = 0.0
+        self._captured_end_s = 0.0
+        self._hit_cap = False

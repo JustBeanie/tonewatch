@@ -58,4 +58,6 @@ class Settings(BaseSettings):
     @property
     def recording_path(self) -> Path:
         """Return the configured recording directory."""
+        if self.addon_mode and self.recordings_root is None:
+            return Path("/media/tonewatch")
         return (self.recordings_root or self.data_dir / "recordings").resolve()

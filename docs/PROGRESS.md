@@ -74,6 +74,15 @@ Tick a task with `[x]`, then append ` — <PR link> — <one-line note>`. Blocke
 - [x] **M7.4** `webhook.py`: JSON POST with an HMAC-SHA256 signature header, timeout, and an optional multipart audio atta... — local — URL safety, pinned DNS, redirects, signatures, response cap, attachment root/cap, and secret redaction covered.
 - [x] **M7.5** `script.py`: off by default. It uses an allowlisted executable path and an argv list with `{call_id}`/`{rec... — local — Allowlist, symlink escape, argv injection, env isolation, bounded output, and timeout reap covered.
 
+## W1: Wiring
+
+- [x] **W1a.1** Wire one settings-backed `CallRecorder` per production channel and reset it between calls. — local — `test_app_records_call_end_to_end`, `test_source_eof_during_post_roll_finalizes_recording`, and `test_sequential_calls_on_one_channel_produce_two_recordings`.
+- [x] **W1a.2** Inject the real `Watchdog` into each production channel. — local — `test_healthy_feed_stays_healthy_through_supervisor`.
+- [x] **W1a.3** Start retention from the application lifespan with the configured root and policy. — local — `test_retention_runs_in_app_lifespan`.
+- [x] **W1a.4** Finish recordings on EOF, recorder stop, source error, and bounded shutdown cancellation. — local — `test_source_eof_during_post_roll_finalizes_recording` and `test_channel_finalizes_recording_on_source_error`.
+- [x] **W1a.5** Replace the recorder hook fallback with the typed five argument protocol and propagate hook errors. — local — `test_recorder_hook_type_error_propagates`.
+- [x] **W1a.6** Resolve persisted recordings to authenticated API URLs before real webhook `recording_ready` delivery. — local — `test_webhook_alert_fires_for_real_recorded_call`.
+
 ## M8: Docker, release and importer
 - [ ] **M8.1** Multi-stage `Dockerfile`:
 - [ ] **M8.2** Compose examples for soundcard (`devices: /dev/snd`, `group_add: audio`), stream, and rtlsdr (`/dev/bus/usb...

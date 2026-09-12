@@ -13,6 +13,8 @@ from tonewatch.events import EventBus, FeedHealthChanged
 from tonewatch.pipeline.channel import Channel
 from tonewatch.pipeline.persistence import PersistenceSubscriber
 from tonewatch.pipeline.watchdog import Watchdog
+from tonewatch.recording.encoder import AudioEncoder
+from tonewatch.recording.recorder import CallRecorder
 from tonewatch.recording.retention import RetentionService, retention_loop
 from tonewatch.sources.base import SourceConfigError
 
@@ -43,13 +45,18 @@ class Supervisor:
         retention_service: RetentionService | None = None,
         settings: Any = None,
         instance_id: str = "default",
+        source_factory: Callable[[Source], Any] | None = None,
+        watchdog_no_data_s: float = 10,
     ) -> None:
         self.config, self.bus, self.session_factory = config, bus, session_factory
         self.clock, self.sleep = clock, sleep
+        self.settings = settings
         self.jitter = jitter or (
             lambda delay: secrets.SystemRandom().uniform(delay * 0.9, delay * 1.1)
         )
         self.channel_factory = channel_factory or Channel
+        self.source_factory = source_factory
+        self.watchdog_no_data_s = watchdog_no_data_s
         self.shutdown_timeout_s = shutdown_timeout_s
         self._tasks: dict[str, asyncio.Task[None]] = {}
         self._configs: dict[str, Source] = {}
@@ -86,8 +93,6 @@ class Supervisor:
     async def stop(self) -> None:
         """Cancel all channel tasks within the bounded shutdown period."""
         self._stopping = True
-        await self.alerts.stop()
-        await self.persistence.drain()
         tasks = tuple(self._tasks.values())
         for task in tasks:
             task.cancel()
@@ -97,6 +102,8 @@ class Supervisor:
                     await asyncio.gather(*tasks, return_exceptions=True)
             except TimeoutError:
                 pass
+        await self.persistence.drain()
+        await self.alerts.stop()
         self._tasks.clear()
         self._configs.clear()
         if self._retention_task is not None:
@@ -142,7 +149,13 @@ class Supervisor:
         delay = 1.0
         while not self._stopping:
             started_at = self.clock()
-            watchdog = Watchdog(source.id, self.bus, clock=self.clock, sleep=self.sleep)
+            watchdog = Watchdog(
+                source.id,
+                self.bus,
+                clock=self.clock,
+                sleep=self.sleep,
+                no_data_s=self.watchdog_no_data_s,
+            )
             watchdog_task = asyncio.create_task(
                 watchdog.run(), name=f"tonewatch-watchdog-{source.id}"
             )
@@ -152,6 +165,17 @@ class Supervisor:
                     self.config.tone_sets,
                     self.bus,
                     self.clock,
+                    recorder_hook=(
+                        CallRecorder(
+                            self.config.tone_sets,
+                            AudioEncoder(self.settings.recording_path),
+                            bus=self.bus,
+                        )
+                        if self.settings is not None
+                        else None
+                    ),
+                    source_factory=self.source_factory,
+                    watchdog=watchdog,
                 )
                 await channel.run()
             except asyncio.CancelledError:

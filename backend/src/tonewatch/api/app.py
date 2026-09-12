@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import time
 import uuid
 from contextlib import asynccontextmanager
 from typing import Any
@@ -26,6 +27,7 @@ from tonewatch.integrations.supervisor import register_supervisor_discovery
 from tonewatch.integrations.zeroconf import ZeroconfAdvertiser, instance_id
 from tonewatch.logging import clear_request_id, configure_logging, set_request_id
 from tonewatch.pipeline.supervisor import Supervisor
+from tonewatch.recording.retention import RetentionService
 from tonewatch.sources.soundcard import input_devices as _input_devices
 from tonewatch.storage.db import create_database, upgrade_database
 
@@ -44,6 +46,9 @@ def create_app(
     session_factory: Any = None,
     store: ConfigStore | None = None,
     clock: Any = None,
+    sleep: Any = None,
+    source_factory: Any = None,
+    watchdog_no_data_s: float = 10,
 ) -> FastAPI:
     """Create an isolated API application with injectable runtime dependencies."""
     auth = AuthState(settings, clock or __import__("time").time)
@@ -142,6 +147,7 @@ def create_app(
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> Any:
         try:
+            runtime_clock = clock or time.time
             if app.state.engine is not None:
                 await upgrade_database(app.state.engine)
             app.state.config = config_store.load()
@@ -150,6 +156,15 @@ def create_app(
                     app.state.config,
                     bus,
                     sessions,
+                    clock=runtime_clock,
+                    sleep=sleep or asyncio.sleep,
+                    retention_service=RetentionService(
+                        settings.recording_path,
+                        settings.retention,
+                        clock=runtime_clock,
+                    ),
+                    source_factory=source_factory,
+                    watchdog_no_data_s=watchdog_no_data_s,
                     settings=settings,
                     instance_id=str(settings.instance_id or instance_id(settings.data_dir)),
                 )

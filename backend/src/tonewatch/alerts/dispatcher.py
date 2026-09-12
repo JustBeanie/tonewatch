@@ -9,6 +9,8 @@ from collections.abc import Awaitable, Callable
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
+from sqlalchemy import select
+
 from tonewatch.alerts.ha_discovery import HADiscovery
 from tonewatch.alerts.mqtt import MqttPublisher
 from tonewatch.alerts.script import run_script
@@ -22,7 +24,7 @@ from tonewatch.events import (
     Subscription,
     ToneDetected,
 )
-from tonewatch.storage.models import AlertAttempt
+from tonewatch.storage.models import AlertAttempt, Recording
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -145,6 +147,7 @@ class AlertDispatcher:
         phase: str
         call_id: UUID
         test = False
+        recording_url: str | None = None
         if isinstance(event, ToneDetected):
             call_id, phase, test = event.call_id, "pre_alert", event.test
             state = self._calls[call_id]
@@ -157,13 +160,21 @@ class AlertDispatcher:
             state = self._calls[call_id]
             state["recording_path"] = event.path
             test, detected_at = bool(state["test"]), None
+            recording_url = await self._recording_url(event)
         else:
             call_id, phase, test = event.call_id, "closed", event.test
             state = self._calls[call_id]
             state["test"] = state["test"] or test
             detected_at = None
         target_ids = self._target_ids(state["tone_sets"])
-        payload = self._payload(call_id, phase, state, test, detected_at)
+        payload = self._payload(
+            call_id,
+            phase,
+            state,
+            test,
+            detected_at,
+            recording_url=recording_url,
+        )
         await asyncio.gather(
             *(self._dispatch(target_id, phase, call_id, payload) for target_id in target_ids),
             return_exceptions=True,
@@ -179,20 +190,47 @@ class AlertDispatcher:
 
     @staticmethod
     def _payload(
-        call_id: UUID, phase: str, state: dict[str, Any], test: bool, detected_at: datetime | None
+        call_id: UUID,
+        phase: str,
+        state: dict[str, Any],
+        test: bool,
+        detected_at: datetime | None,
+        *,
+        recording_url: str | None = None,
     ) -> dict[str, object]:
         payload: dict[str, object] = {
             "call_id": str(call_id),
             "tone_sets": list(state["tone_sets"]),
             "phase": phase,
             "detected_at": detected_at.isoformat() if detected_at else None,
-            "recording_url": state.get("recording_path"),
+            "recording_url": recording_url or state.get("recording_path"),
             "recording_path": state.get("recording_path"),
             "source_id": state.get("source_id", ""),
             "test": bool(state.get("test") or test),
         }
         payload["toneset"] = state["tone_sets"][0] if state["tone_sets"] else ""
         return payload
+
+    async def _recording_url(self, event: RecordingReady) -> str | None:
+        """Resolve a persisted recording to the authenticated API route."""
+        if self.session_factory is None:
+            return None
+        for _ in range(100):
+            try:
+                async with self.session_factory() as session:
+                    row = (
+                        await session.scalars(
+                            select(Recording)
+                            .where(Recording.call_id == event.call_id, Recording.path == event.path)
+                            .order_by(Recording.id.desc())
+                        )
+                    ).first()
+            except AttributeError:
+                return None
+            if row is not None:
+                return f"/api/recordings/{row.id}"
+            await asyncio.sleep(0)
+        return None
 
     async def _dispatch(
         self, target_id: str, phase: str, call_id: UUID, payload: dict[str, object]

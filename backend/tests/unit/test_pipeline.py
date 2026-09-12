@@ -15,7 +15,7 @@ from tonewatch.config.models import AppConfig, FileSource, RecordingPolicy, Tone
 from tonewatch.dsp.engine import EngineOutput
 from tonewatch.dsp.matcher import Detection
 from tonewatch.events import CallClosed, Event, EventBus, FeedHealthChanged, ToneDetected
-from tonewatch.pipeline.channel import Channel
+from tonewatch.pipeline.channel import Channel, RecorderCall
 from tonewatch.pipeline.persistence import PersistenceSubscriber
 from tonewatch.pipeline.ringbuffer import RingBuffer
 from tonewatch.pipeline.supervisor import Supervisor
@@ -236,7 +236,14 @@ def test_channel_calls_recorder_hook_for_frames_and_reanchors_on_discontinuity(m
         walls = iter((datetime(2026, 1, 1, tzinfo=UTC), datetime(2026, 1, 2, tzinfo=UTC)))
         seen: list[tuple[AudioFrame, RingBuffer]] = []
 
-        async def hook(frame: AudioFrame, ring: RingBuffer) -> None:
+        async def hook(
+            frame: AudioFrame,
+            ring: RingBuffer,
+            output: EngineOutput,
+            call: object,
+            lifecycle: str,
+        ) -> None:
+            del output, call, lifecycle
             seen.append((frame, ring))
 
         bus = EventBus()
@@ -257,6 +264,78 @@ def test_channel_calls_recorder_hook_for_frames_and_reanchors_on_discontinuity(m
             detections.append(event)
         assert len(seen) == 2 and seen[0][1] is seen[1][1]
         assert detections[1].detected_at == datetime(2026, 1, 2, 0, 0, 0, 100000, tzinfo=UTC)
+
+    asyncio.run(run())
+
+
+def test_recorder_hook_type_error_propagates(monkeypatch) -> None:
+    async def run() -> None:
+        source_config = FileSource(id="radio", name="radio", path="unused.wav")
+        source = _Source([_frame("radio", 0)])
+        monkeypatch.setattr("tonewatch.pipeline.channel.make_source", lambda _: source)
+        _Engine.outputs = [EngineOutput((), (), ())]
+
+        calls = 0
+
+        def hook(
+            frame: AudioFrame,
+            ring: RingBuffer,
+            output: EngineOutput | None = None,
+            call: RecorderCall | None = None,
+            lifecycle: str = "active",
+        ) -> None:
+            nonlocal calls
+            del frame, ring, call, lifecycle
+            calls += 1
+            if output is not None:
+                raise TypeError("hook failed")
+
+        channel = Channel(
+            source_config,
+            [_toneset("a")],
+            EventBus(),
+            recorder_hook=hook,
+            engine_factory=_Engine,
+        )
+        with np.testing.assert_raises_regex(TypeError, "hook failed"):
+            await channel.run()
+
+    asyncio.run(run())
+
+
+def test_channel_finalizes_recording_on_source_error(monkeypatch) -> None:
+    async def run() -> None:
+        source_config = FileSource(id="radio", name="radio", path="unused.wav")
+        source = _Source([_frame("radio", 0)], SourceUnavailable("lost"))
+        monkeypatch.setattr("tonewatch.pipeline.channel.make_source", lambda _: source)
+        _Engine.outputs = [EngineOutput((), (), (_detection("a", 0.1),))]
+        finished = 0
+
+        class Hook:
+            async def __call__(
+                self,
+                frame: AudioFrame,
+                ring: RingBuffer,
+                output: EngineOutput,
+                call: object,
+                lifecycle: str,
+            ) -> None:
+                del frame, ring, output, call, lifecycle
+
+            async def finish(self) -> None:
+                nonlocal finished
+                finished += 1
+
+        channel = Channel(
+            source_config,
+            [_toneset("a")],
+            EventBus(),
+            recorder_hook=Hook(),
+            engine_factory=_Engine,
+        )
+        with np.testing.assert_raises(SourceUnavailable):
+            await channel.run()
+        assert finished == 1
 
     asyncio.run(run())
 

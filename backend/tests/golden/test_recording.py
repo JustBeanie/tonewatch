@@ -92,6 +92,9 @@ def _run_recording(
             def should_stop(self, end_s: float, frame: np.ndarray) -> bool:
                 return recorder.should_stop(end_s, frame)
 
+            async def finish(self) -> None:
+                await recorder.finish()
+
         channel = Channel(config, tone_sets, bus, recorder_hook=Hook())
         await channel.run()
         await recorder.finish()

@@ -8,6 +8,8 @@ This review covers the M0-M7 implementation as of 2026-09-11. ToneWatch is self-
 
 The stream SSRF finding is concrete: a user who can write a `StreamSource` can set `url` to an internal HTTP endpoint such as `http://169.254.169.254/`; `StreamAudioSource` passes the URL directly to `av.open` in `backend/src/tonewatch/sources/stream.py:18-23`, and the config model only validates URL syntax. Minimal reproduction: save a config containing `{"type":"stream","url":"http://169.254.169.254/latest/meta-data/"}` (or an internal service URL), start the channel, and observe the application host/container making the request. No network allowlist or private-address rejection exists today.
 
+The running composition root now sends each channel through the recorder and persistence flow. Recordings use `Settings.recording_path`; add-on mode resolves the default root to `/media/tonewatch` in `backend/src/tonewatch/settings.py`, while the retention task and authenticated recordings route operate on that same root.
+
 ## Threat inventory
 
 Evidence uses repository-relative `path:line`; “no proving test” is intentional for `open`, `partial`, and planned rows. A mitigated row is only used where a named test function exists in `backend/tests`.

@@ -43,7 +43,7 @@
           {"type": "tm.Flow", "id": "flow-auth", "source": {"id": "proc-api"}, "target": {"id": "proc-auth"}, "attrs": {"label": {"text": "in-process; authenticated request context; no boundary"}}},
           {"type": "tm.Flow", "id": "flow-api-config", "source": {"id": "proc-api"}, "target": {"id": "store-config"}, "attrs": {"label": {"text": "filesystem YAML; process authority; host/container boundary"}}},
           {"type": "tm.Flow", "id": "flow-api-db", "source": {"id": "proc-api"}, "target": {"id": "store-db"}, "attrs": {"label": {"text": "SQLite; process authority; no network auth"}}},
-          {"type": "tm.Flow", "id": "flow-api-recordings", "source": {"id": "proc-api"}, "target": {"id": "store-recordings"}, "attrs": {"label": {"text": "filesystem and authenticated download; host/container boundary"}}},
+          {"type": "tm.Flow", "id": "flow-api-recordings", "source": {"id": "proc-api"}, "target": {"id": "store-recordings"}, "attrs": {"label": {"text": "filesystem and authenticated download; /media/tonewatch in add-on mode; host/container boundary"}}},
           {"type": "tm.Flow", "id": "flow-source-supervisor", "source": {"id": "proc-supervisor"}, "target": {"id": "proc-recorder"}, "attrs": {"label": {"text": "in-process audio frames; no network auth"}}},
           {"type": "tm.Flow", "id": "flow-source", "source": {"id": "actor-source"}, "target": {"id": "proc-supervisor"}, "attrs": {"label": {"text": "HTTP/RTSP audio; URL config only; crosses app ↔ stream origin"}}},
           {"type": "tm.Flow", "id": "flow-rtl", "source": {"id": "proc-supervisor"}, "target": {"id": "proc-recorder"}, "attrs": {"label": {"text": "rtl_fm stdout; argv without shell; crosses app ↔ rtl_fm"}}},
@@ -51,7 +51,7 @@
           {"type": "tm.Flow", "id": "flow-retention", "source": {"id": "proc-retention"}, "target": {"id": "store-recordings"}, "attrs": {"label": {"text": "filesystem deletion; process authority; host/container boundary"}}},
           {"type": "tm.Flow", "id": "flow-zeroconf", "source": {"id": "proc-zeroconf"}, "target": {"id": "actor-integration"}, "attrs": {"label": {"text": "mDNS/DNS-SD; no credential authentication; crosses LAN ↔ host"}}},
           {"type": "tm.Flow", "id": "flow-supervisor", "source": {"id": "proc-discovery"}, "target": {"id": "actor-supervisor"}, "attrs": {"label": {"text": "HTTP; SUPERVISOR_TOKEN bearer; crosses add-on ↔ Supervisor"}}},
-          {"type": "tm.Flow", "id": "flow-alerts", "source": {"id": "proc-dispatcher"}, "target": {"id": "actor-lan-user"}, "attrs": {"label": {"text": "webhook/script/MQTT; planned M7; target authentication varies; crosses LAN ↔ host"}}},
+          {"type": "tm.Flow", "id": "flow-alerts", "source": {"id": "proc-dispatcher"}, "target": {"id": "actor-lan-user"}, "attrs": {"label": {"text": "webhook/script/MQTT; target authentication varies; crosses LAN ↔ host"}}},
           {"type": "tm.Flow", "id": "flow-logs", "source": {"id": "proc-api"}, "target": {"id": "store-logs"}, "attrs": {"label": {"text": "structured stderr logs; process authority; host/container boundary"}}}
         ]
       },

@@ -40,7 +40,19 @@ class RecorderCall:
     toneset_ids: frozenset[str]
 
 
-RecorderHook = Callable[..., Awaitable[None] | None]
+class RecorderHook(Protocol):
+    """Typed hook used by a channel to stream frames into a recorder."""
+
+    def __call__(
+        self,
+        frame: AudioFrame,
+        ring: RingBuffer,
+        output: EngineOutput,
+        call: RecorderCall | None,
+        lifecycle: str,
+    ) -> Awaitable[None] | None:
+        """Accept one frame and the current call lifecycle."""
+        ...
 
 
 class DetectionEngineLike(Protocol):
@@ -102,7 +114,7 @@ class Channel:
         return self.source_config.id
 
     async def run(self) -> None:
-        """Run until the source ends or raises; always close it and open calls."""
+        """Run until the source ends or raises; always finish open recordings."""
         source = self._source_factory(self.source_config)
         self._source = source
         self._anchor_wall = self._as_utc(self.clock())
@@ -112,7 +124,7 @@ class Channel:
             engine = self._engine_factory(list(self.tonesets))
             async for frame in source:
                 self._observe_frame(frame)
-                self._close_expired(frame.stream_time_s)
+                await self._close_expired(frame.stream_time_s)
                 self.ringbuffer.extend(frame.samples, stream_time_s=frame.stream_time_s)
                 output = engine.feed(frame.samples)
                 self._publish_level(frame)
@@ -129,27 +141,24 @@ class Channel:
                             )
                         )
                 for detection in output.detections:
-                    self._publish_detection(detection)
+                    await self._publish_detection(detection)
                 if self.recorder_hook is not None:
                     call = self._recorder_call()
-                    try:
-                        result = self.recorder_hook(frame, self.ringbuffer, output, call, "active")
-                    except TypeError:
-                        result = self.recorder_hook(frame, self.ringbuffer)
+                    result = self.recorder_hook(frame, self.ringbuffer, output, call, "active")
                     if inspect.isawaitable(result):
                         await result
                     should_stop = getattr(self.recorder_hook, "should_stop", None)
                     if callable(should_stop) and should_stop(
                         frame.stream_time_s + frame.samples.size / 16_000, frame.samples
                     ):
-                        break
+                        await self._close_call()
                 await asyncio.sleep(0)
-            self._close_call()
+            await self._close_call()
             await asyncio.sleep(0)
         except BaseException as error:
             if self.watchdog is not None:
                 self.watchdog.on_error(error)
-            self._close_call()
+            await self._close_call()
             raise
         finally:
             await source.close()
@@ -180,7 +189,7 @@ class Channel:
         if self.watchdog is not None:
             self.watchdog.on_frame(frame)
 
-    def _publish_detection(self, detection: Detection) -> None:
+    async def _publish_detection(self, detection: Detection) -> None:
         toneset = next(tone for tone in self.tonesets if tone.id == detection.toneset_id)
         open_call = self._open_call
         if (
@@ -188,7 +197,7 @@ class Channel:
             or detection.detected_at_s - open_call.last_detection_s > toneset.record.post_s
         ):
             if open_call is not None:
-                self._close_call()
+                await self._close_call()
             open_call = _OpenCall(
                 uuid4(), detection.detected_at_s, detection.detected_at_s, toneset.record.post_s
             )
@@ -216,19 +225,25 @@ class Channel:
             frozenset(self._open_call.toneset_ids),
         )
 
-    def _close_expired(self, stream_time_s: float) -> None:
+    async def _close_expired(self, stream_time_s: float) -> None:
         if (
             self._open_call is not None
             and stream_time_s - self._open_call.last_detection_s > self._open_call.merge_window_s
         ):
-            self._close_call()
+            await self._close_call()
 
-    def _close_call(self) -> None:
+    async def _close_call(self) -> None:
         if self._open_call is None:
             return
         call = self._open_call
-        self.bus.publish(CallClosed(call.id, "recorded", self.source_id))
         self._open_call = None
+        finish = getattr(self.recorder_hook, "finish", None)
+        if callable(finish):
+            result = finish()
+            if inspect.isawaitable(result):
+                await result
+        else:
+            self.bus.publish(CallClosed(call.id, "recorded", self.source_id))
 
     def _to_wall_time(self, stream_time_s: float) -> datetime:
         if self._anchor_wall is None:
