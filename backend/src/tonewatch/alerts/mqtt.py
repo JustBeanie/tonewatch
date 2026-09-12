@@ -254,6 +254,10 @@ class MqttPublisher:
         """Publish a call event."""
         await self.publish(f"tonewatch/{self.instance_id}/call", payload)
 
+    async def publish_discovered(self, payload: dict[str, object]) -> None:
+        """Publish an opt-in discovery event."""
+        await self.publish(f"tonewatch/{self.instance_id}/discovered", payload)
+
     async def publish_health(self, source_id: str, healthy: bool) -> None:
         """Publish one source health state."""
         state = "online" if healthy else "offline"
@@ -381,13 +385,13 @@ class MqttPublisher:
             will=will,
         )
         await self.client.__aenter__()
-        self._set_connected(True)
         self._mark_healthy()
         await self.client.publish(self.availability_topic, payload="online", qos=1, retain=True)
         while (message := self._pop_queued()) is not None:
             await self.client.publish(
                 message.topic, payload=message.payload, qos=1, retain=message.retain
             )
+        self._set_connected(True)
         await self._wait_for_activity(stop_event)
 
     async def _close_client(self) -> None:

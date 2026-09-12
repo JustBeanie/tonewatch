@@ -8,6 +8,7 @@ non-tonal frames. Each round builds a fresh engine so rounds are independent.
 from __future__ import annotations
 
 from tonewatch.config.models import ToneSet
+from tonewatch.dsp.discovery import DiscoveryTracker
 from tonewatch.dsp.engine import DetectionEngine
 from tonewatch.dsp.generator import Signal, concat, pink_noise, silence, tone, voice_like
 
@@ -56,6 +57,8 @@ def test_detection_engine_realtime(benchmark) -> None:
 
     def run() -> list[str]:
         output = DetectionEngine(tonesets).feed(signal)
+        tracker = DiscoveryTracker()
+        tracker.feed(output.segment_update, output.detections, 600.0)
         return [detection.toneset_id for detection in output.detections]
 
     detected = benchmark(run)

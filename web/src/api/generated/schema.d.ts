@@ -215,6 +215,92 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/discovered-tones": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Discovered Tones */
+        get: operations["discovered_tones_api_discovered_tones_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/discovered-tones/{cluster_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Discovered Tone */
+        get: operations["discovered_tone_api_discovered_tones__cluster_id__get"];
+        put?: never;
+        post?: never;
+        /** Delete Discovered Tone */
+        delete: operations["delete_discovered_tone_api_discovered_tones__cluster_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/discovered-tones/{cluster_id}/clip": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Discovered Clip */
+        get: operations["discovered_clip_api_discovered_tones__cluster_id__clip_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/discovered-tones/{cluster_id}/dismiss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Dismiss */
+        post: operations["dismiss_api_discovered_tones__cluster_id__dismiss_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/discovered-tones/{cluster_id}/promote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Promote */
+        post: operations["promote_api_discovered_tones__cluster_id__promote_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/import/ttd": {
         parameters: {
             query?: never;
@@ -388,6 +474,7 @@ export interface components {
         AppConfig: {
             /** Alert Targets */
             alert_targets?: (components["schemas"]["MqttTarget"] | components["schemas"]["WebhookTarget"] | components["schemas"]["ScriptTarget"])[];
+            discovery?: components["schemas"]["DiscoveryConfig"];
             /** Sources */
             sources?: (components["schemas"]["SoundcardSource"] | components["schemas"]["StreamSource"] | components["schemas"]["RtlSdrSource"] | components["schemas"]["FileSource"])[];
             /** Tone Sets */
@@ -398,8 +485,49 @@ export interface components {
             /** File */
             file: string;
         };
+        /**
+         * DiscoveryConfig
+         * @description Global tone auto-discovery settings.
+         */
+        DiscoveryConfig: {
+            /**
+             * Clip
+             * @default true
+             */
+            clip: boolean;
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+            /**
+             * Max Gap S
+             * @default 0.5
+             */
+            max_gap_s: number;
+            /**
+             * Max Segment S
+             * @default 3
+             */
+            max_segment_s: number;
+            /**
+             * Min Segment S
+             * @default 0.3
+             */
+            min_segment_s: number;
+            /**
+             * Tol Pct
+             * @default 1.5
+             */
+            tol_pct: number;
+        };
         /** FileSource */
         FileSource: {
+            /**
+             * Discovery Enabled
+             * @default true
+             */
+            discovery_enabled: boolean;
             /**
              * Enabled
              * @default true
@@ -449,6 +577,8 @@ export interface components {
              * @default true
              */
             enabled: boolean;
+            /** Events */
+            events?: ("pre_alert" | "recording_ready" | "closed" | "tone_discovered")[];
             /**
              * Ha Discovery
              * @default true
@@ -527,6 +657,11 @@ export interface components {
         /** RtlSdrSource */
         RtlSdrSource: {
             /**
+             * Discovery Enabled
+             * @default true
+             */
+            discovery_enabled: boolean;
+            /**
              * Enabled
              * @default true
              */
@@ -572,6 +707,8 @@ export interface components {
              * @default false
              */
             enabled: boolean;
+            /** Events */
+            events?: ("pre_alert" | "recording_ready" | "closed" | "tone_discovered")[];
             /** Executable */
             executable: string;
             /** Id */
@@ -600,6 +737,11 @@ export interface components {
             /** Device */
             device: string | number;
             /**
+             * Discovery Enabled
+             * @default true
+             */
+            discovery_enabled: boolean;
+            /**
              * Enabled
              * @default true
              */
@@ -621,6 +763,11 @@ export interface components {
         };
         /** StreamSource */
         StreamSource: {
+            /**
+             * Discovery Enabled
+             * @default true
+             */
+            discovery_enabled: boolean;
             /**
              * Enabled
              * @default true
@@ -721,6 +868,8 @@ export interface components {
              * @default true
              */
             enabled: boolean;
+            /** Events */
+            events?: ("pre_alert" | "recording_ready" | "closed" | "tone_discovered")[];
             /** Id */
             id: string;
             /**
@@ -1206,6 +1355,206 @@ export interface operations {
             };
         };
     };
+    discovered_tones_api_discovered_tones_get: {
+        parameters: {
+            query?: {
+                source?: string | null;
+                since?: string | null;
+                status?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    discovered_tone_api_discovered_tones__cluster_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cluster_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_discovered_tone_api_discovered_tones__cluster_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cluster_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: boolean;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    discovered_clip_api_discovered_tones__cluster_id__clip_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cluster_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    dismiss_api_discovered_tones__cluster_id__dismiss_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cluster_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    promote_api_discovered_tones__cluster_id__promote_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cluster_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     import_ttd_api_import_ttd_post: {
         parameters: {
             query?: {
@@ -1454,7 +1803,9 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ToneSet"];
+                "application/json": {
+                    [key: string]: unknown;
+                };
             };
         };
         responses: {

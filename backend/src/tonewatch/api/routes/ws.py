@@ -14,7 +14,14 @@ from fastapi import APIRouter, WebSocket
 from starlette.requests import HTTPConnection, Request
 from starlette.websockets import WebSocketDisconnect
 
-from tonewatch.events import ChannelLevel, Event, EventBus, SpectrumUpdate
+from tonewatch.events import (
+    ChannelLevel,
+    Event,
+    EventBus,
+    SpectrumUpdate,
+    ToneCandidateObserved,
+    ToneDiscovered,
+)
 
 router = APIRouter()
 MAX_CONNECTIONS = 20
@@ -38,7 +45,8 @@ def _json_value(value: Any) -> Any:
 
 def serialize_event(event: Event) -> dict[str, Any]:
     """Serialize a domain event with explicit event type and JSON-safe fields."""
-    return {"type": type(event).__name__, "data": _json_value(event)}
+    event_type = "tone_discovered" if isinstance(event, ToneDiscovered) else type(event).__name__
+    return {"type": event_type, "data": _json_value(event)}
 
 
 class ClientQueue:
@@ -133,6 +141,8 @@ async def _event_pump(bus: EventBus, hub: WebSocketHub) -> None:
     subscription = bus.subscribe()
     try:
         async for event in subscription:
+            if isinstance(event, ToneCandidateObserved):
+                continue
             await hub.publish(serialize_event(event))
     finally:
         bus.unsubscribe(subscription)

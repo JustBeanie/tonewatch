@@ -18,12 +18,13 @@ from tonewatch.events import EventBus
 from tonewatch.pipeline.channel import RecorderCall
 from tonewatch.pipeline.ringbuffer import RingBuffer
 from tonewatch.pipeline.supervisor import Supervisor
+from tonewatch.recording.discovery import discovery_clip_path, encode_discovery_clip
 from tonewatch.recording.encoder import AudioEncoder
 from tonewatch.recording.recorder import CallRecorder
 from tonewatch.recording.retention import RetentionPolicy, RetentionService
 from tonewatch.sources.base import AudioFrame
 from tonewatch.storage.db import create_database, create_database_schema
-from tonewatch.storage.models import Recording
+from tonewatch.storage.models import DiscoveredTone, Recording
 
 
 def toneset(*, formats: list[str] | None = None, max_s: float = 4) -> ToneSet:
@@ -130,6 +131,83 @@ def test_retention_deletes_oldest_and_refuses_escape(tmp_path: Path) -> None:
         await engine.dispose()
 
     asyncio.run(escape())
+
+
+def test_discovered_clips_follow_retention_and_safe_cleanup(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = tmp_path / "recordings"
+    clip = root / "discovered" / "1.mp3"
+    clip.parent.mkdir(parents=True)
+    clip.write_bytes(b"clip")
+    outside = tmp_path / "outside.mp3"
+    outside.write_bytes(b"outside")
+
+    async def run() -> None:
+        engine, sessions = create_database(f"sqlite+aiosqlite:///{tmp_path / 'discovery.sqlite'}")
+        await create_database_schema(engine)
+        async with sessions() as session:
+            session.add_all(
+                [
+                    DiscoveredTone(
+                        id=1,
+                        mean_frequencies=[1000],
+                        median_durations=[2],
+                        count=1,
+                        first_seen=datetime(2026, 1, 1, tzinfo=UTC),
+                        last_seen=datetime(2026, 1, 1, tzinfo=UTC),
+                        source_ids=["radio"],
+                        status="new",
+                        best_clip_recording_path=str(clip),
+                    ),
+                    DiscoveredTone(
+                        id=2,
+                        mean_frequencies=[1200],
+                        median_durations=[2],
+                        count=1,
+                        first_seen=datetime(2026, 1, 2, tzinfo=UTC),
+                        last_seen=datetime(2026, 1, 2, tzinfo=UTC),
+                        source_ids=["radio"],
+                        status="dismissed",
+                    ),
+                    DiscoveredTone(
+                        id=3,
+                        mean_frequencies=[1400],
+                        median_durations=[2],
+                        count=1,
+                        first_seen=datetime(2026, 1, 3, tzinfo=UTC),
+                        last_seen=datetime(2026, 1, 3, tzinfo=UTC),
+                        source_ids=["radio"],
+                        status="new",
+                        best_clip_recording_path=str(outside),
+                    ),
+                ]
+            )
+            await session.commit()
+            service = RetentionService(root, RetentionPolicy(max_total_bytes=0))
+            assert clip in await service.enforce(session)
+            assert not clip.exists() and outside.exists()
+            assert len(await service.enforce_discovered(session, cap=0)) == 0
+        await engine.dispose()
+
+    asyncio.run(run())
+
+    with pytest.raises(ValueError):
+        discovery_clip_path(tmp_path, 0)
+
+    def broken(*_args: Any, **_kwargs: Any) -> None:
+        raise OSError
+
+    monkeypatch.setattr(AudioEncoder, "encode_samples_to_path", broken)
+    with pytest.raises(OSError):
+        encode_discovery_clip(
+            root,
+            4,
+            np.zeros(1600, dtype=np.float32),
+            call_start=datetime(2026, 1, 1, tzinfo=UTC),
+            source_id="radio",
+        )
+    assert not list((root / "discovered").glob(".4.*.tmp"))
 
 
 def test_recorder_policy_union_and_silence_stop(tmp_path: Path) -> None:

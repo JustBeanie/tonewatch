@@ -112,13 +112,13 @@ Tick a task with `[x]`, then append ` — <PR link> — <one-line note>`. Blocke
 - [ ] **M11.8** CI: hassfest, `hacs/action`, ruff, mypy and pytest. Aim for HA integration quality scale Silver rules.
 
 ## M13: Tone auto-discovery (added 2026-09-12 at user request)
-- [ ] **M13.1** `dsp/discovery.py`: unmatched tone-sequence candidates (two-tone, long tone, N-tone) per channel, suppressed when any tone set matched.
-- [ ] **M13.2** Clustering within `tol_pct`, `DiscoveredTone` storage + migration, caps and dismiss/promote status.
-- [ ] **M13.3** Optional evidence clip per cluster (tones + up to 15 s), counted by retention.
-- [ ] **M13.4** API + WS: list, promote to a pre-filled tone-set draft, dismiss, delete, clip download, `tone_discovered` event.
-- [ ] **M13.5** Web "Discovered tones" page with clip player, Create tone set, Dismiss, and a dashboard badge.
-- [ ] **M13.6** Opt-in notifications: webhook/MQTT/HA `tone_discovered`, and the M11 "last discovered tone" sensor.
-- [ ] **M13.7** Settings (enabled, clip, durations, per-source opt-out) and `tonewatch analyze --discover`.
+- [x] **M13.1** `dsp/discovery.py`: unmatched tone-sequence candidates (two-tone, long tone, N-tone) per channel, suppressed when any tone set matched. — PM review passed (M13-fix, M13-rebase); host ci-local green.
+- [x] **M13.2** Clustering within `tol_pct`, `DiscoveredTone` storage + migration, caps and dismiss/promote status. — PM review passed (M13-fix, M13-rebase); host ci-local green.
+- [x] **M13.3** Optional evidence clip per cluster (tones + up to 15 s), counted by retention. — PM review passed (M13-fix, M13-rebase); host ci-local green.
+- [x] **M13.4** API + WS: list, promote to a pre-filled tone-set draft, dismiss, delete, clip download, `tone_discovered` event. — PM review passed (M13-fix, M13-rebase); host ci-local green.
+- [x] **M13.5** Web "Discovered tones" page with clip player, Create tone set, Dismiss, and a dashboard badge. — PM review passed (M13-fix, M13-rebase); host ci-local green.
+- [x] **M13.6** Opt-in notifications: webhook/MQTT/HA `tone_discovered`, and the M11 "last discovered tone" sensor. — PM review passed (M13-fix, M13-rebase); host ci-local green.
+- [x] **M13.7** Settings (enabled, clip, durations, per-source opt-out) and `tonewatch analyze --discover`. — PM review passed (M13-fix, M13-rebase); host ci-local green.
 
 ## M12: Docs, hardening and v1.0.0
 - [ ] **M12.1** mkdocs-material site: install guides (Docker, Pi, add-on, Windows), finding tone frequencies, tuning purity...

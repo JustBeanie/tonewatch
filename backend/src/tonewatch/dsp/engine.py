@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, cast
 
 import numpy as np
 
 from tonewatch.dsp.matcher import Detection, Matcher
-from tonewatch.dsp.segmenter import Segmenter, ToneSegment
+from tonewatch.dsp.segmenter import Segmenter, SegmenterUpdate, ToneSegment
 from tonewatch.dsp.spectrum import SpectrumAnalyzer, SpectrumFrame
 
 if TYPE_CHECKING:
@@ -24,6 +24,7 @@ class EngineOutput:
     frames: tuple[SpectrumFrame, ...]
     segments: tuple[ToneSegment, ...]
     detections: tuple[Detection, ...]
+    segment_update: SegmenterUpdate = field(default_factory=SegmenterUpdate)
 
 
 class DetectionEngine:
@@ -55,4 +56,4 @@ class DetectionEngine:
         }
         segments = tuple(segments_by_start.values())
         detections = tuple(self.matcher.feed(update))
-        return EngineOutput(tuple(frames), segments, detections)
+        return EngineOutput(tuple(frames), segments, detections, update)

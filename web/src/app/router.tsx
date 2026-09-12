@@ -6,6 +6,7 @@ import { request } from "../api/client";
 import { Dashboard } from "../features/dashboard/Dashboard";
 import { Calls, CallDetail } from "../features/calls/Calls";
 import { ToneSets, ToneSetForm } from "../features/tonesets/ToneSets";
+import { DiscoveredTones } from "../features/discovered/DiscoveredTones";
 import { Spectrum } from "../features/spectrum/Spectrum";
 import { Sources } from "../features/sources/Sources";
 import { Alerts } from "../features/alerts/Alerts";
@@ -65,6 +66,7 @@ export function Router() {
                     <Route path="/calls" element={<Calls />} />
                     <Route path="/calls/:id" element={<CallDetail />} />
                     <Route path="/tonesets" element={<ToneSets />} />
+                    <Route path="/discovered-tones" element={<DiscoveredTones />} />
                     <Route path="/tonesets/new" element={<ToneSetForm />} />
                     <Route path="/tonesets/:id/edit" element={<ToneSetForm />} />
                     <Route path="/spectrum" element={<Spectrum />} />

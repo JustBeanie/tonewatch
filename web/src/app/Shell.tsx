@@ -18,6 +18,7 @@ export function Shell() {
                             ["/", "Dashboard"],
                             ["/calls", "Calls"],
                             ["/tonesets", "Tone sets"],
+                            ["/discovered-tones", "Discovered tones"],
                             ["/spectrum", "Spectrum"],
                             ["/sources", "Sources"],
                             ["/alerts", "Alerts"],

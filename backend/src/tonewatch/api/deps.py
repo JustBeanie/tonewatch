@@ -69,6 +69,7 @@ async def put(request: Request, kind: str, item: Any) -> AppConfig:
             alert_targets=items
             if kind == "alert_targets"
             else request.app.state.config.alert_targets,
+            discovery=request.app.state.config.discovery,
         )
     except ValidationError as exc:
         raise HTTPException(422, str(exc)) from None

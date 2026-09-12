@@ -74,6 +74,26 @@ class AuditEvent(Base):
     details: Mapped[dict[str, Any] | None] = mapped_column(JSON)
 
 
+class DiscoveredTone(Base):
+    """Persisted summary of an unmatched tone sequence."""
+
+    __tablename__ = "discovered_tones"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    mean_frequencies: Mapped[list[float]] = mapped_column(JSON, nullable=False)
+    median_durations: Mapped[list[float]] = mapped_column(JSON, nullable=False)
+    duration_samples: Mapped[list[list[float]]] = mapped_column(JSON, nullable=False, default=list)
+    frequency_minimums: Mapped[list[float]] = mapped_column(JSON, nullable=False, default=list)
+    frequency_maximums: Mapped[list[float]] = mapped_column(JSON, nullable=False, default=list)
+    count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    first_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    last_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    source_ids: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    observed_frequency_spread_pct: Mapped[float] = mapped_column(Float, nullable=False, default=0)
+    status: Mapped[str] = mapped_column(String(12), nullable=False, default="new")
+    best_clip_recording_path: Mapped[str | None] = mapped_column(Text)
+    best_mean_purity: Mapped[float] = mapped_column(Float, nullable=False, default=0)
+
+
 def create_database(url: str) -> tuple[AsyncEngine, async_sessionmaker[Any]]:
     """Create an async engine and session factory."""
     engine = create_async_engine(url)

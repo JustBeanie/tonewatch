@@ -1,7 +1,7 @@
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
-import { Link, useNavigate, useParams, useSearchParams } from "react-router";
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router";
 import { request } from "../../api/client";
-type Tone = { frequency: number; tolerance_pct: number; min_s: number; max_s: number };
+type Tone = { frequency: number; tolerance_pct: number; min_s: number; max_s: number | null };
 type ToneSet = { id: string; name: string; enabled: boolean; sequence: Tone[] };
 type ImportTone = { freq_hz: number; tol_pct: number; min_s: number };
 type ImportRow = {
@@ -185,6 +185,7 @@ export function ToneSets() {
 export function ToneSetForm() {
     const { id } = useParams();
     const [params] = useSearchParams();
+    const location = useLocation();
     const nav = useNavigate();
     const [name, setName] = useState("");
     const [tones, setTones] = useState<Tone[]>([
@@ -196,6 +197,19 @@ export function ToneSetForm() {
         },
     ]);
     const [error, setError] = useState("");
+    useEffect(() => {
+        const state = location.state as { draft?: ToneSet; discoveredToneId?: number } | null;
+        if (!state?.draft) return;
+        setName(state.draft.name);
+        setTones(
+            state.draft.sequence.map((tone) => ({
+                frequency: (tone as Tone & { freq_hz?: number }).freq_hz ?? tone.frequency,
+                tolerance_pct: (tone as Tone & { tol_pct?: number }).tol_pct ?? tone.tolerance_pct,
+                min_s: tone.min_s,
+                max_s: tone.max_s ?? null,
+            })),
+        );
+    }, [location.state]);
     useEffect(() => {
         if (id)
             request<ToneSet>(`tonesets/${id}`)
@@ -223,7 +237,7 @@ export function ToneSetForm() {
                     t.frequency > 3000 ||
                     t.tolerance_pct < 0.1 ||
                     t.tolerance_pct > 10 ||
-                    t.max_s < t.min_s,
+                    (t.max_s !== null && t.max_s < t.min_s),
             )
         ) {
             setError("Check frequency, tolerance, and duration ranges.");
@@ -243,6 +257,12 @@ export function ToneSetForm() {
                         min_s,
                         max_s,
                     })),
+                    ...((location.state as { discoveredToneId?: number } | null)?.discoveredToneId
+                        ? {
+                              discovered_tone_id: (location.state as { discoveredToneId: number })
+                                  .discoveredToneId,
+                          }
+                        : {}),
                 }),
             });
             nav("/tonesets");
@@ -278,7 +298,7 @@ export function ToneSetForm() {
                                     id={`${f}-${i}`}
                                     type="number"
                                     step="any"
-                                    value={t[f]}
+                                    value={t[f] ?? ""}
                                     onChange={(e) =>
                                         setTones((a) =>
                                             a.map((x, j) =>

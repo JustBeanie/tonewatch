@@ -20,6 +20,12 @@ non-tonal frames.
 | Detections | 20 / 20 expected |
 | Benchmark rounds | 5 |
 
+M13 discovery-enabled reruns use the same signal, with `DiscoveryTracker` fed each
+engine output and matched spans used for suppression. The latest local `just bench`
+run on 2026-09-12 measured a 549.4001 ms mean, 501.1919 ms minimum, and 605.7891 ms
+maximum for 600 seconds of audio, or approximately 1,092x realtime, with five rounds
+and 20 expected detections.
+
 The target is 20x realtime. The first M2 run measured a non-tonal stream only
 (469 ms, 1,278x); PM review replaced it with this realistic mix, which costs
 about 2% more. Raspberry Pi 4/5 numbers are still to be recorded by hand.

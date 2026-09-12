@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "summary": "ToneWatch M0-M8 STRIDE threat model",
+  "summary": "ToneWatch M0-M13 STRIDE threat model",
   "detail": "Self-hosted ToneWatch deployment with Home Assistant as the primary deployment. Threat status and evidence are maintained in docs/security/threat-model/README.md.",
   "owner": "ToneWatch maintainers",
   "reviewer": "ToneWatch security review",
@@ -84,7 +84,8 @@
         {"id": "TM-026", "category": "Elevation of privilege", "element": "Alert dispatcher (M7)", "status": "mitigated"},
         {"id": "TM-027", "category": "Elevation of privilege", "element": "Network stream origin", "status": "open"},
         {"id": "TM-028", "category": "Information disclosure", "element": "Supervisor MQTT credentials", "status": "mitigated"},
-        {"id": "TM-029", "category": "Tampering / Information disclosure", "element": "TTD importer", "status": "mitigated"}
+        {"id": "TM-029", "category": "Tampering / Information disclosure", "element": "TTD importer", "status": "mitigated"},
+        {"id": "TM-030", "category": "Information disclosure / Tampering", "element": "Discovery clips and API", "status": "mitigated"}
       ]
     }
   ]

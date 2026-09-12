@@ -10,6 +10,7 @@ from pydantic import TypeAdapter, ValidationError
 from tonewatch.api.deps import _dump, authenticated, collection, put, save_config, write_auth
 from tonewatch.config.models import AlertTarget, AppConfig, Source, ToneSet
 from tonewatch.events import CallClosed, ToneDetected
+from tonewatch.storage.models import DiscoveredTone
 
 router = APIRouter(prefix="/api", tags=["configuration"])
 
@@ -33,8 +34,25 @@ async def tonesets(request: Request) -> list[Any]:
 
 
 @router.post("/tonesets", dependencies=[Depends(write_auth)], status_code=201)
-async def create_toneset(request: Request, item: ToneSet) -> Any:
-    return _dump((await put(request, "tone_sets", item)).tone_sets[-1])
+async def create_toneset(request: Request, payload: dict[str, Any] = Body(...)) -> Any:
+    discovered_id = payload.pop("discovered_tone_id", None)
+    try:
+        item = ToneSet.model_validate(payload)
+    except ValidationError as exc:
+        raise HTTPException(422, str(exc)) from None
+    result = _dump((await put(request, "tone_sets", item)).tone_sets[-1])
+    if discovered_id is not None:
+        try:
+            discovered_id = int(discovered_id)
+        except (TypeError, ValueError):
+            raise HTTPException(422, "invalid discovered_tone_id") from None
+        async with request.app.state.session_factory() as session:
+            row = await session.get(DiscoveredTone, discovered_id)
+            if row is None:
+                raise HTTPException(404, "discovered tone not found")
+            row.status = "promoted"
+            await session.commit()
+    return result
 
 
 @router.get("/tonesets/{item_id}", dependencies=[Depends(authenticated)])
@@ -70,6 +88,7 @@ async def delete_toneset(request: Request, item_id: str) -> Any:
         tone_sets=[value for value in request.app.state.config.tone_sets if value.id != item_id],
         sources=request.app.state.config.sources,
         alert_targets=request.app.state.config.alert_targets,
+        discovery=request.app.state.config.discovery,
     )
     return _dump(await save_config(request, config))
 
@@ -133,6 +152,7 @@ def _crud(path: str, kind: str, model: Any) -> None:
             alert_targets=values
             if kind == "alert_targets"
             else request.app.state.config.alert_targets,
+            discovery=request.app.state.config.discovery,
         )
         await save_config(request, config)
         return {"ok": True}

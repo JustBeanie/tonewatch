@@ -22,6 +22,7 @@ from tonewatch.api.routes.audit import router as audit_router
 from tonewatch.api.routes.auth import router as auth_router
 from tonewatch.api.routes.calls import router as calls_router
 from tonewatch.api.routes.config import router as config_router
+from tonewatch.api.routes.discovered_tones import router as discovered_tones_router
 from tonewatch.api.routes.import_ttd import router as import_ttd_router
 from tonewatch.api.routes.recordings import router as recordings_router
 from tonewatch.api.routes.system import router as system_router
@@ -189,6 +190,7 @@ def create_app(
     for router in (
         auth_router,
         config_router,
+        discovered_tones_router,
         import_ttd_router,
         calls_router,
         recordings_router,

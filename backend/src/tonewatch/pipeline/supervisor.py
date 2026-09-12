@@ -78,7 +78,12 @@ class Supervisor:
         self._background_shutdown: set[asyncio.Task[None]] = set()
         self._configs: dict[str, Source] = {}
         self._stopping = False
-        self.persistence = PersistenceSubscriber(bus, session_factory)
+        self.persistence = PersistenceSubscriber(
+            bus,
+            session_factory,
+            recordings_root=settings.recording_path if settings is not None else None,
+            discovery_clip=bool(getattr(config.discovery, "clip", True)),
+        )
         self.alerts = AlertDispatcher(
             config,
             bus,
@@ -164,13 +169,25 @@ class Supervisor:
         desired = {source.id: source for source in config.sources if source.enabled}
         current = dict(self._configs)
         tone_sets_changed = config.tone_sets != self.config.tone_sets
+        discovery_changed = config.discovery != self.config.discovery
         for source_id, old in current.items():
-            if source_id not in desired or desired[source_id] != old or tone_sets_changed:
+            if (
+                source_id not in desired
+                or desired[source_id] != old
+                or tone_sets_changed
+                or discovery_changed
+            ):
                 await self._stop_source(source_id)
         self.config = config
+        self.persistence.discovery_clip = bool(getattr(config.discovery, "clip", True))
         await self.alerts.reload(config)
         for source_id, source in desired.items():
-            if source_id not in current or current[source_id] != source or tone_sets_changed:
+            if (
+                source_id not in current
+                or current[source_id] != source
+                or tone_sets_changed
+                or discovery_changed
+            ):
                 self._start_source(source)
 
     def _start_source(self, source: Source) -> None:
@@ -219,6 +236,7 @@ class Supervisor:
                     source_factory=self.source_factory,
                     watchdog=watchdog,
                     source_settings=self.settings,
+                    discovery_settings=self.config.discovery,
                 )
                 await channel.run()
             except asyncio.CancelledError:

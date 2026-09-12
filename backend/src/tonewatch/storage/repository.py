@@ -4,9 +4,10 @@ from dataclasses import dataclass
 from datetime import datetime
 from uuid import UUID
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from tonewatch.storage.models import Call, CallToneSet
+from tonewatch.storage.models import Call, CallToneSet, DiscoveredTone
 
 
 @dataclass(frozen=True)
@@ -56,3 +57,31 @@ async def close_call(session: AsyncSession, *, call_id: UUID, status: str) -> No
     if call is not None:
         call.status = status
         await session.flush()
+
+
+async def list_discovered_tones(  # noqa: PLR0913 -- list filters are the repository query contract.
+    session: AsyncSession,
+    *,
+    source_id: str | None = None,
+    since: datetime | None = None,
+    status: str | None = None,
+    limit: int = 100,
+    offset: int = 0,
+) -> list[DiscoveredTone]:
+    """List discovered clusters using stable newest-first ordering."""
+    query = select(DiscoveredTone).order_by(DiscoveredTone.last_seen.desc())
+    if status:
+        query = query.where(DiscoveredTone.status == status)
+    if since:
+        query = query.where(DiscoveredTone.last_seen >= since)
+    result = await session.scalars(query)
+    rows = list(result.all())
+    result.close()
+    if source_id:
+        rows = [row for row in rows if source_id in row.source_ids]
+    return rows[offset : offset + limit]
+
+
+async def get_discovered_tone(session: AsyncSession, cluster_id: int) -> DiscoveredTone | None:
+    """Return one discovered cluster."""
+    return await session.get(DiscoveredTone, cluster_id)

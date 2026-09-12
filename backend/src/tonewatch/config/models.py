@@ -15,6 +15,12 @@ from pydantic import (
 
 Slug = Annotated[str, StringConstraints(pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$", min_length=1)]
 Positive = Annotated[float, Field(gt=0)]
+AlertEvent = Literal["pre_alert", "recording_ready", "closed", "tone_discovered"]
+DEFAULT_ALERT_EVENTS: tuple[AlertEvent, ...] = ("pre_alert", "recording_ready", "closed")
+
+
+def _deduplicate_events(value: list[AlertEvent]) -> list[AlertEvent]:
+    return list(dict.fromkeys(value))
 
 
 class FrozenModel(BaseModel):
@@ -68,6 +74,23 @@ class ToneSet(FrozenModel):
     record: RecordingPolicy = Field(default_factory=RecordingPolicy)
 
 
+class DiscoveryConfig(FrozenModel):
+    """Global tone auto-discovery settings."""
+
+    enabled: bool = True
+    clip: bool = True
+    min_segment_s: Positive = Field(default=0.3, le=3)
+    max_segment_s: Positive = Field(default=3.0, le=10)
+    max_gap_s: float = Field(default=0.5, ge=0, le=10)
+    tol_pct: float = Field(default=1.5, ge=0.5, le=5)
+
+    @model_validator(mode="after")
+    def segment_order(self) -> "DiscoveryConfig":
+        if self.max_segment_s < self.min_segment_s:
+            raise ValueError("max_segment_s must be greater than or equal to min_segment_s")
+        return self
+
+
 class SourceBase(FrozenModel):
     """Common source settings."""
 
@@ -75,6 +98,7 @@ class SourceBase(FrozenModel):
     name: str = Field(min_length=1)
     enabled: bool = True
     tonesets: list[Slug] | Literal["all"] = "all"
+    discovery_enabled: bool = True
 
 
 class SoundcardSource(SourceBase):
@@ -129,6 +153,12 @@ class MqttTarget(FrozenModel):
     ha_discovery: bool = True
     topic: str = "tonewatch"
     enabled: bool = True
+    events: list[AlertEvent] = Field(default_factory=lambda: list(DEFAULT_ALERT_EVENTS))
+
+    @field_validator("events")
+    @classmethod
+    def deduplicate_events(cls, value: list[AlertEvent]) -> list[AlertEvent]:
+        return _deduplicate_events(value)
 
     @property
     def hostname(self) -> str:
@@ -145,6 +175,12 @@ class WebhookTarget(FrozenModel):
     include_audio: bool = False
     allow_insecure_http: bool = False
     enabled: bool = True
+    events: list[AlertEvent] = Field(default_factory=lambda: list(DEFAULT_ALERT_EVENTS))
+
+    @field_validator("events")
+    @classmethod
+    def deduplicate_events(cls, value: list[AlertEvent]) -> list[AlertEvent]:
+        return _deduplicate_events(value)
 
 
 class ScriptTarget(FrozenModel):
@@ -155,6 +191,12 @@ class ScriptTarget(FrozenModel):
     args: list[str] = []
     timeout_s: Positive = 30
     enabled: bool = False
+    events: list[AlertEvent] = Field(default_factory=lambda: list(DEFAULT_ALERT_EVENTS))
+
+    @field_validator("events")
+    @classmethod
+    def deduplicate_events(cls, value: list[AlertEvent]) -> list[AlertEvent]:
+        return _deduplicate_events(value)
 
     @field_validator("args")
     @classmethod
@@ -181,6 +223,7 @@ class AppConfig(FrozenModel):
     tone_sets: list[ToneSet] = Field(default_factory=list, max_length=500)
     sources: list[Source] = Field(default_factory=list, max_length=16)
     alert_targets: list[AlertTarget] = Field(default_factory=list, max_length=128)
+    discovery: DiscoveryConfig = Field(default_factory=DiscoveryConfig)
 
     @model_validator(mode="after")
     def references_and_unique_ids(self) -> "AppConfig":

@@ -31,6 +31,9 @@
             "title": "Alert Targets",
             "type": "array"
           },
+          "discovery": {
+            "$ref": "#/components/schemas/DiscoveryConfig"
+          },
           "sources": {
             "items": {
               "discriminator": {
@@ -87,9 +90,60 @@
         "title": "Body_analyze_api_analyze_post",
         "type": "object"
       },
+      "DiscoveryConfig": {
+        "additionalProperties": false,
+        "description": "Global tone auto-discovery settings.",
+        "properties": {
+          "clip": {
+            "default": true,
+            "title": "Clip",
+            "type": "boolean"
+          },
+          "enabled": {
+            "default": true,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "max_gap_s": {
+            "default": 0.5,
+            "maximum": 10.0,
+            "minimum": 0.0,
+            "title": "Max Gap S",
+            "type": "number"
+          },
+          "max_segment_s": {
+            "default": 3.0,
+            "exclusiveMinimum": 0.0,
+            "maximum": 10.0,
+            "title": "Max Segment S",
+            "type": "number"
+          },
+          "min_segment_s": {
+            "default": 0.3,
+            "exclusiveMinimum": 0.0,
+            "maximum": 3.0,
+            "title": "Min Segment S",
+            "type": "number"
+          },
+          "tol_pct": {
+            "default": 1.5,
+            "maximum": 5.0,
+            "minimum": 0.5,
+            "title": "Tol Pct",
+            "type": "number"
+          }
+        },
+        "title": "DiscoveryConfig",
+        "type": "object"
+      },
       "FileSource": {
         "additionalProperties": false,
         "properties": {
+          "discovery_enabled": {
+            "default": true,
+            "title": "Discovery Enabled",
+            "type": "boolean"
+          },
           "enabled": {
             "default": true,
             "title": "Enabled",
@@ -179,6 +233,19 @@
             "default": true,
             "title": "Enabled",
             "type": "boolean"
+          },
+          "events": {
+            "items": {
+              "enum": [
+                "pre_alert",
+                "recording_ready",
+                "closed",
+                "tone_discovered"
+              ],
+              "type": "string"
+            },
+            "title": "Events",
+            "type": "array"
           },
           "ha_discovery": {
             "default": true,
@@ -319,6 +386,11 @@
       "RtlSdrSource": {
         "additionalProperties": false,
         "properties": {
+          "discovery_enabled": {
+            "default": true,
+            "title": "Discovery Enabled",
+            "type": "boolean"
+          },
           "enabled": {
             "default": true,
             "title": "Enabled",
@@ -409,6 +481,19 @@
             "title": "Enabled",
             "type": "boolean"
           },
+          "events": {
+            "items": {
+              "enum": [
+                "pre_alert",
+                "recording_ready",
+                "closed",
+                "tone_discovered"
+              ],
+              "type": "string"
+            },
+            "title": "Events",
+            "type": "array"
+          },
           "executable": {
             "minLength": 1,
             "title": "Executable",
@@ -470,6 +555,11 @@
             ],
             "title": "Device"
           },
+          "discovery_enabled": {
+            "default": true,
+            "title": "Discovery Enabled",
+            "type": "boolean"
+          },
           "enabled": {
             "default": true,
             "title": "Enabled",
@@ -522,6 +612,11 @@
       "StreamSource": {
         "additionalProperties": false,
         "properties": {
+          "discovery_enabled": {
+            "default": true,
+            "title": "Discovery Enabled",
+            "type": "boolean"
+          },
           "enabled": {
             "default": true,
             "title": "Enabled",
@@ -734,6 +829,19 @@
             "default": true,
             "title": "Enabled",
             "type": "boolean"
+          },
+          "events": {
+            "items": {
+              "enum": [
+                "pre_alert",
+                "recording_ready",
+                "closed",
+                "tone_discovered"
+              ],
+              "type": "string"
+            },
+            "title": "Events",
+            "type": "array"
           },
           "id": {
             "minLength": 1,
@@ -1424,6 +1532,328 @@
         ]
       }
     },
+    "/api/discovered-tones": {
+      "get": {
+        "operationId": "discovered_tones_api_discovered_tones_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "source",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Source"
+            }
+          },
+          {
+            "in": "query",
+            "name": "since",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Since"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Discovered Tones Api Discovered Tones Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Discovered Tones",
+        "tags": [
+          "discovered-tones"
+        ]
+      }
+    },
+    "/api/discovered-tones/{cluster_id}": {
+      "delete": {
+        "operationId": "delete_discovered_tone_api_discovered_tones__cluster_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cluster_id",
+            "required": true,
+            "schema": {
+              "title": "Cluster Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "title": "Response Delete Discovered Tone Api Discovered Tones  Cluster Id  Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Discovered Tone",
+        "tags": [
+          "discovered-tones"
+        ]
+      },
+      "get": {
+        "operationId": "discovered_tone_api_discovered_tones__cluster_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cluster_id",
+            "required": true,
+            "schema": {
+              "title": "Cluster Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Discovered Tone Api Discovered Tones  Cluster Id  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Discovered Tone",
+        "tags": [
+          "discovered-tones"
+        ]
+      }
+    },
+    "/api/discovered-tones/{cluster_id}/clip": {
+      "get": {
+        "operationId": "discovered_clip_api_discovered_tones__cluster_id__clip_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cluster_id",
+            "required": true,
+            "schema": {
+              "title": "Cluster Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Discovered Clip",
+        "tags": [
+          "discovered-tones"
+        ]
+      }
+    },
+    "/api/discovered-tones/{cluster_id}/dismiss": {
+      "post": {
+        "operationId": "dismiss_api_discovered_tones__cluster_id__dismiss_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cluster_id",
+            "required": true,
+            "schema": {
+              "title": "Cluster Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Dismiss Api Discovered Tones  Cluster Id  Dismiss Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Dismiss",
+        "tags": [
+          "discovered-tones"
+        ]
+      }
+    },
+    "/api/discovered-tones/{cluster_id}/promote": {
+      "post": {
+        "operationId": "promote_api_discovered_tones__cluster_id__promote_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cluster_id",
+            "required": true,
+            "schema": {
+              "title": "Cluster Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Promote Api Discovered Tones  Cluster Id  Promote Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Promote",
+        "tags": [
+          "discovered-tones"
+        ]
+      }
+    },
     "/api/import/ttd": {
       "post": {
         "description": "Preview or atomically apply a TTD tone-set import.",
@@ -1750,7 +2180,9 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ToneSet"
+                "additionalProperties": true,
+                "title": "Payload",
+                "type": "object"
               }
             }
           },

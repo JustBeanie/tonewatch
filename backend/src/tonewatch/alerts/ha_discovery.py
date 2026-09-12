@@ -52,6 +52,19 @@ class HADiscovery:
                 "availability": availability,
                 "device": device,
             }
+        if any(
+            target.enabled and "tone_discovered" in target.events for target in config.alert_targets
+        ):
+            key = "event_tone_discovered"
+            topics[self._topic("event", key)] = {
+                "name": "Tone discovered",
+                "unique_id": f"{self.instance_id}_{key}",
+                "event_types": ["tone_discovered"],
+                "state_topic": f"tonewatch/{self.instance_id}/discovered",
+                "event_topic": f"tonewatch/{self.instance_id}/discovered",
+                "availability": availability,
+                "device": device,
+            }
         topics[self._topic("sensor", "last_call")] = {
             "name": "Last call",
             "unique_id": f"{self.instance_id}_last_call",

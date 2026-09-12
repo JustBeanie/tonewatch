@@ -13,7 +13,7 @@ from typing import Any
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from tonewatch.storage.models import Recording
+from tonewatch.storage.models import DiscoveredTone, Recording
 
 
 @dataclass(frozen=True, slots=True)
@@ -43,31 +43,65 @@ class RetentionService:
         self.root = recordings_root.resolve()
         self.policy, self.clock = policy, clock
 
-    async def enforce(self, session: AsyncSession) -> list[Path]:
+    async def enforce(self, session: AsyncSession) -> list[Path]:  # noqa: PLR0915 -- retention coordinates two bounded file classes.
         result = await session.scalars(select(Recording).order_by(Recording.id))
         rows = list(result.all())
         result.close()
-        total = sum(row.size_bytes for row in rows)
+        discovered_result = await session.scalars(
+            select(DiscoveredTone)
+            .where(DiscoveredTone.status.in_(("new", "dismissed")))
+            .order_by(DiscoveredTone.last_seen.asc(), DiscoveredTone.id.asc())
+        )
+        discovered_rows = list(discovered_result.all())
+        discovered_result.close()
+        discovered_files: list[tuple[DiscoveredTone, Path, int]] = []
+        for row in discovered_rows:
+            if not row.best_clip_recording_path:
+                continue
+            path = Path(row.best_clip_recording_path)
+            expected = self.root / "discovered" / f"{row.id}.mp3"
+            try:
+                safe = safe_recording_path(self.root, path)
+            except ValueError:
+                continue
+            if safe != expected.resolve() or not safe.is_file():
+                continue
+            discovered_files.append((row, safe, safe.stat().st_size))
+        total = sum(row.size_bytes for row in rows) + sum(size for _, _, size in discovered_files)
+        item_count = len(rows) + len(discovered_files)
         removed: list[Path] = []
         cutoff = (
             datetime.fromtimestamp(self.clock(), UTC) - timedelta(days=self.policy.max_age_days)
             if self.policy.max_age_days is not None
             else None
         )
-        for index, row in enumerate(rows):
-            path = Path(row.path)
+        for recording in rows:
+            path = Path(recording.path)
             too_old = (
                 cutoff is not None and path.exists() and path.stat().st_mtime < cutoff.timestamp()
             )
             over = (
                 self.policy.max_total_bytes is not None and total > self.policy.max_total_bytes
-            ) or (self.policy.max_count is not None and len(rows) - index > self.policy.max_count)
+            ) or (self.policy.max_count is not None and item_count > self.policy.max_count)
             if not (too_old or over):
                 continue
             safe_recording_path(self.root, path)
             path.unlink(missing_ok=True)
-            await session.execute(delete(Recording).where(Recording.id == row.id))
-            total -= row.size_bytes
+            await session.execute(delete(Recording).where(Recording.id == recording.id))
+            total -= recording.size_bytes
+            item_count -= 1
+            removed.append(path)
+        for row, path, size in discovered_files:
+            too_old = cutoff is not None and path.stat().st_mtime < cutoff.timestamp()
+            over = (
+                self.policy.max_total_bytes is not None and total > self.policy.max_total_bytes
+            ) or (self.policy.max_count is not None and item_count > self.policy.max_count)
+            if not (too_old or over):
+                continue
+            path.unlink(missing_ok=True)
+            row.best_clip_recording_path = None
+            total -= size
+            item_count -= 1
             removed.append(path)
         commit_task = asyncio.create_task(session.commit(), name="tonewatch-retention-commit")
         try:
@@ -86,6 +120,35 @@ class RetentionService:
                 directory.rmdir()
         return removed
 
+    async def enforce_discovered(self, session: AsyncSession, *, cap: int = 1000) -> list[Path]:
+        """Prune oldest unseen discovery clusters and only their own clips."""
+        result = await session.scalars(
+            select(DiscoveredTone)
+            .where(DiscoveredTone.status.in_(("new", "dismissed")))
+            .order_by(DiscoveredTone.last_seen.asc(), DiscoveredTone.id.asc())
+        )
+        rows = list(result.all())
+        result.close()
+        removed: list[Path] = []
+        for row in rows[: max(0, len(rows) - cap)]:
+            if row.best_clip_recording_path:
+                path = Path(row.best_clip_recording_path)
+                try:
+                    safe = safe_recording_path(self.root, path)
+                    expected = (self.root / "discovered" / f"{row.id}.mp3").resolve()
+                    if safe == expected:
+                        safe.unlink(missing_ok=True)
+                        removed.append(safe)
+                except ValueError:
+                    pass
+            await session.delete(row)
+        if rows and len(rows) > cap:
+            commit_task = asyncio.create_task(
+                session.commit(), name="tonewatch-discovery-retention-commit"
+            )
+            await asyncio.shield(commit_task)
+        return removed
+
 
 async def retention_loop(
     service: RetentionService,
@@ -97,5 +160,6 @@ async def retention_loop(
     while True:
         async with session_factory() as session:
             await service.enforce(session)
+            await service.enforce_discovered(session)
             await session.close()
         await sleep(86_400)

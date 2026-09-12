@@ -10,4 +10,9 @@ export interface SubscriptionAck {
   topics: string[];
 }
 
-export type WebSocketMessage = SubscribeMessage | SubscriptionAck;
+export interface ToneDiscoveredMessage {
+  type: string;
+  data: Record<string, unknown>;
+}
+
+export type WebSocketMessage = SubscribeMessage | SubscriptionAck | ToneDiscoveredMessage;

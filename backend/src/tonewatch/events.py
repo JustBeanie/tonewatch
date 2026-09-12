@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from uuid import UUID
 
+from tonewatch.dsp.discovery import ToneCandidate
+
 
 @dataclass(frozen=True)
 class ToneDetected:
@@ -79,6 +81,28 @@ class SpectrumUpdate:
     measured_at: datetime
 
 
+@dataclass(frozen=True)
+class ToneCandidateObserved:
+    """An unmatched candidate observed by one channel."""
+
+    candidate: ToneCandidate
+    source_id: str
+    observed_at: datetime
+    clip_samples: bytes | None = None
+
+
+@dataclass(frozen=True)
+class ToneDiscovered:
+    """A newly created persisted discovery cluster."""
+
+    candidate: ToneCandidate
+    source_id: str
+    observed_at: datetime
+    cluster_id: int | None = None
+    count: int = 1
+    clip_path: str | None = None
+
+
 Event = (
     ToneDetected
     | RecordingReady
@@ -88,6 +112,8 @@ Event = (
     | ConfigChanged
     | ChannelLevel
     | SpectrumUpdate
+    | ToneDiscovered
+    | ToneCandidateObserved
 )
 
 

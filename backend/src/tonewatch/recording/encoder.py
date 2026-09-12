@@ -74,7 +74,7 @@ class AudioEncoder:
             )
             os.close(fd)
             try:
-                self._write(
+                self.encode_samples_to_path(
                     path=Path(temporary),
                     samples=samples,
                     fmt=fmt,
@@ -89,6 +89,34 @@ class AudioEncoder:
                 raise
             result.append(EncodedRecording(path, fmt, samples.size / 16_000, path.stat().st_size))
         return result
+
+    def encode_samples_to_path(
+        self,
+        path: Path,
+        samples: np.ndarray,
+        *,
+        fmt: str,
+        title: str,
+        toneset_ids: set[str] | frozenset[str],
+        source_id: str,
+        call_id: str,
+    ) -> None:
+        """Encode normalized samples to a caller-owned path.
+
+        The caller controls atomic replacement of the destination; this
+        method only writes the requested temporary or final path.
+        """
+        if fmt not in {"mp3", "opus"}:
+            raise ValueError(f"unsupported recording format: {fmt}")
+        self._write(
+            path=path,
+            samples=np.asarray(samples, dtype=np.float32),
+            fmt=fmt,
+            title=title,
+            toneset_ids=toneset_ids,
+            source_id=source_id,
+            call_id=call_id,
+        )
 
     @staticmethod
     def _write(

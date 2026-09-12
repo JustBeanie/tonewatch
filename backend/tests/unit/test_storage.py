@@ -27,6 +27,7 @@ def test_async_sqlite_wal_and_repository(tmp_path: Path) -> None:
                 "audit_events",
                 "call_tone_sets",
                 "calls",
+                "discovered_tones",
                 "recordings",
             ]
         async with sessions() as session:

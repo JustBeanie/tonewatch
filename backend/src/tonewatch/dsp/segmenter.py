@@ -22,6 +22,8 @@ class ToneSegment:
     mean_purity: float
     closed: bool
     excess_s: float = 0.0
+    # Missing level evidence must fail the discovery level gate closed.
+    mean_level_dbfs: float = float("-inf")
 
     @property
     def duration_s(self) -> float:
@@ -50,6 +52,7 @@ class Segmenter:
         self._dropouts = 0
         self._frequencies: list[float] = []
         self._purity_count = 0
+        self._level_sum = 0.0
 
     def _matches(self, frequency: float) -> bool:
         if self._current is None:
@@ -68,11 +71,13 @@ class Segmenter:
                     mean_purity=current.mean_purity,
                     closed=True,
                     excess_s=current.excess_s,
+                    mean_level_dbfs=current.mean_level_dbfs,
                 )
             )
             self._current = None
             self._frequencies = []
             self._purity_count = 0
+            self._level_sum = 0.0
             self._dropouts = 0
 
     def feed(self, frames: Iterable[SpectrumFrame]) -> SegmenterUpdate:
@@ -92,9 +97,11 @@ class Segmenter:
                         end_s=frame.t_end_s - frame.window_s / 2,
                         mean_purity=frame.purity,
                         closed=False,
+                        mean_level_dbfs=frame.level_dbfs,
                     )
                     self._frequencies = [frame.freq_hz]
                     self._purity_count = 1
+                    self._level_sum = frame.level_dbfs
                     self._dropouts = 0
                     opened.append(self._current)
                 else:
@@ -105,6 +112,8 @@ class Segmenter:
                     self._current.mean_purity = (
                         self._current.mean_purity * (self._purity_count - 1) + frame.purity
                     ) / self._purity_count
+                    self._level_sum += frame.level_dbfs
+                    self._current.mean_level_dbfs = self._level_sum / self._purity_count
                     self._current.closed = False
                     extended.append(self._current)
                 continue

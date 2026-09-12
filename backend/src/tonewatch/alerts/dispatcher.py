@@ -23,6 +23,7 @@ from tonewatch.events import (
     RecordingStored,
     Subscription,
     ToneDetected,
+    ToneDiscovered,
 )
 from tonewatch.storage.models import AlertAttempt
 
@@ -136,6 +137,9 @@ class AlertDispatcher:
             if isinstance(event, FeedHealthChanged):
                 await self._health(event)
                 continue
+            if isinstance(event, ToneDiscovered):
+                await self._handle_discovered(event)
+                continue
             if not isinstance(event, (ToneDetected, RecordingReady, RecordingStored, CallClosed)):
                 continue
             previous = self._event_chains.get(event.call_id)
@@ -158,6 +162,45 @@ class AlertDispatcher:
 
             self._event_chains[event.call_id] = task
             task.add_done_callback(finished)
+
+    async def _handle_discovered(self, event: ToneDiscovered) -> None:
+        """Dispatch a discovery event only to targets that opt in."""
+        relative_clip = (
+            f"/api/discovered-tones/{event.cluster_id}/clip"
+            if event.cluster_id is not None
+            else None
+        )
+        public_base = getattr(self.settings, "public_base_url", None)
+        clip_url = (
+            f"{str(public_base).rstrip('/')}{relative_clip}"
+            if public_base and relative_clip
+            else relative_clip
+        )
+        payload: dict[str, object] = {
+            "event": "tone_discovered",
+            "frequencies": list(event.candidate.frequencies),
+            "durations": list(event.candidate.durations),
+            "count": event.count,
+            "source": event.source_id,
+            "source_id": event.source_id,
+            "clip_url": clip_url,
+        }
+        if not public_base:
+            payload["recording_path_relative"] = True
+        await asyncio.gather(
+            *(
+                self._dispatch_discovered(target, payload)
+                for target in self.config.alert_targets
+                if target.enabled and "tone_discovered" in target.events
+            ),
+            return_exceptions=True,
+        )
+
+    async def _dispatch_discovered(self, target: AlertTarget, payload: dict[str, object]) -> None:
+        if isinstance(target, MqttTarget):
+            await self._mqtt[target.id].publish_discovered(payload)
+        elif isinstance(target, WebhookTarget):
+            await send_webhook(target, payload, self.settings)
 
     async def _health(self, event: FeedHealthChanged) -> None:
         await asyncio.gather(
@@ -282,6 +325,8 @@ class AlertDispatcher:
         self._seen.add(key)
         target = next((item for item in self.config.alert_targets if item.id == target_id), None)
         if target is None or not target.enabled:
+            return
+        if phase not in target.events:
             return
         for attempt_no in range(1, 6):
             try:

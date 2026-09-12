@@ -17,6 +17,7 @@ from tonewatch import __version__
 from tonewatch.config.models import AppConfig
 from tonewatch.config.store import ConfigStore
 from tonewatch.dsp.engine import DetectionEngine
+from tonewatch.dsp.discovery import DiscoveryTracker
 from tonewatch.importers.ttd import TtdImportError, apply_import, parse_ttd
 from tonewatch.sources.soundcard import input_devices
 
@@ -108,8 +109,41 @@ def _analyze(args: argparse.Namespace) -> None:
     raw_config = yaml.safe_load(args.config.read_text(encoding="utf-8")) or {}
     config = AppConfig.model_validate(raw_config)
     samples, _ = _read_wav(args.file)
-    output = DetectionEngine(config.tone_sets).feed(samples)
+    engine = DetectionEngine(config.tone_sets)
+    output = engine.feed(samples)
+    discovered: list[Any] = []
+    if getattr(args, "discover", False):
+        tracker = DiscoveryTracker(
+            max_gap_s=config.discovery.max_gap_s,
+            min_segment_s=config.discovery.min_segment_s,
+            max_segment_s=config.discovery.max_segment_s,
+        )
+        discovered = tracker.feed(
+            output.segment_update,
+            output.detections,
+            samples.size / 16_000,
+        )
+        flush = engine.feed(
+            np.zeros(round((config.discovery.max_gap_s + 0.5) * 16_000), dtype=np.float32)
+        )
+        discovered.extend(
+            tracker.feed(
+                flush.segment_update,
+                flush.detections,
+                samples.size / 16_000 + config.discovery.max_gap_s + 0.5,
+            )
+        )
     payload = _json_output(output, args.frames)
+    payload["discovered"] = [
+        {
+            "frequencies": list(candidate.frequencies),
+            "durations": list(candidate.durations),
+            "start_s": candidate.start_s,
+            "end_s": candidate.end_s,
+            "mean_purity": candidate.mean_purity,
+        }
+        for candidate in discovered
+    ]
     if args.json:
         json.dump(payload, fp=__import__("sys").stdout, indent=2)
         __import__("sys").stdout.write("\n")
@@ -127,6 +161,15 @@ def _analyze(args: argparse.Namespace) -> None:
             f"{detection['toneset_id']} at {detection['detected_at_s']:.2f}s "
             f"(early={detection['early']})\n"
         )
+    if getattr(args, "discover", False):
+        __import__("sys").stdout.write("Discovered tones\n")
+        __import__("sys").stdout.write("frequencies  durations  start_s  end_s\n")
+        for candidate in payload["discovered"]:
+            __import__("sys").stdout.write(
+                f"{'/'.join(f'{value:g}' for value in candidate['frequencies'])}  "
+                f"{'/'.join(f'{value:.2f}' for value in candidate['durations'])}  "
+                f"{candidate['start_s']:.2f}  {candidate['end_s']:.2f}\n"
+            )
     if args.frames:
         __import__("sys").stdout.write(f"Frames: {len(payload.get('frames', []))}\n")
 
@@ -288,6 +331,7 @@ def _build_parser() -> argparse.ArgumentParser:
     analyze.add_argument("--config", required=True, type=Path)
     analyze.add_argument("--json", action="store_true")
     analyze.add_argument("--frames", action="store_true")
+    analyze.add_argument("--discover", action="store_true")
     devices = subparsers.add_parser("devices")
     devices.add_argument("--json", action="store_true")
     subparsers.add_parser("serve")

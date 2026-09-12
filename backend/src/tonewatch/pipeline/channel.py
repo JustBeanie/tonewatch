@@ -13,8 +13,16 @@ from uuid import UUID, uuid4
 
 import numpy as np
 
+from tonewatch.dsp.discovery import DiscoveryTracker, ToneCandidate
 from tonewatch.dsp.engine import DetectionEngine
-from tonewatch.events import CallClosed, ChannelLevel, EventBus, SpectrumUpdate, ToneDetected
+from tonewatch.events import (
+    CallClosed,
+    ChannelLevel,
+    EventBus,
+    SpectrumUpdate,
+    ToneCandidateObserved,
+    ToneDetected,
+)
 from tonewatch.pipeline.ringbuffer import RingBuffer
 from tonewatch.sources.base import AudioFrame, AudioSource, make_source
 
@@ -90,6 +98,7 @@ class Channel:
         engine_factory: EngineFactory | None = None,
         watchdog: Watchdog | None = None,
         source_settings: object | None = None,
+        discovery_settings: object | None = None,
     ) -> None:
         """Create a channel with its source, filtered tone sets, and event bus."""
         self.source_config = source_config
@@ -106,9 +115,22 @@ class Channel:
         self.tonesets = tuple(
             tone for tone in tonesets if tone.enabled and (allowed == "all" or tone.id in allowed)
         )
+        discovery = discovery_settings
+        self.discovery = (
+            DiscoveryTracker(
+                max_gap_s=float(getattr(discovery, "max_gap_s", 0.5)),
+                min_segment_s=float(getattr(discovery, "min_segment_s", 0.3)),
+                max_segment_s=float(getattr(discovery, "max_segment_s", 3.0)),
+                known_tonesets=tonesets,
+            )
+            if bool(getattr(discovery, "enabled", False))
+            and bool(getattr(source_config, "discovery_enabled", True))
+            else None
+        )
+        self.discovery_clip = bool(getattr(discovery, "clip", True))
         pre_roll = max((tone.record.pre_roll_s for tone in self.tonesets), default=10)
         # Keep enough history to compensate for detector latency before the first tone.
-        self.ringbuffer = RingBuffer((pre_roll or 10) + 1)
+        self.ringbuffer = RingBuffer(max(pre_roll or 10, 20) + 1)
         self._open_call: _OpenCall | None = None
         self._anchor_wall: datetime | None = None
         self._anchor_stream_s = 0.0
@@ -133,6 +155,20 @@ class Channel:
                 await self._close_expired(frame.stream_time_s)
                 self.ringbuffer.extend(frame.samples, stream_time_s=frame.stream_time_s)
                 output = engine.feed(frame.samples)
+                if self.discovery is not None:
+                    for candidate in self.discovery.feed(
+                        output.segment_update,
+                        output.detections,
+                        frame.stream_time_s + frame.samples.size / 16_000,
+                    ):
+                        self.bus.publish(
+                            ToneCandidateObserved(
+                                candidate,
+                                self.source_id,
+                                self._to_wall_time(candidate.end_s),
+                                self._candidate_clip(candidate) if self.discovery_clip else None,
+                            )
+                        )
                 self._publish_level(frame)
                 if self.bus.spectrum_subscribed(self.source_id):
                     for spectrum in output.frames:
@@ -187,6 +223,20 @@ class Channel:
                 self._to_wall_time(frame.stream_time_s),
             )
         )
+
+    def _candidate_clip(self, candidate: ToneCandidate) -> bytes | None:
+        """Return the retained candidate window for persistence-side encoding."""
+        samples, start_s = self.ringbuffer.snapshot_with_time()
+        end_s = self.ringbuffer.end_stream_time_s
+        if start_s is None or end_s is None:
+            return None
+        candidate_start = max(candidate.start_s, start_s)
+        candidate_end = min(candidate.end_s + 15.0, end_s)
+        left = max(0, round((candidate_start - start_s) * self.ringbuffer.sample_rate))
+        right = min(samples.size, round((candidate_end - start_s) * self.ringbuffer.sample_rate))
+        if right <= left:
+            return None
+        return samples[left:right].tobytes()
 
     def _observe_frame(self, frame: AudioFrame) -> None:
         if self._anchor_wall is None or frame.discontinuity:

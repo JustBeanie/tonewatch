@@ -5,10 +5,12 @@ from __future__ import annotations
 import asyncio
 from datetime import UTC, datetime
 from pathlib import Path
+from statistics import median
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 import av
+import numpy as np
 import structlog
 from sqlalchemy import select
 
@@ -18,10 +20,13 @@ from tonewatch.events import (
     RecordingReady,
     RecordingStored,
     Subscription,
+    ToneCandidateObserved,
     ToneDetected,
+    ToneDiscovered,
 )
+from tonewatch.recording.discovery import encode_discovery_clip
 from tonewatch.recording.retention import safe_recording_path
-from tonewatch.storage.models import Call, CallToneSet, Recording
+from tonewatch.storage.models import Call, CallToneSet, DiscoveredTone, Recording
 from tonewatch.storage.repository import close_call, create_call, create_call_tone_set
 
 if TYPE_CHECKING:
@@ -41,6 +46,8 @@ class PersistenceSubscriber:
         session_factory: async_sessionmaker[AsyncSession] | Callable[[], Any] | None,
         *,
         max_queue_size: int = 1000,
+        recordings_root: Path | None = None,
+        discovery_clip: bool = True,
     ) -> None:
         """Create a bounded persistence subscriber."""
         self.bus, self.session_factory = bus, session_factory
@@ -49,6 +56,8 @@ class PersistenceSubscriber:
         self._commit_task: asyncio.Task[None] | None = None
         self._busy = False
         self._max_queue_size = max_queue_size
+        self.recordings_root = recordings_root
+        self.discovery_clip = discovery_clip
 
     async def start(self) -> None:
         """Subscribe and start the consumer."""
@@ -113,12 +122,15 @@ class PersistenceSubscriber:
                 subscription.queue.task_done()
 
     async def _persist(self, event: object) -> None:
-        if not isinstance(event, (ToneDetected, CallClosed, RecordingReady)):
+        if not isinstance(event, (ToneDetected, CallClosed, RecordingReady, ToneCandidateObserved)):
             return
         if self.session_factory is None:
             return
         async with self.session_factory() as session:
-            if isinstance(event, ToneDetected):
+            discovery_info: tuple[bool, int | None, str | None, int] = (False, None, None, 0)
+            if isinstance(event, ToneCandidateObserved):
+                discovery_info = await self._persist_discovery(session, event)
+            elif isinstance(event, ToneDetected):
                 await self._persist_detection(session, event)
             elif isinstance(event, RecordingReady):
                 stored = await self._persist_recording(session, event)
@@ -137,6 +149,138 @@ class PersistenceSubscriber:
                     self._commit_task = None
         if isinstance(event, RecordingReady):
             self.bus.publish(stored)
+        elif isinstance(event, ToneCandidateObserved) and discovery_info[0]:
+            self.bus.publish(
+                ToneDiscovered(
+                    event.candidate,
+                    event.source_id,
+                    event.observed_at,
+                    cluster_id=discovery_info[1],
+                    count=discovery_info[3],
+                    clip_path=discovery_info[2],
+                )
+            )
+
+    async def _persist_discovery(
+        self, session: AsyncSession, event: ToneCandidateObserved
+    ) -> tuple[bool, int | None, str | None, int]:
+        """Merge a candidate into the nearest compatible persisted cluster."""
+        candidate = event.candidate
+        result = await session.scalars(
+            select(DiscoveredTone).where(DiscoveredTone.status != "promoted")
+        )
+        rows = [
+            row for row in result.all() if len(row.mean_frequencies) == len(candidate.frequencies)
+        ]
+        result.close()
+        compatible = [
+            row
+            for row in rows
+            if all(
+                abs(value - mean) <= mean * 1.5 / 100
+                for value, mean in zip(candidate.frequencies, row.mean_frequencies, strict=True)
+            )
+        ]
+        row = min(
+            compatible,
+            key=lambda item: (
+                sum(
+                    abs(a - b)
+                    for a, b in zip(candidate.frequencies, item.mean_frequencies, strict=True)
+                ),
+                item.id,
+            ),
+            default=None,
+        )
+        created = row is None
+        if row is None:
+            row = DiscoveredTone(
+                mean_frequencies=list(candidate.frequencies),
+                median_durations=list(candidate.durations),
+                duration_samples=[list(candidate.durations)],
+                frequency_minimums=list(candidate.frequencies),
+                frequency_maximums=list(candidate.frequencies),
+                count=0,
+                first_seen=event.observed_at,
+                last_seen=event.observed_at,
+                source_ids=[event.source_id],
+                observed_frequency_spread_pct=0.0,
+                status="new",
+                best_mean_purity=candidate.mean_purity,
+            )
+            session.add(row)
+        previous_purity = row.best_mean_purity
+        row.count += 1
+        row.mean_frequencies = [
+            (old * (row.count - 1) + value) / row.count
+            for old, value in zip(row.mean_frequencies, candidate.frequencies, strict=True)
+        ]
+        duration_samples = getattr(row, "duration_samples", None) or [list(row.median_durations)]
+        row.median_durations = [
+            median(values)
+            for values in zip(
+                *[*duration_samples[-999:], list(candidate.durations)],
+                strict=True,
+            )
+        ]
+        row.duration_samples = [
+            *duration_samples[-999:],
+            list(candidate.durations),
+        ]
+        first_seen = (
+            row.first_seen.replace(tzinfo=UTC) if row.first_seen.tzinfo is None else row.first_seen
+        )
+        last_seen = (
+            row.last_seen.replace(tzinfo=UTC) if row.last_seen.tzinfo is None else row.last_seen
+        )
+        row.first_seen = min(first_seen, event.observed_at)
+        row.last_seen = max(last_seen, event.observed_at)
+        row.source_ids = sorted(set(row.source_ids) | {event.source_id})
+        row.frequency_minimums = [
+            min(old, value)
+            for old, value in zip(
+                getattr(row, "frequency_minimums", None) or row.mean_frequencies,
+                candidate.frequencies,
+                strict=True,
+            )
+        ]
+        row.frequency_maximums = [
+            max(old, value)
+            for old, value in zip(
+                getattr(row, "frequency_maximums", None) or row.mean_frequencies,
+                candidate.frequencies,
+                strict=True,
+            )
+        ]
+        spread = max(
+            max(abs(low - mean), abs(high - mean)) / mean * 100
+            for low, high, mean in zip(
+                row.frequency_minimums,
+                row.frequency_maximums,
+                row.mean_frequencies,
+                strict=True,
+            )
+        )
+        row.observed_frequency_spread_pct = max(row.observed_frequency_spread_pct, spread)
+        row.best_mean_purity = max(row.best_mean_purity, candidate.mean_purity)
+        await session.flush()
+        if (
+            self.discovery_clip
+            and self.recordings_root is not None
+            and event.clip_samples is not None
+            and (created or candidate.mean_purity > previous_purity)
+        ):
+            samples = np.frombuffer(event.clip_samples, dtype=np.float32)
+            clip = await asyncio.to_thread(
+                encode_discovery_clip,
+                self.recordings_root,
+                row.id,
+                samples,
+                call_start=event.observed_at,
+                source_id=event.source_id,
+            )
+            row.best_clip_recording_path = str(clip)
+        return created, row.id, row.best_clip_recording_path, row.count
 
     async def reconcile_orphans(self, recordings_root: Path) -> None:
         """Restore valid encoded files that have no database row."""

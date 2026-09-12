@@ -8,9 +8,13 @@ export function Dashboard() {
         level = useSubscription("levels");
     const connection = useConnectionStatus();
     const [calls, setCalls] = useState<Call[]>([]);
+    const [discoveredCount, setDiscoveredCount] = useState(0);
     useEffect(() => {
         request<{ items?: Call[] }>("calls?limit=50")
             .then((v) => setCalls(v.items ?? []))
+            .catch(() => undefined);
+        request<{ items?: unknown[] }>("discovered-tones?status=new&limit=500")
+            .then((v) => setDiscoveredCount(v.items?.length ?? 0))
             .catch(() => undefined);
     }, []);
     useEffect(() => {
@@ -26,10 +30,16 @@ export function Dashboard() {
                 ].slice(0, 50),
             );
     }, [event]);
+    useEffect(() => {
+        if (event?.type === "tone_discovered") setDiscoveredCount((count) => count + 1);
+    }, [event]);
     const db = Number(level?.data?.dbfs ?? -100);
     return (
         <>
             <h1>Dashboard</h1>
+            <Link to="/discovered-tones" aria-label={`${discoveredCount} new discovered tones`}>
+                {discoveredCount} new discovered tones
+            </Link>
             <p role="status" aria-label="Live connection">
                 Live connection: {connection}
             </p>

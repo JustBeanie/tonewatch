@@ -1,5 +1,7 @@
 """Pydantic models defining the non-OpenAPI WebSocket wire protocol."""
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -11,3 +13,10 @@ class SubscribeMessage(BaseModel):
 class SubscriptionAck(BaseModel):
     type: str = "subscribed"
     topics: list[str] = Field(default_factory=list)
+
+
+class ToneDiscoveredMessage(BaseModel):
+    """Wire shape for the one-shot discovery notification."""
+
+    type: Literal["tone_discovered"] = "tone_discovered"
+    data: dict[str, object] = Field(default_factory=dict)

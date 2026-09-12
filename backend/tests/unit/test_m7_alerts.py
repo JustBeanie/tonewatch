@@ -41,7 +41,16 @@ from tonewatch.config.models import (
     ToneSpec,
     WebhookTarget,
 )
-from tonewatch.events import CallClosed, EventBus, RecordingReady, RecordingStored, ToneDetected
+from tonewatch.dsp.discovery import ToneCandidate
+from tonewatch.dsp.segmenter import ToneSegment
+from tonewatch.events import (
+    CallClosed,
+    EventBus,
+    RecordingReady,
+    RecordingStored,
+    ToneDetected,
+    ToneDiscovered,
+)
 from tonewatch.settings import Settings
 
 # Resolved once: on Linux uv venvs sys.executable is a symlink, and resolve_executable()
@@ -1001,5 +1010,79 @@ def test_ha_discovery_payloads_and_retained_clear_on_delete() -> None:
             }
             <= cleared
         )
+
+    asyncio.run(run())
+
+
+def test_alert_event_names_are_literal_and_deduplicated() -> None:
+    mqtt = MqttTarget(
+        id="mqtt",
+        name="MQTT",
+        events=["tone_discovered", "tone_discovered", "closed"],
+    )
+    webhook = WebhookTarget(
+        id="webhook",
+        name="Webhook",
+        url=AnyUrl("https://example.test"),
+        events=["tone_discovered", "closed", "tone_discovered"],
+    )
+    script = ScriptTarget(
+        id="script",
+        name="Script",
+        executable="/bin/true",
+        events=["closed", "tone_discovered", "closed"],
+    )
+    assert mqtt.events == ["tone_discovered", "closed"]
+    assert webhook.events == ["tone_discovered", "closed"]
+    assert script.events == ["closed", "tone_discovered"]
+    with pytest.raises(ValueError):
+        MqttTarget.model_validate({"id": "bad-mqtt", "name": "Bad", "events": ["pre-alert"]})
+    with pytest.raises(ValueError):
+        WebhookTarget.model_validate(
+            {
+                "id": "bad-webhook",
+                "name": "Bad",
+                "url": "https://example.test",
+                "events": ["pre-alert"],
+            }
+        )
+    with pytest.raises(ValueError):
+        ScriptTarget.model_validate(
+            {"id": "bad-script", "name": "Bad", "executable": "/bin/true", "events": ["pre-alert"]}
+        )
+
+
+def test_discovery_notification_uses_absolute_public_url_or_explicit_relative_path(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def run() -> None:
+        candidate = ToneCandidate((ToneSegment(1000, 0, 2, 0.9, True, 0, -20),))
+        event = ToneDiscovered(candidate, "radio", datetime.now(UTC), cluster_id=7, count=2)
+        payloads: list[dict[str, object]] = []
+
+        async def fake_webhook(*args: object, **_kwargs: object) -> object:
+            payloads.append(cast("dict[str, object]", args[1]))
+            return type("Result", (), {"ok": True})()
+
+        monkeypatch.setattr("tonewatch.alerts.dispatcher.send_webhook", fake_webhook)
+        target = WebhookTarget(
+            id="hook",
+            name="Hook",
+            url=AnyUrl("https://example.test"),
+            events=["tone_discovered"],
+        )
+        absolute_dispatcher = AlertDispatcher(
+            AppConfig(alert_targets=[target]),
+            EventBus(),
+            settings=Settings(public_base_url="https://host.test/base"),
+        )
+        await absolute_dispatcher._handle_discovered(event)
+        assert payloads[-1]["clip_url"] == "https://host.test/base/api/discovered-tones/7/clip"
+        assert "recording_path_relative" not in payloads[-1]
+
+        relative_dispatcher = AlertDispatcher(AppConfig(alert_targets=[target]), EventBus())
+        await relative_dispatcher._handle_discovered(event)
+        assert payloads[-1]["clip_url"] == "/api/discovered-tones/7/clip"
+        assert payloads[-1]["recording_path_relative"] is True
 
     asyncio.run(run())
