@@ -1,5 +1,17 @@
 {
-  "packages": {"backend": {"component": "backend", "release-type": "python"}},
+  "packages": {
+    "backend": {
+      "component": "backend",
+      "release-type": "python",
+      "extra-files": [
+        {
+          "type": "toml",
+          "path": "backend/uv.lock",
+          "jsonpath": "$.package[?(@.name == \"tonewatch\")].version"
+        }
+      ]
+    }
+  },
   "include-component-in-tag": false,
-  "separate-pull-requests": false
+  "separate-pull-requests": true
 }

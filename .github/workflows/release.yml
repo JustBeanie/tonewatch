@@ -69,6 +69,19 @@ jobs:
             type=semver,pattern={{version}},value=${{ env.RELEASE_TAG }}
             type=semver,pattern={{major}}.{{minor}},value=${{ env.RELEASE_TAG }}
             type=raw,value=latest
+      - name: Build image for vulnerability scan
+        uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25 # v5.4.0
+        with:
+          context: .
+          file: docker/Dockerfile
+          platforms: linux/amd64
+          tags: tonewatch-release:scan
+          load: true
+      - name: Scan image before publish
+        run: >-
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock
+          aquasec/trivy@sha256:62b1e65e8869bc4b4c6aa4fa2b21595256c7c2f6018a9d9ad61caf87187c1969
+          image --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed tonewatch-release:scan
       - id: push
         uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25 # v5.4.0
         with:

@@ -36,8 +36,14 @@ objects. These files are not imported at runtime; the in-image import walk,
 container smoke, e2e and DAST checks cover the retained runtime closure.
 
 Published images are pushed to GHCR and signed and attested in the release
-workflow. The repository is public; the GHCR package stays private until v1.0,
-so the public attestation UI may not show it until then.
+workflow only after the locally loaded image passes Trivy at HIGH and CRITICAL
+severity with unfixed findings ignored. Release Please opens one release PR per
+component; the current repository has one `backend` component, so its release PR
+branch includes `components/backend` while tags remain `vX.Y.Z`.
+
+By decision, v0.2.0 was released as a tag and GitHub release without an image.
+The v0.3.0 release from current `main` is the first image publication, and its
+GHCR package remains private until v1.0.
 
 The compose examples apply a read-only root filesystem, a tmpfs at `/tmp`, all
 Linux capabilities dropped, and `no-new-privileges`. Hardware access with
