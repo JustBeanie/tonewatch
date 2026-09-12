@@ -189,6 +189,59 @@ def test_recorder_merges_policy_on_stack_and_handles_empty_policy(tmp_path: Path
     assert recorder.post_s == 1 and recorder.max_s == 8 and recorder.formats == {"mp3", "opus"}
 
 
+def test_recorder_per_frame_cost_is_constant_after_call_start(tmp_path: Path) -> None:
+    recorder = CallRecorder([toneset()], AudioEncoder(tmp_path))
+
+    class CountingRing(RingBuffer):
+        snapshots = 0
+
+        def snapshot(self, seconds: float | None = None) -> np.ndarray:
+            self.snapshots += 1
+            return super().snapshot(seconds)
+
+    ring = CountingRing(1, 16_000)
+    first = RecorderCall(uuid4(), "radio", datetime(2026, 1, 1, tzinfo=UTC), frozenset({"page"}))
+    second = RecorderCall(first.id, "radio", first.started_at, frozenset({"page"}))
+    for index in range(20):
+        frame = AudioFrame(np.zeros(1600, dtype=np.float32), index / 10, "radio")
+        ring.extend(frame.samples, stream_time_s=frame.stream_time_s)
+        recorder.process(frame, ring, EngineOutput((), (), ()), first if index == 0 else second)
+    assert ring.snapshots == 1
+
+
+def test_channel_cancel_ends_task_during_finish() -> None:
+    async def run() -> None:
+        started = asyncio.Event()
+        release = asyncio.Event()
+
+        class SlowEncoder:
+            async def encode(self, *args: Any, **kwargs: Any) -> list[Any]:
+                del args, kwargs
+                started.set()
+                await release.wait()
+                return []
+
+        recorder = CallRecorder([toneset()], cast("AudioEncoder", SlowEncoder()))
+        ring = RingBuffer(1, 16_000)
+        frame = AudioFrame(np.zeros(1600, dtype=np.float32), 0, "radio")
+        ring.extend(frame.samples, stream_time_s=0)
+        recorder.process(
+            frame,
+            ring,
+            EngineOutput((), (), ()),
+            RecorderCall(uuid4(), "radio", datetime(2026, 1, 1, tzinfo=UTC), frozenset({"page"})),
+        )
+        task = asyncio.create_task(recorder.finish())
+        await started.wait()
+        task.cancel()
+        release.set()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+        assert recorder.call is None
+
+    asyncio.run(run())
+
+
 def test_supervisor_starts_and_cancels_retention_task() -> None:
     class Service:
         async def enforce(self, session: object) -> list[Path]:

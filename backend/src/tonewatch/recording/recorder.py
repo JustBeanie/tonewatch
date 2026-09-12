@@ -194,6 +194,7 @@ class CallRecorder:
         if self.call is None:
             return None
         call = self.call
+        cancelled = False
         try:
             samples = self._trim()
             start = call.started_at.astimezone(UTC)
@@ -214,6 +215,7 @@ class CallRecorder:
                 files = await asyncio.shield(encode_task)
             except asyncio.CancelledError:
                 files = await encode_task
+                cancelled = True
         except Exception:
             self.logger.exception("recording encoding failed", extra={"call_id": str(call.id)})
             if self.bus is not None:
@@ -228,6 +230,8 @@ class CallRecorder:
             self.bus.publish(CallClosed(call.id, "recorded", call.source_id))
         result = RecordingResult(str(call.id), tuple(files))
         self._reset()
+        if cancelled:
+            raise asyncio.CancelledError
         return result
 
     def _reset(self) -> None:

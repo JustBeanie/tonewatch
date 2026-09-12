@@ -596,12 +596,6 @@ async def test_recording_ready_alert_waits_for_persisted_row_without_polling(
         await engine.dispose()
 
 
-@pytest.mark.skip(
-    reason=(
-        "QUARANTINED 2026-09-11 by PM: hangs the event loop under load (CI run 34672014026, "
-        "local repro); W1a-fix4 must fix the root cause and delete this skip"
-    )
-)
 @pytest.mark.asyncio
 async def test_toneset_created_via_api_detects_on_running_channel(tmp_path: Path) -> None:
     source_path = tmp_path / "reload.wav"
@@ -625,10 +619,10 @@ async def test_toneset_created_via_api_detects_on_running_channel(tmp_path: Path
         current[0] += max(delay, 0.1)
         if disabled_phase[0] and current[0] >= phase_target[0]:
             phase_reached.set()
-        await asyncio.sleep(0)
+        await asyncio.sleep(0.001)
 
     async def supervisor_sleep(_delay: float) -> None:
-        await asyncio.sleep(0)
+        await asyncio.sleep(0.001)
 
     def source_factory(config: FileSource) -> FileAudioSource:
         return FileAudioSource(config, clock=lambda: current[0], sleep=source_sleep)

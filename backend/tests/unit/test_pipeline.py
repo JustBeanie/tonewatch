@@ -98,6 +98,26 @@ class _Source:
             raise self.error
 
 
+class _InfiniteSource:
+    def __init__(self) -> None:
+        self.closed = False
+        self.position = 0
+
+    async def open(self) -> None:
+        return
+
+    async def close(self) -> None:
+        self.closed = True
+
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self) -> AudioFrame:
+        frame = _frame("radio", self.position / 10)
+        self.position += 1
+        return frame
+
+
 class _Engine:
     outputs: ClassVar[list[EngineOutput]] = []
 
@@ -265,6 +285,30 @@ def test_channel_calls_recorder_hook_for_frames_and_reanchors_on_discontinuity(m
             detections.append(event)
         assert len(seen) == 2 and seen[0][1] is seen[1][1]
         assert detections[1].detected_at == datetime(2026, 1, 2, 0, 0, 0, 100000, tzinfo=UTC)
+
+    asyncio.run(run())
+
+
+def test_channel_loop_yields_under_runaway_source(monkeypatch) -> None:
+    async def run() -> None:
+        source_config = FileSource(id="radio", name="radio", path="unused.wav")
+        source = _InfiniteSource()
+        monkeypatch.setattr("tonewatch.pipeline.channel.make_source", lambda _: source)
+        _Engine.outputs = []
+        channel = Channel(source_config, [_toneset("a")], EventBus(), engine_factory=_Engine)
+        task = asyncio.create_task(channel.run())
+        marker = asyncio.Event()
+
+        async def mark() -> None:
+            await asyncio.sleep(0.01)
+            marker.set()
+
+        marker_task = asyncio.create_task(mark())
+        await asyncio.wait_for(marker.wait(), 0.5)
+        task.cancel()
+        await asyncio.gather(task, return_exceptions=True)
+        await marker_task
+        assert source.closed
 
     asyncio.run(run())
 
