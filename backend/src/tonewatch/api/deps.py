@@ -31,7 +31,7 @@ def collection(request: Request, kind: str) -> list[Any]:
     return list(getattr(request.app.state.config, kind))
 
 
-async def save_config(request: Request, config: AppConfig) -> AppConfig:
+async def save_config(request: Request, config: AppConfig, *, audit: bool = True) -> AppConfig:
     before = request.app.state.config
     expected_etag = request.headers.get("if-match")
     try:
@@ -47,14 +47,15 @@ async def save_config(request: Request, config: AppConfig) -> AppConfig:
         raise HTTPException(412, str(exc)) from None
     request.app.state.config = config
     await request.app.state.supervisor.reload(config)
-    await record_audit(
-        request.app.state.session_factory,
-        actor=getattr(request.state, "auth", "unknown"),
-        event_type="config_change",
-        resource="config",
-        before=before.model_dump(mode="json"),
-        after=config.model_dump(mode="json"),
-    )
+    if audit:
+        await record_audit(
+            request.app.state.session_factory,
+            actor=getattr(request.state, "auth", "unknown"),
+            event_type="config_change",
+            resource="config",
+            before=before.model_dump(mode="json"),
+            after=config.model_dump(mode="json"),
+        )
     return config
 
 

@@ -15,7 +15,9 @@ import yaml
 import tonewatch
 from tonewatch import __version__
 from tonewatch.config.models import AppConfig
+from tonewatch.config.store import ConfigStore
 from tonewatch.dsp.engine import DetectionEngine
+from tonewatch.importers.ttd import TtdImportError, apply_import, parse_ttd
 from tonewatch.sources.soundcard import input_devices
 
 UVICORN_SECURITY_OPTIONS = {
@@ -234,8 +236,50 @@ def _checkpoint(_args: argparse.Namespace) -> None:
     sys.stdout.write("database checkpoint complete\n")
 
 
-def main() -> None:
-    """Run the ToneWatch command-line interface."""
+def _import_ttd(args: argparse.Namespace) -> None:
+    """Preview or apply a TTD tone configuration."""
+    import sys
+
+    try:
+        text = args.path.read_bytes().decode("utf-8")
+        result = parse_ttd(text)
+    except (OSError, UnicodeDecodeError, TtdImportError) as exc:
+        sys.stderr.write(f"could not import TTD config: {exc}\n")
+        raise SystemExit(2) from exc
+    if args.apply and result.tone_sets:
+        from tonewatch.settings import Settings
+
+        try:
+            store = ConfigStore(Settings.load().data_dir)
+            config = apply_import(store.load(), result, args.mode)
+            store.save(config)
+        except (OSError, TtdImportError) as exc:
+            sys.stderr.write(f"could not apply TTD config: {exc}\n")
+            raise SystemExit(2) from exc
+    if args.json:
+        payload = result.as_dict()
+        payload["applied"] = bool(args.apply and result.tone_sets)
+        sys.stdout.write(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+    else:
+        sys.stdout.write("TTD import preview\n")
+        sys.stdout.write(f"{result.imported_count} imported, {result.skipped_count} skipped\n")
+        for section in result.sections:
+            status = "imported" if section.imported else "skipped"
+            details = ""
+            if section.tone_set is not None:
+                details = ", ".join(
+                    f"{tone.freq_hz:g} Hz/{tone.min_s:g} s" for tone in section.tone_set.sequence
+                )
+            sys.stdout.write(f"{status}: {section.name}{(': ' + details) if details else ''}\n")
+            for note in section.notes:
+                sys.stdout.write(f"  note: {note}\n")
+            for error in section.errors:
+                sys.stdout.write(f"  error: {error}\n")
+    if not result.tone_sets:
+        raise SystemExit(1)
+
+
+def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="tonewatch")
     parser.add_argument("--version", action="version", version=__version__)
     subparsers = parser.add_subparsers(dest="command")
@@ -260,6 +304,18 @@ def main() -> None:
     db = subparsers.add_parser("db")
     db_subparsers = db.add_subparsers(dest="db_command", required=True)
     db_subparsers.add_parser("checkpoint")
+    importer = subparsers.add_parser("import")
+    ttd = importer.add_subparsers(dest="importer", required=True).add_parser("ttd")
+    ttd.add_argument("path", type=Path)
+    ttd.add_argument("--apply", action="store_true")
+    ttd.add_argument("--mode", choices=("merge", "replace"), default="merge")
+    ttd.add_argument("--json", action="store_true")
+    return parser
+
+
+def main() -> None:
+    """Run the ToneWatch command-line interface."""
+    parser = _build_parser()
     args = parser.parse_args()
     if args.command == "analyze":
         _analyze(args)
@@ -282,6 +338,8 @@ def main() -> None:
         run_service_process(args.data_dir)
     elif args.command == "db" and args.db_command == "checkpoint":
         _checkpoint(args)
+    elif args.command == "import" and args.importer == "ttd":
+        _import_ttd(args)
 
 
 if __name__ == "__main__":

@@ -1424,6 +1424,66 @@
         ]
       }
     },
+    "/api/import/ttd": {
+      "post": {
+        "description": "Preview or atomically apply a TTD tone-set import.",
+        "operationId": "import_ttd_api_import_ttd_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "apply",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Apply",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "mode",
+            "required": false,
+            "schema": {
+              "default": "merge",
+              "enum": [
+                "merge",
+                "replace"
+              ],
+              "title": "Mode",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Import Ttd Api Import Ttd Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Import Ttd",
+        "tags": [
+          "import"
+        ]
+      }
+    },
     "/api/recordings/{recording_id}": {
       "get": {
         "operationId": "recording_api_recordings__recording_id__get",

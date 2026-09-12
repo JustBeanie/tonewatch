@@ -1,10 +1,23 @@
-import { FormEvent, useEffect, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { request } from "../../api/client";
 type Tone = { frequency: number; tolerance_pct: number; min_s: number; max_s: number };
 type ToneSet = { id: string; name: string; enabled: boolean; sequence: Tone[] };
+type ImportTone = { freq_hz: number; tol_pct: number; min_s: number };
+type ImportRow = {
+    name: string;
+    status: "imported" | "skipped";
+    tone_set: { name: string; sequence: ImportTone[] } | null;
+    notes: string[];
+    errors: string[];
+};
+type ImportPreview = { imported: number; skipped: number; sections: ImportRow[] };
 export function ToneSets() {
     const [items, setItems] = useState<ToneSet[]>([]);
+    const [preview, setPreview] = useState<ImportPreview | null>(null);
+    const [importFile, setImportFile] = useState<File | null>(null);
+    const [importError, setImportError] = useState("");
+    const fileInput = useRef<HTMLInputElement>(null);
     const reload = () =>
         request<ToneSet[]>("tonesets")
             .then(setItems)
@@ -12,12 +25,110 @@ export function ToneSets() {
     useEffect(() => {
         void reload();
     }, []);
+    async function previewImport(event: ChangeEvent<HTMLInputElement>) {
+        const file = event.target.files?.[0];
+        event.target.value = "";
+        if (!file) return;
+        setImportFile(file);
+        setImportError("");
+        const body = new FormData();
+        body.append("file", file);
+        try {
+            setPreview(await request<ImportPreview>("import/ttd", { method: "POST", body }));
+        } catch {
+            setImportError("Unable to preview this TTD config.");
+        }
+    }
+    async function applyImport(mode: "merge" | "replace") {
+        if (!importFile) return;
+        if (
+            mode === "replace" &&
+            !window.confirm("Replace all current tone sets with this import?")
+        )
+            return;
+        const body = new FormData();
+        body.append("file", importFile);
+        try {
+            await request(`import/ttd?apply=true&mode=${mode}`, { method: "POST", body });
+            setPreview(null);
+            setImportFile(null);
+            await reload();
+        } catch {
+            setImportError("Unable to apply this TTD config.");
+        }
+    }
     return (
         <>
             <h1>Tone sets</h1>
             <Link to="/tonesets/new">
                 <button>New tone set</button>
             </Link>
+            <button onClick={() => fileInput.current?.click()}>Import from TwoToneDetect</button>
+            <input
+                ref={fileInput}
+                aria-label="TTD config file"
+                type="file"
+                accept=".cfg,text/plain"
+                onChange={previewImport}
+                hidden
+            />
+            {importError && (
+                <p className="error" role="alert">
+                    {importError}
+                </p>
+            )}
+            {preview && (
+                <section aria-labelledby="ttd-preview-heading">
+                    <h2 id="ttd-preview-heading">TwoToneDetect import preview</h2>
+                    <p>
+                        {preview.imported} imported, {preview.skipped} skipped
+                    </p>
+                    <table>
+                        <caption>Proposed tone sets</caption>
+                        <thead>
+                            <tr>
+                                <th scope="col">Name</th>
+                                <th scope="col">Tones</th>
+                                <th scope="col">Tolerance</th>
+                                <th scope="col">Notes and errors</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {preview.sections.map((row) => (
+                                <tr key={row.name}>
+                                    <th scope="row">{row.tone_set?.name ?? row.name}</th>
+                                    <td>
+                                        {row.tone_set?.sequence
+                                            .map((tone) => `${tone.freq_hz} Hz / ${tone.min_s} s`)
+                                            .join(", ") ?? "—"}
+                                    </td>
+                                    <td>
+                                        {row.tone_set?.sequence
+                                            .map((tone) => `${tone.tol_pct}%`)
+                                            .join(", ") ?? "—"}
+                                    </td>
+                                    <td>
+                                        <ul>
+                                            {[...row.notes, ...row.errors].map((message, index) => (
+                                                <li key={`${row.name}-${index}`}>{message}</li>
+                                            ))}
+                                        </ul>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                    <button onClick={() => void applyImport("merge")} disabled={!preview.imported}>
+                        Merge
+                    </button>
+                    <button
+                        onClick={() => void applyImport("replace")}
+                        disabled={!preview.imported}
+                    >
+                        Replace
+                    </button>
+                </section>
+            )}
             {items.map((i) => (
                 <div className="card" key={i.id}>
                     <b>{i.name}</b>

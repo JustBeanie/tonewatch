@@ -3,14 +3,18 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import time
 import uuid
+from collections.abc import Awaitable, Callable
 from contextlib import asynccontextmanager
 from typing import Any
 
 import structlog
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse, Response
+from starlette.datastructures import Headers
+from starlette.requests import ClientDisconnect
 
 from tonewatch.api.auth import AuthState
 from tonewatch.api.routes.analyze import router as analyze_router
@@ -18,6 +22,7 @@ from tonewatch.api.routes.audit import router as audit_router
 from tonewatch.api.routes.auth import router as auth_router
 from tonewatch.api.routes.calls import router as calls_router
 from tonewatch.api.routes.config import router as config_router
+from tonewatch.api.routes.import_ttd import router as import_ttd_router
 from tonewatch.api.routes.recordings import router as recordings_router
 from tonewatch.api.routes.system import router as system_router
 from tonewatch.api.routes.ws import router as ws_router
@@ -37,6 +42,104 @@ from tonewatch.sources.soundcard import input_devices as _input_devices
 from tonewatch.storage.db import create_database, upgrade_database
 
 MAX_ANALYZE_BYTES = 20 * 1024 * 1024 + 64 * 1024
+MAX_TTD_IMPORT_BYTES = 256 * 1024
+
+
+def _parse_content_length(value: str | None) -> int | None:
+    """Parse an optional Content-Length, rejecting malformed and negative values."""
+    if value is None:
+        return None
+    try:
+        length = int(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("invalid Content-Length") from exc
+    if length < 0:
+        raise ValueError("invalid Content-Length")
+    return length
+
+
+async def _send_json(
+    send: Callable[[dict[str, Any]], Awaitable[None]], status: int, detail: str
+) -> None:
+    body = json.dumps({"detail": detail}).encode("utf-8")
+    await send(
+        {
+            "type": "http.response.start",
+            "status": status,
+            "headers": [
+                (b"content-type", b"application/json"),
+                (b"content-length", str(len(body)).encode("ascii")),
+            ],
+        }
+    )
+    await send({"type": "http.response.body", "body": body})
+
+
+class _TtdBodyLimitMiddleware:
+    """Bound TTD request bytes without depending on Starlette private attributes."""
+
+    def __init__(self, app: Any, max_bytes: int) -> None:
+        self.app = app
+        self.max_bytes = max_bytes
+
+    async def __call__(
+        self,
+        scope: dict[str, Any],
+        receive: Callable[[], Awaitable[dict[str, Any]]],
+        send: Callable[[dict[str, Any]], Awaitable[None]],
+    ) -> None:
+        path = str(scope.get("path", ""))
+        root_path = str(scope.get("root_path", ""))
+        if (
+            root_path
+            and root_path != "/"
+            and (path == root_path or path.startswith(root_path + "/"))
+        ):
+            path = path[len(root_path) :] or "/"
+        if scope.get("type") != "http" or path.rstrip("/") != "/api/import/ttd":
+            await self.app(scope, receive, send)
+            return
+        headers = Headers(scope=scope)
+        content_type = headers.get("content-type", "").casefold()
+        request_limit = (
+            self.max_bytes + 64 * 1024
+            if content_type.startswith("multipart/form-data")
+            else self.max_bytes
+        )
+        try:
+            content_length = _parse_content_length(headers.get("content-length"))
+        except ValueError:
+            await _send_json(send, 400, "invalid Content-Length")
+            return
+        if content_length is not None and content_length > request_limit:
+            await _send_json(send, 413, "upload too large")
+            return
+
+        received = 0
+        rejected = False
+
+        async def limited_receive() -> dict[str, Any]:
+            nonlocal received, rejected
+            if rejected:
+                return {"type": "http.disconnect"}
+            message = await receive()
+            if message.get("type") == "http.request":
+                received += len(message.get("body", b""))
+                if received > request_limit:
+                    rejected = True
+                    await _send_json(send, 413, "upload too large")
+                    return {"type": "http.disconnect"}
+            return message
+
+        async def limited_send(message: dict[str, Any]) -> None:
+            if not rejected:
+                await send(message)
+
+        try:
+            await self.app(scope, limited_receive, limited_send)
+        except ClientDisconnect:
+            if not rejected:
+                raise
 
 
 def input_devices() -> list[dict[str, object]]:
@@ -86,6 +189,7 @@ def create_app(
     for router in (
         auth_router,
         config_router,
+        import_ttd_router,
         calls_router,
         recordings_router,
         analyze_router,
@@ -111,6 +215,7 @@ def create_app(
         settings.bind_port,
         enabled=settings.zeroconf_enabled and not settings.addon_mode,
     )
+    app.add_middleware(_TtdBodyLimitMiddleware, max_bytes=MAX_TTD_IMPORT_BYTES)
 
     @app.middleware("http")
     async def security_middleware(request: Request, call_next: Any) -> Response:

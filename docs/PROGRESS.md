@@ -89,7 +89,7 @@ Tick a task with `[x]`, then append ` — <PR link> — <one-line note>`. Blocke
 - [x] **M8.1** Multi-stage `Dockerfile` — `e57ec0d` — PM-verified on CI run 34681525844: amd64 + arm64 build, image 347,219,215 bytes (< 350 MB budget), trivy clean, smoke (in-image imports, UID 10001, read-only root, PyAV TLS) green.
 - [x] **M8.2** Compose examples for soundcard (`/dev/snd`), stream, and RTL-SDR (`/dev/bus/usb`) with S5 hardening — `e57ec0d` — `compose-config` CI job validates all three files and the published 8099 port; device access under hardening remains a HIL checklist item.
 - [x] **M8.3** Multi-arch Docker CI and release workflows with signing, SBOM, provenance, and Trivy — `e57ec0d` — Docker (all 7 jobs incl. e2e-container 4/4), CI (incl. runtime-closure) and Security (8 jobs) green on runs 34681525844/34681525861/34681525845. Release publish path (GHCR, cosign, SBOM, provenance) runs only on a published release; release-please PR creation awaits a user repo-setting decision.
-- [ ] **M8.4** `importers/ttd.py`: 🛑 BLOCKED-ON-USER. The user must supply a sample TTD tones config so the format can ...
+- [x] **M8.4** `importers/ttd.py` — PM review passed (fix3); host ci-local green — Clean-room preview/apply importer with CLI/API/UI flows, pure-ASGI body limit (no truncated apply on oversized streams), synthetic CRLF/missing-tolerance fixtures and private-fixture structural test.
 
 ## M9: Windows native
 - [~] **M9.1** PyInstaller onedir spec bundles the Docker-equivalent web UI staging, sounddevice PortAudio data, PyAV DLLs, certifi, migrations, and SQLAlchemy/aiosqlite imports — local — PENDING-CI; local build and frozen smoke pass.

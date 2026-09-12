@@ -16,6 +16,8 @@ The running composition root now sends each channel through the recorder and per
 | --- | --- | --- |
 | Supervisor MQTT credentials | Fetch with the Supervisor bearer token, keep only in memory for one connection, and never persist or emit the resolved username/password. | `backend/src/tonewatch/alerts/mqtt.py:32`; `test_supervisor_mqtt_fetch_uses_bearer_and_resolves_all_fields`; `test_api_and_audit_never_expose_supervisor_credentials` |
 
+The TTD importer is an untrusted-input entry point. It accepts a UTF-8 `.cfg` text upload or raw text body up to 256 KiB and 500 sections, validates each tone definition against ToneWatch model bounds, and reports malformed sections independently. TTD command fields are deliberately dropped and never become executable alert targets. Email fields are reduced to recipient counts; addresses and source values are not echoed in previews, audit entries, logs, or exceptions. The API requires authentication and CSRF for cookie sessions, previews have no side effects, and applies use the existing atomic configuration write and hot-reload path.
+
 ## Threat inventory
 
 Evidence uses repository-relative `path:line`; “no proving test” is intentional for `open`, `partial`, and planned rows. A mitigated row is only used where a named test function exists in `backend/tests`.
@@ -50,6 +52,7 @@ Evidence uses repository-relative `path:line`; “no proving test” is intentio
 | TM-026 | Elevation of privilege | Alert dispatcher (M7) | Webhook targets permit SSRF to internal services or cloud metadata. | med | high | mitigated | `backend/src/tonewatch/alerts/urlsafety.py:160`; `test_urlsafety_blocks_loopback_linklocal_metadata_and_encodings` | M7 |
 | TM-027 | Elevation of privilege | Network stream origin | A configured stream URL can target localhost, `169.254.169.254`, or private services (SSRF). | high | high | mitigated | `backend/src/tonewatch/sources/stream.py:21`; `test_stream_redirect_to_blocked_host_refused` | S4 |
 | TM-028 | Information disclosure | Supervisor MQTT credentials | Rotated broker credentials could leak through persisted config, audit data, logs, API responses, or discovery payloads. | med | high | mitigated | `backend/src/tonewatch/alerts/mqtt.py:32`; `test_supervisor_mqtt_fetch_uses_bearer_and_resolves_all_fields`; `test_api_and_audit_never_expose_supervisor_credentials` | M10.2 |
+| TM-029 | Tampering / Information disclosure | TTD importer | An untrusted TTD upload could exceed processing limits, turn command strings into code, or echo email addresses into import output. | med | high | mitigated | `backend/src/tonewatch/importers/ttd.py:273`; `backend/tests/integration/test_ttd_api.py:20`; `test_synthetic_fixture_maps_sections_and_redacts_untrusted_fields`; `test_ttd_api_auth_csrf_preview_apply_and_replace` | M8.4 |
 
 ## Accepted risks
 

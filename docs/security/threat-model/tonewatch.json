@@ -83,7 +83,8 @@
         {"id": "TM-025", "category": "Elevation of privilege", "element": "Supervisor discovery client", "status": "planned"},
         {"id": "TM-026", "category": "Elevation of privilege", "element": "Alert dispatcher (M7)", "status": "mitigated"},
         {"id": "TM-027", "category": "Elevation of privilege", "element": "Network stream origin", "status": "open"},
-        {"id": "TM-028", "category": "Information disclosure", "element": "Supervisor MQTT credentials", "status": "mitigated"}
+        {"id": "TM-028", "category": "Information disclosure", "element": "Supervisor MQTT credentials", "status": "mitigated"},
+        {"id": "TM-029", "category": "Tampering / Information disclosure", "element": "TTD importer", "status": "mitigated"}
       ]
     }
   ]
