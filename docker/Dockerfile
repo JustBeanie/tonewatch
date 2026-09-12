@@ -14,7 +14,13 @@ WORKDIR /src/backend
 COPY backend/pyproject.toml backend/uv.lock backend/README.md backend/LICENSE ./
 COPY backend/src ./src
 COPY --from=web /src/web/dist ./src/tonewatch/web_dist
-RUN uv sync --frozen --no-dev --no-editable
+# Trim the venv here, before the runtime stage copies it: deleting files in a later stage only
+# hides them behind a whiteout and does not shrink the image. Third-party test suites, bytecode
+# caches and numpy's C headers are never used at runtime (budget: 350 MB, see docker/README.md).
+RUN uv sync --frozen --no-dev --no-editable \
+    && find /opt/venv/lib/python3.13/site-packages -depth -type d \
+        \( -name tests -o -name test -o -name __pycache__ \) -exec rm -rf {} + \
+    && rm -rf /opt/venv/lib/python3.13/site-packages/numpy/_core/include
 
 FROM python:3.13-slim@sha256:9d2e5553305c7c7b0097999bb17187c69b921ccd6bc9d40e4bb5ebe652c00285 AS runtime
 ARG VERSION=0.1.0
