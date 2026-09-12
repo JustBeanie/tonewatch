@@ -160,6 +160,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "service uninstall failed" }
           & $exe service status
           if ($LASTEXITCODE -eq 0) { throw "service still exists after uninstall" }
+          # The expected non-zero status above would otherwise become this step's exit code.
+          exit 0
       - if: failure()
         name: Dump service and data-dir logs
         run: |

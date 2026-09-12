@@ -187,7 +187,9 @@ def test_windows_service_uninstall_missing_is_clear_and_nonzero(
     monkeypatch.setattr(service, "win32service", scm)
     monkeypatch.setattr(service, "win32con", FakeWin32Con)
 
-    assert service.run_command("uninstall", platform_name="win32") == 1
+    # Inject the real manager: the default factory refuses non-Windows hosts before the fake runs.
+    manager = service._WindowsServiceManager()
+    assert service.run_command("uninstall", manager=manager, platform_name="win32") == 1
     assert "service 'ToneWatch' does not exist" in capsys.readouterr().err
 
 
