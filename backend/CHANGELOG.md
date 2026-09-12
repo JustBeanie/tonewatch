@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.3.0](https://github.com/JustBeanie/tonewatch/compare/v0.2.0...v0.3.0) (2026-09-12)
+
+
+### Features
+
+* **addon:** M10a add-on mode: Supervisor MQTT credentials, media recordings, discovery, db checkpoint (M10.2) ([3bd69f4](https://github.com/JustBeanie/tonewatch/commit/3bd69f46293194f35e96e8d9461eb37cb56bcbb3))
+* **discovery:** M13 tone auto-discovery (M13.1-M13.7) ([a8962cc](https://github.com/JustBeanie/tonewatch/commit/a8962cc322379b9d8f5bac85a32a37c065fcdc98))
+* **import:** M8.4 legacy tones.cfg importer with preview/apply API, CLI and UI ([7ca38fa](https://github.com/JustBeanie/tonewatch/commit/7ca38fa7e3aebc1231cf43289d07172f3a1c2d13))
+* **windows:** M9 native Windows build, service wrapper and windows.yml (M9.1-M9.3) ([897fa56](https://github.com/JustBeanie/tonewatch/commit/897fa5627dd336f22196202341d9f02d6f488858))
+
+
+### Bug Fixes
+
+* **ci:** cross-platform uninstall test and windows.yml step exit code ([250221e](https://github.com/JustBeanie/tonewatch/commit/250221eb660b583172e9a67ed4426b2a24dd03a5))
+* **ci:** keep the image under 350 MB and wait for Windows service state changes ([b743562](https://github.com/JustBeanie/tonewatch/commit/b743562de9b8c0a4b688ceced7fc0986a67eaa5e))
+* **ci:** Windows service logging, marker-aware runtime export check, Debian security upgrades ([9d5e0ef](https://github.com/JustBeanie/tonewatch/commit/9d5e0ef954bf0ad2c507f13bb21676ee425c2b64))
+* **sources:** looping file source rewound stream time and lost realtime pacing ([89b3795](https://github.com/JustBeanie/tonewatch/commit/89b3795e0028d941eadbd60affb42369493c36c5))
+* **windows:** open the service with win32con.DELETE for uninstall ([32a9768](https://github.com/JustBeanie/tonewatch/commit/32a97686cee000f9af5332f0490b147397c69f33))
+
+
+### Documentation
+
+* M12.1 documentation site and M12.3 radio-recording disclaimer ([0801228](https://github.com/JustBeanie/tonewatch/commit/08012281132f1847403ea58a27f7da074cc31e0f))
+
 ## [0.2.0](https://github.com/JustBeanie/tonewatch/compare/v0.1.0...v0.2.0) (2026-09-12)
 
 
