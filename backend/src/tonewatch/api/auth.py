@@ -4,14 +4,17 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import os
 import secrets
 import time
+from collections import OrderedDict
 from collections.abc import Callable
 from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import structlog
 from fastapi import HTTPException, Request, status
 
 if TYPE_CHECKING:
@@ -26,11 +29,11 @@ def read_or_create_token(settings: Settings) -> str:
     path = token_path(settings)
     settings.data_dir.mkdir(parents=True, exist_ok=True)
     if path.is_file():
+        _protect_secret_file(path)
         return path.read_text(encoding="ascii").strip()
     token = secrets.token_urlsafe(32)
     path.write_text(token + "\n", encoding="ascii")
-    with suppress(OSError):
-        path.chmod(0o600)
+    _protect_secret_file(path)
     return token
 
 
@@ -39,9 +42,23 @@ def rotate_token(settings: Settings) -> str:
     token = secrets.token_urlsafe(32)
     settings.data_dir.mkdir(parents=True, exist_ok=True)
     path.write_text(token + "\n", encoding="ascii")
-    with suppress(OSError):
-        path.chmod(0o600)
+    _protect_secret_file(path)
     return token
+
+
+def _protect_secret_file(path: Path) -> None:
+    """Keep locally stored secrets owner-readable on POSIX filesystems."""
+    if os.name == "nt":
+        return
+    try:
+        if path.stat().st_mode & 0o777 != 0o600:
+            path.chmod(0o600)
+            structlog.get_logger("tonewatch.auth").warning(
+                "secret file permissions corrected", path=str(path), permissions="0600"
+            )
+    except OSError:
+        with suppress(OSError):
+            path.chmod(0o600)
 
 
 def hash_password(password: str) -> str:
@@ -81,16 +98,16 @@ class AuthState:
         self.clock = clock
         self.token = read_or_create_token(settings)
         self.sessions: dict[str, Session] = {}
-        self.failures: dict[str, list[float]] = {}
+        self.failures: OrderedDict[str, list[float]] = OrderedDict()
         self.password_hash: str | None = None
         password_file = settings.data_dir / "ui_password"
         if password_file.is_file():
+            _protect_secret_file(password_file)
             self.password_hash = password_file.read_text(encoding="ascii").strip()
         elif settings.ui_password:
             settings.data_dir.mkdir(parents=True, exist_ok=True)
             password_file.write_text(hash_password(settings.ui_password) + "\n", encoding="ascii")
-            with suppress(OSError):
-                password_file.chmod(0o600)
+            _protect_secret_file(password_file)
             self.password_hash = password_file.read_text(encoding="ascii").strip()
 
     def bearer_valid(self, request: Request) -> bool:
@@ -133,12 +150,15 @@ class AuthState:
         now = self.clock()
         attempts = [item for item in self.failures.get(ip, []) if now - item < 900]
         self.failures[ip] = attempts
+        self.failures.move_to_end(ip, last=True)
         if len(attempts) >= 5:
             raise HTTPException(
                 status_code=429, detail="too many login attempts", headers={"Retry-After": "900"}
             )
         if self.password_hash is None or not verify_password(password, self.password_hash):
             attempts.append(now)
+            while len(self.failures) > 1024:
+                self.failures.popitem(last=False)
             raise HTTPException(status_code=401, detail="invalid credentials")
         self.failures.pop(ip, None)
         sid, csrf = secrets.token_urlsafe(32), secrets.token_urlsafe(32)

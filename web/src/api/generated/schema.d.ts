@@ -58,6 +58,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Audit */
+        get: operations["audit_api_audit_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/login": {
         parameters: {
             query?: never;
@@ -112,6 +129,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/token/rotate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Token Rotate */
+        post: operations["token_rotate_api_auth_token_rotate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/calls": {
         parameters: {
             query?: never;
@@ -139,6 +173,24 @@ export interface paths {
         /** Call Detail */
         get: operations["call_detail_api_calls__call_id__get"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Config */
+        get: operations["get_config_api_config_get"];
+        /** Replace Config */
+        put: operations["replace_config_api_config_put"];
         post?: never;
         delete?: never;
         options?: never;
@@ -309,15 +361,104 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * AppConfig
+         * @description Complete configuration with reference integrity checks.
+         */
+        AppConfig: {
+            /** Alert Targets */
+            alert_targets?: (components["schemas"]["MqttTarget"] | components["schemas"]["WebhookTarget"] | components["schemas"]["ScriptTarget"])[];
+            /** Sources */
+            sources?: (components["schemas"]["SoundcardSource"] | components["schemas"]["StreamSource"] | components["schemas"]["RtlSdrSource"] | components["schemas"]["FileSource"])[];
+            /** Tone Sets */
+            tone_sets?: components["schemas"]["ToneSet"][];
+        };
         /** Body_analyze_api_analyze_post */
         Body_analyze_api_analyze_post: {
             /** File */
             file: string;
         };
+        /** FileSource */
+        FileSource: {
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+            /** Id */
+            id: string;
+            /**
+             * Loop
+             * @default false
+             */
+            loop: boolean;
+            /** Name */
+            name: string;
+            /** Path */
+            path: string;
+            /**
+             * Realtime
+             * @default true
+             */
+            realtime: boolean;
+            /**
+             * Tonesets
+             * @default all
+             */
+            tonesets: string[] | "all";
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "file";
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /** MqttTarget */
+        MqttTarget: {
+            /**
+             * Broker
+             * @default localhost
+             */
+            broker: string;
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+            /** Host */
+            host?: string | null;
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Password */
+            password?: string | null;
+            /**
+             * Port
+             * @default 1883
+             */
+            port: number;
+            /**
+             * Tls
+             * @default false
+             */
+            tls: boolean;
+            /**
+             * Topic
+             * @default tonewatch
+             */
+            topic: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "mqtt";
+            /** Username */
+            username?: string | null;
         };
         /**
          * RecordingPolicy
@@ -351,6 +492,128 @@ export interface components {
              * @default 8
              */
             silence_stop_s: number;
+        };
+        /** RtlSdrSource */
+        RtlSdrSource: {
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+            /** Freq Hz */
+            freq_hz: number;
+            /** Gain */
+            gain?: number | null;
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /**
+             * Ppm
+             * @default 0
+             */
+            ppm: number;
+            /**
+             * Squelch
+             * @default 0
+             */
+            squelch: number;
+            /**
+             * Tonesets
+             * @default all
+             */
+            tonesets: string[] | "all";
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "rtlsdr";
+        };
+        /** ScriptTarget */
+        ScriptTarget: {
+            /**
+             * Args
+             * @default []
+             */
+            args: string[];
+            /**
+             * Enabled
+             * @default false
+             */
+            enabled: boolean;
+            /** Executable */
+            executable: string;
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /**
+             * Timeout S
+             * @default 30
+             */
+            timeout_s: number;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "script";
+        };
+        /** SoundcardSource */
+        SoundcardSource: {
+            /**
+             * Channel
+             * @default mix
+             * @enum {string}
+             */
+            channel: "left" | "right" | "mix";
+            /** Device */
+            device: string | number;
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /**
+             * Tonesets
+             * @default all
+             */
+            tonesets: string[] | "all";
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "soundcard";
+        };
+        /** StreamSource */
+        StreamSource: {
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /**
+             * Tonesets
+             * @default all
+             */
+            tonesets: string[] | "all";
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "stream";
+            /**
+             * Url
+             * Format: uri
+             */
+            url: string;
         };
         /**
          * ToneSet
@@ -414,6 +677,43 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+        };
+        /** WebhookTarget */
+        WebhookTarget: {
+            /**
+             * Allow Insecure Http
+             * @default false
+             */
+            allow_insecure_http: boolean;
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+            /** Id */
+            id: string;
+            /**
+             * Include Audio
+             * @default false
+             */
+            include_audio: boolean;
+            /** Name */
+            name: string;
+            /**
+             * Secret
+             * @default
+             */
+            secret: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "webhook";
+            /**
+             * Url
+             * Format: uri
+             */
+            url: string;
         };
     };
     responses: never;
@@ -613,6 +913,40 @@ export interface operations {
             };
         };
     };
+    audit_api_audit_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     login_api_auth_login_post: {
         parameters: {
             query?: never;
@@ -675,6 +1009,26 @@ export interface operations {
             };
         };
     };
+    token_rotate_api_auth_token_rotate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
     list_calls_api_calls_get: {
         parameters: {
             query?: {
@@ -733,6 +1087,59 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_config_api_config_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    replace_config_api_config_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AppConfig"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */

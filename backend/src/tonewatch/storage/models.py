@@ -62,6 +62,18 @@ class AlertAttempt(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
+class AuditEvent(Base):
+    __tablename__ = "audit_events"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    actor: Mapped[str] = mapped_column(String(20), nullable=False)
+    event_type: Mapped[str] = mapped_column(String(40), nullable=False)
+    resource: Mapped[str] = mapped_column(String(100), nullable=False)
+    before: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    after: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    details: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+
+
 def create_database(url: str) -> tuple[AsyncEngine, async_sessionmaker[Any]]:
     """Create an async engine and session factory."""
     engine = create_async_engine(url)

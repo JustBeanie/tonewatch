@@ -326,16 +326,23 @@ def render(samm: list[SammEntry], dsomm: list[DsommActivity]) -> dict[Path, str]
                 )
             )
     gaps.sort(key=lambda pair: (_owner_key(pair[0]), pair[1]))
+    threat_gaps = [
+        f"- {row[0]} — {row[6]}: {row[3]} Owner: {row[8]}."
+        for row in _threat_rows()
+        if row[6] in {"open", "partial"}
+    ]
+    asvs_register = ROOT / "docs/security/asvs/gap-register.md"
+    asvs_gap_text = (
+        asvs_register.read_text(encoding="utf-8").strip()
+        if asvs_register.exists()
+        else ""
+    )
     gap_md = (
         "# Security gaps\n\nEvidence-backed gaps from the S1 baseline. Planned work is intentionally scored as zero.\n\n"
         + "\n".join(gap for _, gap in gaps)
-        + "\n\n## S3 STRIDE findings\n\n"
-        + "\n".join(
-            f"- {row[0]} — {row[6]}: {row[3]} Owner: {row[8]}."
-            for row in _threat_rows()
-            if row[6] in {"open", "partial"}
-        )
-        + "\n"
+        + "\n\n## S3 STRIDE findings\n"
+        + ("\n".join(threat_gaps) + "\n" if threat_gaps else "")
+        + (f"\n{asvs_gap_text}\n" if asvs_gap_text else "")
     )
     return {
         ROOT / "docs/security/samm/scorecard.md": samm_md,

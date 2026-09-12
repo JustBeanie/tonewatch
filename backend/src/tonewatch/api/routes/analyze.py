@@ -7,11 +7,13 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 
-from tonewatch.api.analyze import analyze_wav
+from tonewatch.api.analyze import analyze_wav as _analyze_wav
+from tonewatch.api.analyze import analyze_wav_with_timeout
 from tonewatch.api.deps import authenticated
 
 router = APIRouter(prefix="/api", tags=["analyze"])
 MAX_FILE_BYTES = 20 * 1024 * 1024
+analyze_wav = _analyze_wav
 
 
 @router.post("/analyze", dependencies=[Depends(authenticated)])
@@ -36,7 +38,14 @@ async def analyze(request: Request, file: UploadFile = File(...)) -> dict[str, A
             raise
         except (wave.Error, EOFError, ZeroDivisionError):
             raise HTTPException(415, "expected RIFF/WAVE audio") from None
-        return analyze_wav(temporary, request.app.state.config)
+        try:
+            return await analyze_wav_with_timeout(
+                temporary,
+                request.app.state.config,
+                timeout_s=request.app.state.settings.analyze_decode_timeout_s,
+            )
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from None
     finally:
         if temporary is not None:
             temporary.unlink(missing_ok=True)

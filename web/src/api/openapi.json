@@ -1,6 +1,78 @@
 {
   "components": {
     "schemas": {
+      "AppConfig": {
+        "additionalProperties": false,
+        "description": "Complete configuration with reference integrity checks.",
+        "properties": {
+          "alert_targets": {
+            "items": {
+              "discriminator": {
+                "mapping": {
+                  "mqtt": "#/components/schemas/MqttTarget",
+                  "script": "#/components/schemas/ScriptTarget",
+                  "webhook": "#/components/schemas/WebhookTarget"
+                },
+                "propertyName": "type"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/MqttTarget"
+                },
+                {
+                  "$ref": "#/components/schemas/WebhookTarget"
+                },
+                {
+                  "$ref": "#/components/schemas/ScriptTarget"
+                }
+              ]
+            },
+            "maxItems": 128,
+            "title": "Alert Targets",
+            "type": "array"
+          },
+          "sources": {
+            "items": {
+              "discriminator": {
+                "mapping": {
+                  "file": "#/components/schemas/FileSource",
+                  "rtlsdr": "#/components/schemas/RtlSdrSource",
+                  "soundcard": "#/components/schemas/SoundcardSource",
+                  "stream": "#/components/schemas/StreamSource"
+                },
+                "propertyName": "type"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/SoundcardSource"
+                },
+                {
+                  "$ref": "#/components/schemas/StreamSource"
+                },
+                {
+                  "$ref": "#/components/schemas/RtlSdrSource"
+                },
+                {
+                  "$ref": "#/components/schemas/FileSource"
+                }
+              ]
+            },
+            "maxItems": 16,
+            "title": "Sources",
+            "type": "array"
+          },
+          "tone_sets": {
+            "items": {
+              "$ref": "#/components/schemas/ToneSet"
+            },
+            "maxItems": 500,
+            "title": "Tone Sets",
+            "type": "array"
+          }
+        },
+        "title": "AppConfig",
+        "type": "object"
+      },
       "Body_analyze_api_analyze_post": {
         "properties": {
           "file": {
@@ -15,6 +87,73 @@
         "title": "Body_analyze_api_analyze_post",
         "type": "object"
       },
+      "FileSource": {
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "default": true,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "id": {
+            "minLength": 1,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "title": "Id",
+            "type": "string"
+          },
+          "loop": {
+            "default": false,
+            "title": "Loop",
+            "type": "boolean"
+          },
+          "name": {
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "path": {
+            "minLength": 1,
+            "title": "Path",
+            "type": "string"
+          },
+          "realtime": {
+            "default": true,
+            "title": "Realtime",
+            "type": "boolean"
+          },
+          "tonesets": {
+            "anyOf": [
+              {
+                "items": {
+                  "minLength": 1,
+                  "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "const": "all",
+                "type": "string"
+              }
+            ],
+            "default": "all",
+            "title": "Tonesets"
+          },
+          "type": {
+            "const": "file",
+            "default": "file",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "path"
+        ],
+        "title": "FileSource",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -26,6 +165,94 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "MqttTarget": {
+        "additionalProperties": false,
+        "properties": {
+          "broker": {
+            "default": "localhost",
+            "title": "Broker",
+            "type": "string"
+          },
+          "enabled": {
+            "default": true,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "host": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Host"
+          },
+          "id": {
+            "minLength": 1,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "password": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Password"
+          },
+          "port": {
+            "default": 1883,
+            "maximum": 65535.0,
+            "minimum": 1.0,
+            "title": "Port",
+            "type": "integer"
+          },
+          "tls": {
+            "default": false,
+            "title": "Tls",
+            "type": "boolean"
+          },
+          "topic": {
+            "default": "tonewatch",
+            "title": "Topic",
+            "type": "string"
+          },
+          "type": {
+            "const": "mqtt",
+            "default": "mqtt",
+            "title": "Type",
+            "type": "string"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "MqttTarget",
         "type": "object"
       },
       "RecordingPolicy": {
@@ -73,6 +300,267 @@
           }
         },
         "title": "RecordingPolicy",
+        "type": "object"
+      },
+      "RtlSdrSource": {
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "default": true,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "freq_hz": {
+            "title": "Freq Hz",
+            "type": "number"
+          },
+          "gain": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gain"
+          },
+          "id": {
+            "minLength": 1,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "ppm": {
+            "default": 0,
+            "title": "Ppm",
+            "type": "integer"
+          },
+          "squelch": {
+            "default": 0,
+            "title": "Squelch",
+            "type": "integer"
+          },
+          "tonesets": {
+            "anyOf": [
+              {
+                "items": {
+                  "minLength": 1,
+                  "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "const": "all",
+                "type": "string"
+              }
+            ],
+            "default": "all",
+            "title": "Tonesets"
+          },
+          "type": {
+            "const": "rtlsdr",
+            "default": "rtlsdr",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "freq_hz"
+        ],
+        "title": "RtlSdrSource",
+        "type": "object"
+      },
+      "ScriptTarget": {
+        "additionalProperties": false,
+        "properties": {
+          "args": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Args",
+            "type": "array"
+          },
+          "enabled": {
+            "default": false,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "executable": {
+            "minLength": 1,
+            "title": "Executable",
+            "type": "string"
+          },
+          "id": {
+            "minLength": 1,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "timeout_s": {
+            "default": 30,
+            "exclusiveMinimum": 0.0,
+            "title": "Timeout S",
+            "type": "number"
+          },
+          "type": {
+            "const": "script",
+            "default": "script",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "executable"
+        ],
+        "title": "ScriptTarget",
+        "type": "object"
+      },
+      "SoundcardSource": {
+        "additionalProperties": false,
+        "properties": {
+          "channel": {
+            "default": "mix",
+            "enum": [
+              "left",
+              "right",
+              "mix"
+            ],
+            "title": "Channel",
+            "type": "string"
+          },
+          "device": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "Device"
+          },
+          "enabled": {
+            "default": true,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "id": {
+            "minLength": 1,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "tonesets": {
+            "anyOf": [
+              {
+                "items": {
+                  "minLength": 1,
+                  "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "const": "all",
+                "type": "string"
+              }
+            ],
+            "default": "all",
+            "title": "Tonesets"
+          },
+          "type": {
+            "const": "soundcard",
+            "default": "soundcard",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "device"
+        ],
+        "title": "SoundcardSource",
+        "type": "object"
+      },
+      "StreamSource": {
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "default": true,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "id": {
+            "minLength": 1,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "tonesets": {
+            "anyOf": [
+              {
+                "items": {
+                  "minLength": 1,
+                  "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "const": "all",
+                "type": "string"
+              }
+            ],
+            "default": "all",
+            "title": "Tonesets"
+          },
+          "type": {
+            "const": "stream",
+            "default": "stream",
+            "title": "Type",
+            "type": "string"
+          },
+          "url": {
+            "format": "uri",
+            "minLength": 1,
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "url"
+        ],
+        "title": "StreamSource",
         "type": "object"
       },
       "ToneSet": {
@@ -218,6 +706,61 @@
           "type"
         ],
         "title": "ValidationError",
+        "type": "object"
+      },
+      "WebhookTarget": {
+        "additionalProperties": false,
+        "properties": {
+          "allow_insecure_http": {
+            "default": false,
+            "title": "Allow Insecure Http",
+            "type": "boolean"
+          },
+          "enabled": {
+            "default": true,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "id": {
+            "minLength": 1,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "title": "Id",
+            "type": "string"
+          },
+          "include_audio": {
+            "default": false,
+            "title": "Include Audio",
+            "type": "boolean"
+          },
+          "name": {
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "secret": {
+            "default": "",
+            "title": "Secret",
+            "type": "string"
+          },
+          "type": {
+            "const": "webhook",
+            "default": "webhook",
+            "title": "Type",
+            "type": "string"
+          },
+          "url": {
+            "format": "uri",
+            "minLength": 1,
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "url"
+        ],
+        "title": "WebhookTarget",
         "type": "object"
       }
     }
@@ -469,6 +1012,64 @@
         ]
       }
     },
+    "/api/audit": {
+      "get": {
+        "operationId": "audit_api_audit_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Cursor",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Audit Api Audit Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Audit",
+        "tags": [
+          "audit"
+        ]
+      }
+    },
     "/api/auth/login": {
       "post": {
         "operationId": "login_api_auth_login_post",
@@ -535,6 +1136,25 @@
           }
         },
         "summary": "Status",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/token/rotate": {
+      "post": {
+        "operationId": "token_rotate_api_auth_token_rotate_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Token Rotate",
         "tags": [
           "auth"
         ]
@@ -705,6 +1325,62 @@
         "summary": "Call Detail",
         "tags": [
           "calls"
+        ]
+      }
+    },
+    "/api/config": {
+      "get": {
+        "operationId": "get_config_api_config_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Config",
+        "tags": [
+          "configuration"
+        ]
+      },
+      "put": {
+        "operationId": "replace_config_api_config_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppConfig"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Replace Config",
+        "tags": [
+          "configuration"
         ]
       }
     },

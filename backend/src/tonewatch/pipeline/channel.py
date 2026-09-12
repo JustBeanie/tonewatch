@@ -89,11 +89,17 @@ class Channel:
         source_factory: Callable[[Source], AudioSource] | None = None,
         engine_factory: EngineFactory | None = None,
         watchdog: Watchdog | None = None,
+        source_settings: object | None = None,
     ) -> None:
         """Create a channel with its source, filtered tone sets, and event bus."""
         self.source_config = source_config
         self.bus, self.clock, self.recorder_hook = bus, clock, recorder_hook
-        self._source_factory = source_factory or make_source
+        if source_factory is not None:
+            self._source_factory = source_factory
+        elif source_settings is None:
+            self._source_factory = make_source
+        else:
+            self._source_factory = lambda config: make_source(config, settings=source_settings)
         self._engine_factory = engine_factory or DetectionEngine
         self.watchdog = watchdog
         allowed = source_config.tonesets

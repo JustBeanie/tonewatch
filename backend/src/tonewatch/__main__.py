@@ -4,7 +4,7 @@ import argparse
 import json
 import wave
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 import yaml
@@ -13,6 +13,12 @@ from tonewatch import __version__
 from tonewatch.config.models import AppConfig
 from tonewatch.dsp.engine import DetectionEngine
 from tonewatch.sources.soundcard import input_devices
+
+UVICORN_SECURITY_OPTIONS = {
+    "timeout_keep_alive": 5,
+    "h11_max_incomplete_event_size": 64 * 1024,
+    "limit_concurrency": 100,
+}
 
 
 def _read_wav(path: Path) -> tuple[np.ndarray, int]:
@@ -143,7 +149,12 @@ def _serve(_args: argparse.Namespace) -> None:
 
     settings = Settings.load()
     configure_logging(settings.log_level, json=True)
-    uvicorn.run(create_app(settings), host=settings.bind_host, port=settings.bind_port)
+    uvicorn.run(
+        create_app(settings),
+        host=settings.bind_host,
+        port=settings.bind_port,
+        **cast("Any", UVICORN_SECURITY_OPTIONS),
+    )
 
 
 def _token(args: argparse.Namespace) -> None:

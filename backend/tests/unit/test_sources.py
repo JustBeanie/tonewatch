@@ -229,7 +229,7 @@ def test_factory_and_file_error(tmp_path: Path) -> None:
         cast(
             "Any",
             make_source(
-                StreamConfig(id="stream", name="stream", url=cast("Any", "http://localhost/a"))
+                StreamConfig(id="stream", name="stream", url=cast("Any", "http://192.168.1.10/a"))
             ),
         ).config.id
         == "stream"
@@ -245,9 +245,15 @@ def test_stream_uses_thread_decode(monkeypatch) -> None:
 
     monkeypatch.setattr(stream_module, "_decode_url", lambda _: [np.ones(4, dtype=np.float32)])
 
+    async def skip_redirect_probe(resolved: Any, *, allow_private: bool) -> Any:
+        del allow_private
+        return resolved
+
+    monkeypatch.setattr(stream_module, "_resolve_redirects", skip_redirect_probe)
+
     async def run() -> AudioFrame:
         source = StreamAudioSource(
-            StreamConfig(id="stream", name="stream", url=cast("Any", "http://localhost/a"))
+            StreamConfig(id="stream", name="stream", url=cast("Any", "http://192.168.1.10/a"))
         )
         await source.open()
         iterator = source.__aiter__()
@@ -351,9 +357,15 @@ def test_pyav_decode_helpers_and_stream_retry(monkeypatch) -> None:
 
     monkeypatch.setattr(stream_module, "_decode_url", retry_decode)
 
+    async def skip_redirect_probe(resolved: Any, *, allow_private: bool) -> Any:
+        del allow_private
+        return resolved
+
+    monkeypatch.setattr(stream_module, "_resolve_redirects", skip_redirect_probe)
+
     async def run() -> AudioFrame:
         source = StreamAudioSource(
-            StreamConfig(id="stream", name="stream", url=cast("Any", "http://localhost/a")),
+            StreamConfig(id="stream", name="stream", url=cast("Any", "http://192.168.1.10/a")),
             sleep=no_sleep,
             jitter=lambda: 0,
         )

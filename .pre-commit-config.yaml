@@ -1,4 +1,5 @@
-exclude: ^docs/pm/(reports|runs)/
+# Vendored upstream sources must stay byte-identical to their pinned sha256 (see its README).
+exclude: ^(docs/pm/(reports|runs)/|docs/security/asvs/source/)
 repos:
   - repo: local
     hooks:

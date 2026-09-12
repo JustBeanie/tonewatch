@@ -13,6 +13,7 @@ import httpx
 
 BLOCKED_V4 = ipaddress.ip_network("0.0.0.0/8")
 ALLOWED_WEBHOOK_SCHEMES = frozenset({"https"})
+ALLOWED_STREAM_SCHEMES = frozenset({"http", "https", "rtsp", "rtsps"})
 
 
 class UnsafeURL(ValueError):
@@ -82,6 +83,11 @@ def parse_ip(host: str) -> ipaddress.IPv4Address | ipaddress.IPv6Address | None:
         return ipaddress.ip_address(host)
     except ValueError:
         return _legacy_ipv4(host)
+
+
+def validate_stream_url(value: str | httpx.URL, *, allow_private: bool = True) -> httpx.URL:
+    """Validate a stream origin before handing it to FFmpeg."""
+    return validate_url(value, schemes=ALLOWED_STREAM_SCHEMES, allow_private=allow_private)
 
 
 def is_blocked_address(

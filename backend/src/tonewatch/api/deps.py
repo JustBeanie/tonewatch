@@ -7,7 +7,9 @@ from typing import Any
 from fastapi import HTTPException, Request
 from pydantic import ValidationError
 
+from tonewatch.api.audit import record_audit
 from tonewatch.config.models import AppConfig
+from tonewatch.config.store import ConfigConflictError
 
 
 def _dump(value: Any) -> Any:
@@ -29,13 +31,29 @@ def collection(request: Request, kind: str) -> list[Any]:
 
 
 async def save_config(request: Request, config: AppConfig) -> AppConfig:
+    before = request.app.state.config
+    expected_etag = request.headers.get("if-match")
     try:
         config = AppConfig.model_validate(config)
     except ValidationError as exc:
         raise HTTPException(422, str(exc)) from None
-    request.app.state.store.save(config)
+    try:
+        if hasattr(request.app.state.store, "save_async"):
+            await request.app.state.store.save_async(config, expected_etag=expected_etag)
+        else:
+            request.app.state.store.save(config)
+    except ConfigConflictError as exc:
+        raise HTTPException(412, str(exc)) from None
     request.app.state.config = config
     await request.app.state.supervisor.reload(config)
+    await record_audit(
+        request.app.state.session_factory,
+        actor=getattr(request.state, "auth", "unknown"),
+        event_type="config_change",
+        resource="config",
+        before=before.model_dump(mode="json"),
+        after=config.model_dump(mode="json"),
+    )
     return config
 
 

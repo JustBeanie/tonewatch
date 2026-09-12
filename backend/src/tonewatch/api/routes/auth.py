@@ -1,7 +1,11 @@
 """Authentication route registration boundary."""
 
+import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
+
+from tonewatch.api.audit import record_audit
+from tonewatch.api.auth import rotate_token
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -34,7 +38,35 @@ async def login(request: Request) -> JSONResponse:
     if not isinstance(password, str):
         raise HTTPException(422, "password is required")
     ip = request.client.host if request.client else "unknown"
-    sid, csrf = request.app.state.auth.check_login(ip, password)
+    try:
+        sid, csrf = request.app.state.auth.check_login(ip, password)
+    except HTTPException as exc:
+        await record_audit(
+            request.app.state.session_factory,
+            actor="anonymous",
+            event_type="login_failure",
+            resource="auth",
+            details={"status": exc.status_code},
+        )
+        structlog.get_logger("tonewatch.auth").info(
+            "login failure",
+            **{"password": "[REDACTED]"},
+            authorization="[REDACTED]",
+            cookie="[REDACTED]",
+        )
+        raise
+    await record_audit(
+        request.app.state.session_factory,
+        actor="anonymous",
+        event_type="login_success",
+        resource="auth",
+    )
+    structlog.get_logger("tonewatch.auth").info(
+        "login success",
+        **{"password": "[REDACTED]"},
+        authorization="[REDACTED]",
+        cookie="[REDACTED]",
+    )
     response = JSONResponse({"csrf_token": csrf})
     secure = request.url.scheme == "https"
     response.set_cookie(
@@ -53,3 +85,16 @@ async def logout(request: Request) -> JSONResponse:
     response.delete_cookie("tonewatch_session")
     response.delete_cookie("tonewatch_csrf")
     return response
+
+
+@router.post("/token/rotate", dependencies=[Depends(_write_auth)])
+async def token_rotate(request: Request) -> JSONResponse:
+    token = rotate_token(request.app.state.auth.settings)
+    request.app.state.auth.token = token
+    await record_audit(
+        request.app.state.session_factory,
+        actor=getattr(request.state, "auth", "unknown"),
+        event_type="token_rotation",
+        resource="api_token",
+    )
+    return JSONResponse({"ok": True})

@@ -2,14 +2,17 @@
 
 import asyncio
 import io
+import ipaddress
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from itertools import pairwise
 from typing import Any, cast
 
 import av
+import httpx
 import numpy as np
 
+from tonewatch.alerts.urlsafety import ResolvedURL
 from tonewatch.config.models import StreamSource
 from tonewatch.sources.base import AudioFrame
 from tonewatch.sources.stream import StreamAudioSource
@@ -43,7 +46,9 @@ class DropThenServe(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "audio/ogg")
         self.send_header("Content-Length", str(len(self.payload)))
         self.end_headers()
-        if type(self).requests == 1:
+        if self.headers.get("User-Agent") == "ToneWatch redirect probe":
+            self.wfile.write(self.payload)
+        elif type(self).requests == 2:
             self.wfile.write(self.payload[:10])
             self.wfile.flush()
             self.close_connection = True
@@ -54,7 +59,7 @@ class DropThenServe(BaseHTTPRequestHandler):
         del format_string, args
 
 
-def test_stream_real_pyav_http_reconnect() -> None:
+def test_stream_real_pyav_http_reconnect(monkeypatch) -> None:
     payload = make_ogg()
     DropThenServe.payload = payload
     DropThenServe.requests = 0
@@ -65,6 +70,14 @@ def test_stream_real_pyav_http_reconnect() -> None:
 
     async def skip_sleep(delay: float) -> None:
         sleeps.append(delay)
+
+    async def allow_test_loopback(*_args: Any, **_kwargs: Any) -> ResolvedURL:
+        return ResolvedURL(
+            httpx.URL(f"http://127.0.0.1:{server.server_port}/audio.ogg"),
+            ipaddress.ip_address("127.0.0.1"),
+        )
+
+    monkeypatch.setattr("tonewatch.sources.stream.resolve_and_validate", allow_test_loopback)
 
     async def run() -> list[AudioFrame]:
         source = StreamAudioSource(

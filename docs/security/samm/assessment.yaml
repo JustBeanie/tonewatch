@@ -458,7 +458,7 @@ entries:
     practice: Defect Management
     stream: Metrics and Feedback
     stream_id: I-DM-B
-    current_level: 0
+    current_level: 1
     target_level: 2
     answers:
       - level: 1
@@ -475,10 +475,13 @@ entries:
           so that their input helps drive your security strategy?
         answer: 'No'
         rationale: The evidence does not demonstrate this higher maturity level.
-    evidence: []
+    evidence:
+      - docs/security/gaps.md
+      - docs/security/accepted-risks.md
+      - backend/tests/unit/test_s4_security.py
     na: false
     na_justification: null
-    assessed_on: '2026-09-10'
+    assessed_on: '2026-09-11'
   - function: Verification
     practice: Architecture Assessment
     stream: Architecture Validation
@@ -538,7 +541,7 @@ entries:
     practice: Requirements-driven Testing
     stream: Control Verification
     stream_id: V-RT-A
-    current_level: 1
+    current_level: 2
     target_level: 1
     answers:
       - level: 1
@@ -558,6 +561,8 @@ entries:
         rationale: The evidence does not demonstrate this higher maturity level.
     evidence:
       - .github/workflows/security.yml
+      - docs/security/asvs/checklist.csv
+      - backend/tests/unit/test_asvs_checklist.py
     na: false
     na_justification: null
     assessed_on: '2026-09-10'
@@ -565,7 +570,7 @@ entries:
     practice: Requirements-driven Testing
     stream: Misuse/Abuse Testing
     stream_id: V-RT-B
-    current_level: 0
+    current_level: 1
     target_level: 1
     answers:
       - level: 1
@@ -581,7 +586,9 @@ entries:
         question: Do you perform denial of service and security stress testing?
         answer: 'No'
         rationale: The evidence does not demonstrate this higher maturity level.
-    evidence: []
+    evidence:
+      - docs/security/asvs/checklist.csv
+      - backend/tests/unit/test_s4_security.py
     na: false
     na_justification: null
     assessed_on: '2026-09-10'
@@ -620,7 +627,7 @@ entries:
     practice: Security Testing
     stream: Deep Understanding
     stream_id: V-ST-B
-    current_level: 0
+    current_level: 1
     target_level: 2
     answers:
       - level: 1
@@ -637,7 +644,10 @@ entries:
           lifecycle?
         answer: 'No'
         rationale: The evidence does not demonstrate this higher maturity level.
-    evidence: []
+    evidence:
+      - docs/security/asvs/checklist.csv
+      - docs/security/threat-model/README.md
+      - backend/tests/unit/test_s4_security.py
     na: false
     na_justification: null
     assessed_on: '2026-09-10'

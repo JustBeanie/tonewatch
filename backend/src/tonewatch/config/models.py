@@ -87,6 +87,13 @@ class StreamSource(SourceBase):
     type: Literal["stream"] = "stream"
     url: AnyUrl
 
+    @field_validator("url")
+    @classmethod
+    def validate_stream_scheme(cls, value: AnyUrl) -> AnyUrl:
+        if value.scheme not in {"http", "https", "rtsp", "rtsps"}:
+            raise ValueError("stream URL scheme must be http, https, rtsp, or rtsps")
+        return value
+
 
 class RtlSdrSource(SourceBase):
     type: Literal["rtlsdr"] = "rtlsdr"
@@ -169,9 +176,9 @@ AlertTarget = Annotated[MqttTarget | WebhookTarget | ScriptTarget, Field(discrim
 class AppConfig(FrozenModel):
     """Complete configuration with reference integrity checks."""
 
-    tone_sets: list[ToneSet] = []
-    sources: list[Source] = []
-    alert_targets: list[AlertTarget] = []
+    tone_sets: list[ToneSet] = Field(default_factory=list, max_length=500)
+    sources: list[Source] = Field(default_factory=list, max_length=16)
+    alert_targets: list[AlertTarget] = Field(default_factory=list, max_length=128)
 
     @model_validator(mode="after")
     def references_and_unique_ids(self) -> "AppConfig":

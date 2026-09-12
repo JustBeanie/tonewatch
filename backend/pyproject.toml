@@ -124,7 +124,10 @@ plugins = []
 [tool.pytest.ini_options]
 addopts = "--strict-markers -W error --cov=tonewatch --cov-fail-under=85 --cov-report=json:coverage.json -p no:cacheprovider"
 testpaths = ["tests"]
-markers = ["slow: long-running false-positive and endurance tests"]
+markers = [
+  "slow: long-running false-positive and endurance tests",
+  "allow_real_audio: explicitly opt into host audio hardware",
+]
 
 [[tool.mypy.overrides]]
 # PLAN.md: no explicit Any in the detection engine.

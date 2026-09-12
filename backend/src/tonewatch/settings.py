@@ -27,6 +27,8 @@ class Settings(BaseSettings):
     webhook_block_private: bool = False
     webhook_allow_redirects: bool = False
     webhook_attachment_max_bytes: int = Field(default=10 * 1024 * 1024, ge=0)
+    stream_block_private: bool = False
+    analyze_decode_timeout_s: float = Field(default=10, gt=0, le=60)
     ha_integration_enabled: bool = False
     instance_id: str | None = None
     ui_password: str | None = None

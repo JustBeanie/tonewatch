@@ -11,6 +11,7 @@ from tonewatch.api.analyze import config_from_yaml
 from tonewatch.api.app import create_app
 from tonewatch.api.auth import hash_password, read_or_create_token, rotate_token, verify_password
 from tonewatch.settings import Settings
+from tonewatch.sources import soundcard as soundcard_module
 
 
 @pytest.mark.asyncio
@@ -86,7 +87,13 @@ async def test_wrong_token_and_missing_csrf() -> None:
 
 
 @pytest.mark.asyncio
-async def test_api_resources_and_rejections() -> None:
+async def test_api_resources_and_rejections(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def fake_open(source: Any) -> None:
+        source._closed = False
+
+    monkeypatch.setattr(soundcard_module.SoundcardSource, "open", fake_open)
     with TemporaryDirectory(ignore_cleanup_errors=True) as directory:
         root = Path(directory)
         app = create_app(Settings(data_dir=root))

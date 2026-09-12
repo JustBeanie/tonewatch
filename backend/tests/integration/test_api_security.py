@@ -294,7 +294,9 @@ async def test_security_headers_present() -> None:
             assert response.headers["x-content-type-options"] == "nosniff"
             assert response.headers["referrer-policy"] == "no-referrer"
             assert response.headers["x-frame-options"] == "SAMEORIGIN"
-            assert "Content-Security-Policy" in response.headers
+            assert response.headers["content-security-policy"] == (
+                "default-src 'none'; frame-ancestors 'self'"
+            )
 
 
 @pytest.mark.asyncio

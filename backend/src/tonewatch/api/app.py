@@ -14,6 +14,7 @@ from fastapi.responses import JSONResponse, Response
 
 from tonewatch.api.auth import AuthState
 from tonewatch.api.routes.analyze import router as analyze_router
+from tonewatch.api.routes.audit import router as audit_router
 from tonewatch.api.routes.auth import router as auth_router
 from tonewatch.api.routes.calls import router as calls_router
 from tonewatch.api.routes.config import router as config_router
@@ -72,6 +73,7 @@ def create_app(
         calls_router,
         recordings_router,
         analyze_router,
+        audit_router,
         system_router,
         ws_router,
     ):
@@ -139,7 +141,13 @@ def create_app(
         response.headers["X-Frame-Options"] = "SAMEORIGIN"
         response.headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'self'"
         structlog.get_logger("tonewatch.api").info(
-            "request", method=request.method, path=request.url.path, status=response.status_code
+            "request",
+            method=request.method,
+            path=request.url.path,
+            status=response.status_code,
+            security_redaction="[REDACTED]",
+            authorization="[REDACTED]" if request.headers.get("authorization") else None,
+            cookie="[REDACTED]" if request.headers.get("cookie") else None,
         )
         clear_request_id(context_tokens)
         return response

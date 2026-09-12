@@ -45,7 +45,7 @@ class AudioSource(Protocol):
     async def __aexit__(self, exc_type: object, exc: object, tb: object) -> None: ...
 
 
-def make_source(config: Source) -> AudioSource:
+def make_source(config: Source, *, settings: Any = None) -> AudioSource:
     """Construct the source implementation matching a validated config."""
     from tonewatch.sources.file import FileAudioSource
     from tonewatch.sources.rtlsdr import RtlSdrSource
@@ -58,7 +58,7 @@ def make_source(config: Source) -> AudioSource:
     if source_type == "soundcard":
         return SoundcardSource(cast("Any", config))
     if source_type == "stream":
-        return StreamAudioSource(cast("Any", config))
+        return StreamAudioSource(cast("Any", config), settings=settings)
     if source_type == "rtlsdr":
         return RtlSdrSource(cast("Any", config))
     raise SourceConfigError(f"unsupported source type: {source_type}")

@@ -4,13 +4,27 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request
-from pydantic import TypeAdapter
+from fastapi.responses import JSONResponse
+from pydantic import TypeAdapter, ValidationError
 
 from tonewatch.api.deps import _dump, authenticated, collection, put, save_config, write_auth
 from tonewatch.config.models import AlertTarget, AppConfig, Source, ToneSet
 from tonewatch.events import CallClosed, ToneDetected
 
 router = APIRouter(prefix="/api", tags=["configuration"])
+
+
+@router.get("/config", dependencies=[Depends(authenticated)])
+async def get_config(request: Request) -> JSONResponse:
+    return JSONResponse(
+        _dump(request.app.state.config), headers={"ETag": request.app.state.store.etag()}
+    )
+
+
+@router.put("/config", dependencies=[Depends(write_auth)])
+async def replace_config(request: Request, config: AppConfig) -> JSONResponse:
+    saved = await save_config(request, config)
+    return JSONResponse(_dump(saved), headers={"ETag": request.app.state.store.etag()})
 
 
 @router.get("/tonesets", dependencies=[Depends(authenticated)])
@@ -67,7 +81,10 @@ def _crud(path: str, kind: str, model: Any) -> None:
 
     @router.post(path, dependencies=[Depends(write_auth)], status_code=201)
     async def create_item(request: Request, payload: dict[str, Any] = Body(...)) -> Any:
-        item = TypeAdapter(model).validate_python(payload)
+        try:
+            item = TypeAdapter(model).validate_python(payload)
+        except ValidationError as exc:
+            raise HTTPException(422, str(exc)) from None
         if (
             kind == "alert_targets"
             and item.type == "script"
@@ -91,7 +108,10 @@ def _crud(path: str, kind: str, model: Any) -> None:
     ) -> Any:
         if payload.get("id") != item_id:
             raise HTTPException(422, "id does not match path")
-        item = TypeAdapter(model).validate_python(payload)
+        try:
+            item = TypeAdapter(model).validate_python(payload)
+        except ValidationError as exc:
+            raise HTTPException(422, str(exc)) from None
         if (
             kind == "alert_targets"
             and item.type == "script"
@@ -130,4 +150,13 @@ async def test_toneset(request: Request, item_id: str) -> dict[str, bool]:
     now = __import__("datetime").datetime.now().astimezone()
     request.app.state.bus.publish(ToneDetected(call_id, item_id, now, "test", True))
     request.app.state.bus.publish(CallClosed(call_id, "tested", "test", True))
+    from tonewatch.api.audit import record_audit
+
+    await record_audit(
+        request.app.state.session_factory,
+        actor=getattr(request.state, "auth", "unknown"),
+        event_type="test_trigger",
+        resource=item_id,
+        details={"call_id": str(call_id)},
+    )
     return {"ok": True}

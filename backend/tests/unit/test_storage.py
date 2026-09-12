@@ -23,6 +23,7 @@ def test_async_sqlite_wal_and_repository(tmp_path: Path) -> None:
             await connection.run_sync(Base.metadata.create_all)
             assert await connection.run_sync(lambda conn: inspect(conn).get_table_names()) == [
                 "alert_attempts",
+                "audit_events",
                 "call_tone_sets",
                 "calls",
                 "recordings",

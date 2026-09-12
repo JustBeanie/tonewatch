@@ -55,8 +55,8 @@ class Supervisor:
         shutdown_drain_timeout_s: float | None = None,
     ) -> None:
         self.config, self.bus, self.session_factory = config, bus, session_factory
-        self.clock, self.sleep = clock, sleep
         self.settings = settings
+        self.clock, self.sleep = clock, sleep
         self.jitter = jitter or (
             lambda delay: secrets.SystemRandom().uniform(delay * 0.9, delay * 1.1)
         )
@@ -218,6 +218,7 @@ class Supervisor:
                     ),
                     source_factory=self.source_factory,
                     watchdog=watchdog,
+                    source_settings=self.settings,
                 )
                 await channel.run()
             except asyncio.CancelledError:
