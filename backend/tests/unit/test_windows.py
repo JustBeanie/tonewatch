@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import importlib
 import logging
 import sys
 from pathlib import Path
@@ -62,7 +63,16 @@ class FakeServiceManager:
 class FakeScm:
     """Minimal SCM API that exposes a scripted sequence of service states."""
 
-    SERVICE_START = 1
+    SC_MANAGER_CREATE_SERVICE = 2
+    SC_MANAGER_CONNECT = 8
+    SERVICE_ALL_ACCESS = 983551
+    SERVICE_WIN32_OWN_PROCESS = 16
+    SERVICE_AUTO_START = 2
+    SERVICE_ERROR_NORMAL = 1
+    SERVICE_CONFIG_DELAYED_AUTO_START_INFO = 3
+    SERVICE_CONFIG_FAILURE_ACTIONS = 2
+    SC_ACTION_RESTART = 1
+    SERVICE_START = 16
     SERVICE_STOP = 2
     SERVICE_QUERY_STATUS = 4
     SERVICE_RUNNING = 4
@@ -72,19 +82,36 @@ class FakeScm:
     SERVICE_CONTINUE_PENDING = 5
     SERVICE_PAUSE_PENDING = 6
     SERVICE_PAUSED = 7
-    SC_MANAGER_CONNECT = 8
-    SERVICE_CONTROL_STOP = 9
+    SERVICE_CONTROL_STOP = 1
 
-    def __init__(self, states: list[int]) -> None:
+    def __init__(self, states: list[int], *, missing_on_open: bool = False) -> None:
         self.states = states
+        self.missing_on_open = missing_on_open
+        self.opened_access: list[int] = []
+        self.created: tuple[object, ...] | None = None
+        self.config_changes: list[tuple[object, ...]] = []
         self.start_called = False
         self.stop_called = False
+        self.delete_called = False
 
     def OpenSCManager(self, *_args: object) -> object:  # noqa: N802 -- fake pywin32 API.
         return SimpleNamespace(kind="manager")
 
-    def OpenService(self, *_args: object) -> object:  # noqa: N802 -- fake pywin32 API.
+    def OpenService(self, _manager: object, _name: str, access: int) -> object:  # noqa: N802 -- fake pywin32 API.
+        self.opened_access.append(access)
+        if self.missing_on_open:
+            raise OSError(1060)
         return SimpleNamespace(kind="service")
+
+    def CreateService(self, *args: object) -> object:  # noqa: N802 -- fake pywin32 API.
+        self.created = args
+        return SimpleNamespace(kind="service")
+
+    def ChangeServiceConfig2(self, *args: object) -> None:  # noqa: N802 -- fake pywin32 API.
+        self.config_changes.append(args)
+
+    def DeleteService(self, _handle: object) -> None:  # noqa: N802 -- fake pywin32 API.
+        self.delete_called = True
 
     def CloseServiceHandle(self, _handle: object) -> None:  # noqa: N802 -- fake pywin32 API.
         return None
@@ -100,6 +127,36 @@ class FakeScm:
         return (0, state, 0, 0, 0, 0, 0)
 
 
+class FakeWin32Con:
+    """Minimal win32con namespace used by the real service manager tests."""
+
+    DELETE = 0x00010000
+
+
+SERVICE_CONSTANTS = (
+    "SC_MANAGER_CREATE_SERVICE",
+    "SC_MANAGER_CONNECT",
+    "SERVICE_ALL_ACCESS",
+    "SERVICE_WIN32_OWN_PROCESS",
+    "SERVICE_AUTO_START",
+    "SERVICE_ERROR_NORMAL",
+    "SERVICE_CONFIG_DELAYED_AUTO_START_INFO",
+    "SERVICE_CONFIG_FAILURE_ACTIONS",
+    "SC_ACTION_RESTART",
+    "SERVICE_START",
+    "SERVICE_QUERY_STATUS",
+    "SERVICE_RUNNING",
+    "SERVICE_STOP",
+    "SERVICE_STOPPED",
+    "SERVICE_STOP_PENDING",
+    "SERVICE_CONTROL_STOP",
+    "SERVICE_START_PENDING",
+    "SERVICE_CONTINUE_PENDING",
+    "SERVICE_PAUSE_PENDING",
+    "SERVICE_PAUSED",
+)
+
+
 def test_windows_service_stop_waits_for_stopped(monkeypatch: pytest.MonkeyPatch) -> None:
     scm = FakeScm([FakeScm.SERVICE_RUNNING, FakeScm.SERVICE_STOP_PENDING, FakeScm.SERVICE_STOPPED])
     monkeypatch.setattr(service, "win32service", scm)
@@ -108,6 +165,61 @@ def test_windows_service_stop_waits_for_stopped(monkeypatch: pytest.MonkeyPatch)
     manager.stop()
 
     assert scm.stop_called
+
+
+def test_windows_service_uninstall_uses_delete_access_and_deletes_service(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    scm = FakeScm([])
+    monkeypatch.setattr(service, "win32service", scm)
+    monkeypatch.setattr(service, "win32con", FakeWin32Con)
+
+    service._WindowsServiceManager().uninstall()
+
+    assert scm.opened_access == [FakeWin32Con.DELETE]
+    assert scm.delete_called
+
+
+def test_windows_service_uninstall_missing_is_clear_and_nonzero(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    scm = FakeScm([], missing_on_open=True)
+    monkeypatch.setattr(service, "win32service", scm)
+    monkeypatch.setattr(service, "win32con", FakeWin32Con)
+
+    assert service.run_command("uninstall", platform_name="win32") == 1
+    assert "service 'ToneWatch' does not exist" in capsys.readouterr().err
+
+
+def test_windows_service_install_uses_real_manager(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    scm = FakeScm([])
+    monkeypatch.setattr(service, "win32service", scm)
+    executable = tmp_path / "tonewatch.exe"
+    data_dir = tmp_path / "data"
+
+    service._WindowsServiceManager().install(executable=executable, data_dir=data_dir)
+
+    assert scm.created is not None
+    assert scm.created[1:3] == (service.SERVICE_NAME, service.SERVICE_DISPLAY_NAME)
+    assert scm.created[7] == service._service_command(executable, data_dir)
+    assert len(scm.config_changes) == 2
+
+
+def test_pywin32_exports_service_constants_on_windows() -> None:
+    """The constants used by the service adapter must be exported by pywin32."""
+    if sys.platform != "win32":
+        pytest.skip("pywin32 exports are available only on Windows")
+
+    win32con = importlib.import_module("win32con")
+    win32service = importlib.import_module("win32service")
+    win32serviceutil = importlib.import_module("win32serviceutil")
+
+    assert hasattr(win32con, "DELETE")
+    for name in SERVICE_CONSTANTS:
+        assert hasattr(win32service, name), name
+    assert hasattr(win32serviceutil, "ServiceFramework")
 
 
 def test_windows_service_stop_timeout_is_clear_and_bounded(monkeypatch: pytest.MonkeyPatch) -> None:

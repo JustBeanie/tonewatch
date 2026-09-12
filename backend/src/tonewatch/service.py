@@ -45,8 +45,10 @@ else:
 
 
 win32service: Any = None
+win32con: Any = None
 if sys.platform == "win32":
     win32service = importlib.import_module("win32service")
+    win32con = importlib.import_module("win32con")
     globals()["_ServiceFramework"] = importlib.import_module("win32serviceutil").ServiceFramework
 
 
@@ -190,7 +192,7 @@ class _WindowsServiceManager:
 
     def uninstall(self) -> None:
         """Delete the service registration."""
-        handle = self._open(win32service.DELETE)
+        handle = self._open(win32con.DELETE)
         try:
             win32service.DeleteService(handle)
         except Exception as error:
