@@ -115,3 +115,12 @@ Accepted gaps that must be written into a later brief. Remove an entry once that
 - `release.yml` publish checks out `RELEASE_TAG`. A manual `workflow_dispatch tag=v0.2.0` would build the image from `e3397e6` (this morning's code): before S5 DAST fixes, M9, M10a, M8.4 and M13, and with the OLD Dockerfile, which still carries the fixed-available Debian HIGH/CRITICAL CVEs that Trivy flagged. The release workflow itself runs no Trivy gate.
 - **Recommendation for the user:** tag and create the v0.2.0 GitHub release for changelog continuity, but do NOT publish a v0.2.0 image. Fix the release-please config (`separate-pull-requests: true`) and let release-please cut v0.3.0 from current main as the first published (still private) GHCR image. Consider adding the Trivy scan to `publish` before push.
 - PR #1 still carries the label `autorelease: pending`. Relabel it `autorelease: tagged` once the v0.2.0 tag exists.
+
+## v0.3.0 published (2026-09-12 16:10)
+- REL-fix landed as `915bdb6` (ci-local green: 404 passed, web 44, e2e 4/4). The release-please run on that push was green and opened no stray release PR.
+- Release dispatched with `tag=v0.3.0` (run 34724661975): every publish step passed - tag guard, loaded amd64 build, **Trivy HIGH/CRITICAL gate**, multi-arch push, SBOM, cosign sign, build provenance.
+- GHCR tags `0.3.0`, `0.3` and `latest` exist (multi-arch OCI index).
+- 🚨 **The GHCR package is PUBLIC, contrary to the "private until v1.0" decision.** Proof: an anonymous registry token pulls the `0.3.0` manifest with HTTP 200. The PM changed no package setting; a container package first published by Actions from a public repo appears to take public visibility. This is irreversible (a public package can never go private). Reported to the user; nothing to undo.
+- Consequence: the ha-addons `tonewatch.yml` image job (anonymous multi-arch check) should now pass, which removes the "image is private" reason to hold M10b. Pushing to ha-addons still needs the user's yes.
+- The PM `gh` token lacks `read:packages`; verify package state with an anonymous registry pull, not the packages REST API.
+- Release-flow caveat kept: the Trivy gate scans a separate amd64 build of the same commit, not the pushed digest; arm64 is not scanned at release.
