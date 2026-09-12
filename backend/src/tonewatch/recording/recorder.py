@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from dataclasses import dataclass
 from datetime import UTC
@@ -197,15 +198,22 @@ class CallRecorder:
             samples = self._trim()
             start = call.started_at.astimezone(UTC)
             title = f"{', '.join(sorted(call.toneset_ids))} {start.isoformat()}"
-            files = await self.encoder.encode(
-                samples,
-                call_id=str(call.id),
-                call_start=start,
-                formats=self.formats,
-                title=title,
-                toneset_ids=call.toneset_ids,
-                source_id=call.source_id,
+            encode_task = asyncio.create_task(
+                self.encoder.encode(
+                    samples,
+                    call_id=str(call.id),
+                    call_start=start,
+                    formats=self.formats,
+                    title=title,
+                    toneset_ids=call.toneset_ids,
+                    source_id=call.source_id,
+                ),
+                name=f"tonewatch-encode-{call.id}",
             )
+            try:
+                files = await asyncio.shield(encode_task)
+            except asyncio.CancelledError:
+                files = await encode_task
         except Exception:
             self.logger.exception("recording encoding failed", extra={"call_id": str(call.id)})
             if self.bus is not None:

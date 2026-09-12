@@ -50,15 +50,15 @@ def signature(secret: str, timestamp: str, body: bytes) -> str:
 
 
 def _recording_attachment(
-    recording_path: str | None,
+    local_attachment_path: str | None,
     settings: Settings,
 ) -> tuple[str, bytes, str] | None:
     """Read an optional recording only after applying the recordings-route path check."""
-    if not recording_path:
+    if not local_attachment_path:
         return None
     root = settings.recording_path
     try:
-        path = Path(recording_path).resolve(strict=True)
+        path = Path(local_attachment_path).resolve(strict=True)
         path.relative_to(root)
         if not path.is_file() or path.stat().st_size > settings.webhook_attachment_max_bytes:
             return None
@@ -86,7 +86,7 @@ async def send_webhook(
     payload: dict[str, Any],
     settings: Settings,
     *,
-    recording_path: str | None = None,
+    local_attachment_path: str | None = None,
     timestamp: str | None = None,
     resolver: Callable[..., Any] | None = None,
     client_factory: Callable[..., httpx.AsyncClient] = httpx.AsyncClient,
@@ -109,8 +109,10 @@ async def send_webhook(
         "X-ToneWatch-Timestamp": stamp,
         "X-ToneWatch-Signature": signature(target.secret, stamp, body),
     }
-    attachment = _recording_attachment(recording_path, settings) if target.include_audio else None
-    if target.include_audio and recording_path and attachment is None:
+    attachment = (
+        _recording_attachment(local_attachment_path, settings) if target.include_audio else None
+    )
+    if target.include_audio and local_attachment_path and attachment is None:
         return WebhookResult(False, error="attachment is missing, outside the root, or too large")
     current: ResolvedURL = resolved
     client: httpx.AsyncClient | None = None

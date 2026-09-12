@@ -50,6 +50,9 @@ def create_app(
     source_factory: Any = None,
     watchdog_no_data_s: float = 10,
     shutdown_timeout_s: float = 5,
+    shutdown_finalize_timeout_s: float | None = None,
+    shutdown_drain_timeout_s: float | None = None,
+    encoder_factory: Any = None,
 ) -> FastAPI:
     """Create an isolated API application with injectable runtime dependencies."""
     auth = AuthState(settings, clock or __import__("time").time)
@@ -167,6 +170,9 @@ def create_app(
                     source_factory=source_factory,
                     watchdog_no_data_s=watchdog_no_data_s,
                     shutdown_timeout_s=shutdown_timeout_s,
+                    shutdown_finalize_timeout_s=shutdown_finalize_timeout_s,
+                    shutdown_drain_timeout_s=shutdown_drain_timeout_s,
+                    encoder_factory=encoder_factory,
                     settings=settings,
                     instance_id=str(settings.instance_id or instance_id(settings.data_dir)),
                 )

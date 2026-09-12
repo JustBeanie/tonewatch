@@ -209,7 +209,7 @@ class AlertDispatcher:
                     phase,
                     call_id,
                     payload,
-                    recording_path=(
+                    local_audio_path=(
                         state.get("recording_path")
                         if isinstance(state.get("recording_path"), str)
                         else None
@@ -257,7 +257,7 @@ class AlertDispatcher:
         call_id: UUID,
         payload: dict[str, object],
         *,
-        recording_path: str | None = None,
+        local_audio_path: str | None = None,
     ) -> None:
         key = (call_id, target_id, phase)
         if key in self._seen:
@@ -269,7 +269,8 @@ class AlertDispatcher:
         for attempt_no in range(1, 6):
             try:
                 outcome = await asyncio.wait_for(
-                    self._send(target, payload, recording_path=recording_path), self.timeout_s
+                    self._send(target, payload, local_audio_path=local_audio_path),
+                    self.timeout_s,
                 )
             except TimeoutError:
                 outcome = WebhookResult(False, error="target timeout")
@@ -283,7 +284,11 @@ class AlertDispatcher:
                 await self.sleep(self.jitter(float(2 ** (attempt_no - 1))))
 
     async def _send(
-        self, target: AlertTarget, payload: dict[str, object], *, recording_path: str | None = None
+        self,
+        target: AlertTarget,
+        payload: dict[str, object],
+        *,
+        local_audio_path: str | None = None,
     ) -> Any:
         if isinstance(target, MqttTarget):
             await self._mqtt[target.id].publish_call(payload)
@@ -293,12 +298,12 @@ class AlertDispatcher:
                 target,
                 payload,
                 self.settings,
-                recording_path=recording_path,
+                local_attachment_path=local_audio_path,
             )
         if isinstance(target, ScriptTarget):
             script_payload = dict(payload)
-            if recording_path is not None:
-                script_payload["recording_path"] = recording_path
+            if local_audio_path is not None:
+                script_payload["recording_path"] = local_audio_path
             return await run_script(
                 target,
                 script_payload,

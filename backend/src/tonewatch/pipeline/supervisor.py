@@ -6,6 +6,8 @@ import asyncio
 import secrets
 import time
 from collections.abc import Awaitable, Callable
+from contextlib import suppress
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from tonewatch.alerts.dispatcher import AlertDispatcher
@@ -25,6 +27,7 @@ Clock = Callable[[], float]
 Sleep = Callable[[float], Awaitable[None]]
 Jitter = Callable[[float], float]
 ChannelFactory = Callable[..., Channel]
+EncoderFactory = Callable[[Path], AudioEncoder]
 MAX_BACKOFF_S = 60.0
 
 
@@ -47,6 +50,9 @@ class Supervisor:
         instance_id: str = "default",
         source_factory: Callable[[Source], Any] | None = None,
         watchdog_no_data_s: float = 10,
+        encoder_factory: EncoderFactory | None = None,
+        shutdown_finalize_timeout_s: float | None = None,
+        shutdown_drain_timeout_s: float | None = None,
     ) -> None:
         self.config, self.bus, self.session_factory = config, bus, session_factory
         self.clock, self.sleep = clock, sleep
@@ -57,8 +63,19 @@ class Supervisor:
         self.channel_factory = channel_factory or Channel
         self.source_factory = source_factory
         self.watchdog_no_data_s = watchdog_no_data_s
-        self.shutdown_timeout_s = shutdown_timeout_s
+        self.encoder_factory = encoder_factory or AudioEncoder
+        self.shutdown_finalize_timeout_s = (
+            shutdown_finalize_timeout_s
+            if shutdown_finalize_timeout_s is not None
+            else shutdown_timeout_s / 2
+        )
+        self.shutdown_drain_timeout_s = (
+            shutdown_drain_timeout_s
+            if shutdown_drain_timeout_s is not None
+            else shutdown_timeout_s / 2
+        )
         self._tasks: dict[str, asyncio.Task[None]] = {}
+        self._background_shutdown: set[asyncio.Task[None]] = set()
         self._configs: dict[str, Source] = {}
         self._stopping = False
         self.persistence = PersistenceSubscriber(bus, session_factory)
@@ -80,6 +97,8 @@ class Supervisor:
             return
         self._stopping = False
         await self.persistence.start()
+        if self.settings is not None:
+            await self.persistence.reconcile_orphans(self.settings.recording_path)
         await self.alerts.start()
         if self.retention_service is not None:
             self._retention_task = asyncio.create_task(
@@ -96,13 +115,35 @@ class Supervisor:
         tasks = tuple(self._tasks.values())
         for task in tasks:
             task.cancel()
+        drain_budget = max(0.0, self.shutdown_drain_timeout_s)
         if tasks:
+            channel_join = asyncio.gather(*tasks, return_exceptions=True)
+            with suppress(TimeoutError):
+                await asyncio.wait_for(
+                    asyncio.shield(channel_join), self.shutdown_finalize_timeout_s
+                )
+
+            async def finish_and_drain() -> None:
+                await channel_join
+                await self.persistence.stop(
+                    timeout_s=max(
+                        0.0, drain_budget - (asyncio.get_running_loop().time() - drain_started)
+                    )
+                )
+
+            drain_started = asyncio.get_running_loop().time()
+            drain_task = asyncio.create_task(finish_and_drain(), name="tonewatch-shutdown-drain")
+            self._background_shutdown.add(drain_task)
             try:
-                async with asyncio.timeout(self.shutdown_timeout_s):
-                    await asyncio.gather(*tasks, return_exceptions=True)
+                await asyncio.wait_for(asyncio.shield(drain_task), drain_budget)
             except TimeoutError:
-                pass
-        await self.persistence.drain()
+                drain_task.cancel()
+                await asyncio.gather(drain_task, return_exceptions=True)
+                await self.persistence.stop(timeout_s=0)
+            finally:
+                self._background_shutdown.discard(drain_task)
+        else:
+            await self.persistence.stop(timeout_s=drain_budget)
         await self.alerts.stop()
         self._tasks.clear()
         self._configs.clear()
@@ -110,7 +151,7 @@ class Supervisor:
             self._retention_task.cancel()
             await asyncio.gather(self._retention_task, return_exceptions=True)
             self._retention_task = None
-        await self.persistence.stop()
+        await self.persistence.stop(timeout_s=0)
 
     async def wait(self) -> None:
         """Wait for currently running channel lifecycles to finish."""
@@ -169,7 +210,7 @@ class Supervisor:
                     recorder_hook=(
                         CallRecorder(
                             self.config.tone_sets,
-                            AudioEncoder(self.settings.recording_path),
+                            self.encoder_factory(self.settings.recording_path),
                             bus=self.bus,
                         )
                         if self.settings is not None

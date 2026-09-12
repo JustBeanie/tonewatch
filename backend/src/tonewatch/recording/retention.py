@@ -23,6 +23,15 @@ class RetentionPolicy:
     max_count: int | None = None
 
 
+def safe_recording_path(root: Path, path: Path) -> Path:
+    """Resolve a recording path and reject symlinks or paths outside the root."""
+    resolved_root = root.resolve()
+    resolved = path.resolve(strict=False)
+    if path.is_symlink() or resolved == resolved_root or resolved_root not in resolved.parents:
+        raise ValueError(f"refusing recording path outside recordings root: {path}")
+    return resolved
+
+
 class RetentionService:
     def __init__(
         self,
@@ -35,7 +44,9 @@ class RetentionService:
         self.policy, self.clock = policy, clock
 
     async def enforce(self, session: AsyncSession) -> list[Path]:
-        rows = list((await session.scalars(select(Recording).order_by(Recording.id))).all())
+        result = await session.scalars(select(Recording).order_by(Recording.id))
+        rows = list(result.all())
+        result.close()
         total = sum(row.size_bytes for row in rows)
         removed: list[Path] = []
         cutoff = (
@@ -53,14 +64,17 @@ class RetentionService:
             ) or (self.policy.max_count is not None and len(rows) - index > self.policy.max_count)
             if not (too_old or over):
                 continue
-            resolved = path.resolve(strict=False)
-            if path.is_symlink() or (resolved != self.root and self.root not in resolved.parents):
-                raise ValueError(f"refusing recording path outside recordings root: {path}")
+            safe_recording_path(self.root, path)
             path.unlink(missing_ok=True)
             await session.execute(delete(Recording).where(Recording.id == row.id))
             total -= row.size_bytes
             removed.append(path)
-        await session.commit()
+        commit_task = asyncio.create_task(session.commit(), name="tonewatch-retention-commit")
+        try:
+            await asyncio.shield(commit_task)
+        except asyncio.CancelledError:
+            await commit_task
+            raise
         directories = {
             parent
             for path in removed
@@ -83,4 +97,5 @@ async def retention_loop(
     while True:
         async with session_factory() as session:
             await service.enforce(session)
+            await session.close()
         await sleep(86_400)

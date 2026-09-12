@@ -244,7 +244,7 @@ def test_webhook_attachment_respects_size_cap_and_root_check(tmp_path: Path) -> 
             target,
             {},
             Settings(recordings_root=root, webhook_attachment_max_bytes=3),
-            recording_path=str(recording),
+            local_attachment_path=str(recording),
             resolver=_resolver,
             client_factory=_webhook_factory([]),
         )
@@ -255,7 +255,7 @@ def test_webhook_attachment_respects_size_cap_and_root_check(tmp_path: Path) -> 
             target,
             {},
             Settings(recordings_root=root),
-            recording_path=str(outside),
+            local_attachment_path=str(outside),
             resolver=_resolver,
             client_factory=_webhook_factory([]),
         )
@@ -296,7 +296,7 @@ def test_webhook_sends_capped_attachment_and_revalidates_enabled_redirects(tmp_p
             target,
             {},
             Settings(recordings_root=root, webhook_allow_redirects=True),
-            recording_path=str(recording),
+            local_attachment_path=str(recording),
             resolver=_resolver,
             client_factory=factory,
         )

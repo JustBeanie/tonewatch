@@ -1,6 +1,7 @@
 """M3.6/M3.7 pipeline contract tests."""
 
 import asyncio
+import time
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, ClassVar, cast
@@ -447,6 +448,50 @@ def test_persistence_without_database_is_a_clean_noop() -> None:
         await persistence.start()
         await persistence.drain()
         await persistence.stop()
+
+    asyncio.run(run())
+
+
+def test_persistence_stop_while_busy_leaves_no_pending_tasks(tmp_path: Path) -> None:
+    async def run() -> None:
+        engine, sessions = create_database(f"sqlite+aiosqlite:///{tmp_path / 'busy.sqlite'}")
+        await create_database_schema(engine)
+
+        class SlowSession:
+            def __init__(self) -> None:
+                self.context = sessions()
+                self.session: Any = None
+
+            async def __aenter__(self) -> "SlowSession":
+                self.session = await self.context.__aenter__()
+                return self
+
+            async def __aexit__(self, *args: object) -> object:
+                return await self.context.__aexit__(*args)
+
+            def __getattr__(self, name: str) -> Any:
+                return getattr(self.session, name)
+
+            async def commit(self) -> None:
+                await asyncio.sleep(1)
+                await self.session.commit()
+
+        bus = EventBus()
+        persistence = PersistenceSubscriber(bus, SlowSession)
+        await persistence.start()
+        bus.publish(ToneDetected(uuid4(), "page", datetime.now(UTC), "radio"))
+        await asyncio.sleep(0.05)
+        started = time.perf_counter()
+        await persistence.stop(timeout_s=0.2)
+        elapsed = time.perf_counter() - started
+        pending = [
+            task.get_name()
+            for task in asyncio.all_tasks()
+            if not task.done() and task.get_name().startswith("tonewatch-")
+        ]
+        await engine.dispose()
+        assert elapsed < 0.5
+        assert pending == []
 
     asyncio.run(run())
 

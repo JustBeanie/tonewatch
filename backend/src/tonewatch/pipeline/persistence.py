@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
+from uuid import UUID
 
 import av
+import structlog
+from sqlalchemy import select
 
 from tonewatch.events import (
     CallClosed,
@@ -16,6 +20,7 @@ from tonewatch.events import (
     Subscription,
     ToneDetected,
 )
+from tonewatch.recording.retention import safe_recording_path
 from tonewatch.storage.models import Call, CallToneSet, Recording
 from tonewatch.storage.repository import close_call, create_call, create_call_tone_set
 
@@ -23,6 +28,8 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
+LOGGER = structlog.get_logger("tonewatch.persistence")
 
 
 class PersistenceSubscriber:
@@ -39,6 +46,7 @@ class PersistenceSubscriber:
         self.bus, self.session_factory = bus, session_factory
         self._subscription: Subscription | None = None
         self._task: asyncio.Task[None] | None = None
+        self._commit_task: asyncio.Task[None] | None = None
         self._busy = False
         self._max_queue_size = max_queue_size
 
@@ -49,15 +57,40 @@ class PersistenceSubscriber:
         self._subscription = self.bus.subscribe(maxsize=self._max_queue_size)
         self._task = asyncio.create_task(self._consume(), name="tonewatch-persistence")
 
-    async def stop(self) -> None:
-        """Cancel the consumer and close its subscription."""
+    async def stop(self, *, timeout_s: float | None = None) -> None:
+        """Drain or cancel the consumer, keeping shutdown task ownership explicit."""
         if self._subscription is not None:
             self.bus.unsubscribe(self._subscription)
             self._subscription = None
-        if self._task is not None:
-            self._task.cancel()
-            await asyncio.gather(self._task, return_exceptions=True)
+        task = self._task
+        if task is None:
+            return
+        try:
+            if timeout_s is None:
+                task.cancel()
+                await asyncio.gather(task, return_exceptions=True)
+            else:
+                await asyncio.wait_for(asyncio.shield(task), max(0.0, timeout_s))
+        except TimeoutError:
+            await self._abandon_commit()
+            task.cancel()
+            await asyncio.gather(task, return_exceptions=True)
+        except asyncio.CancelledError:
+            await self._abandon_commit()
+            task.cancel()
+            await asyncio.gather(task, return_exceptions=True)
+            raise
+        finally:
             self._task = None
+
+    async def _abandon_commit(self) -> None:
+        commit_task = self._commit_task
+        if commit_task is None or commit_task.done():
+            return
+        LOGGER.warning("persistence commit abandoned at shutdown")
+        commit_task.cancel()
+        await asyncio.gather(commit_task, return_exceptions=True)
+        self._commit_task = None
 
     async def drain(self) -> None:
         """Wait until the currently queued events have been committed."""
@@ -91,9 +124,98 @@ class PersistenceSubscriber:
                 stored = await self._persist_recording(session, event)
             else:
                 await close_call(session, call_id=event.call_id, status=event.status)
-            await session.commit()
+            commit_task = asyncio.create_task(session.commit(), name="tonewatch-persistence-commit")
+            self._commit_task = commit_task
+            try:
+                await asyncio.shield(commit_task)
+            except asyncio.CancelledError:
+                commit_task.cancel()
+                await asyncio.gather(commit_task, return_exceptions=True)
+                raise
+            finally:
+                if self._commit_task is commit_task:
+                    self._commit_task = None
         if isinstance(event, RecordingReady):
             self.bus.publish(stored)
+
+    async def reconcile_orphans(self, recordings_root: Path) -> None:
+        """Restore valid encoded files that have no database row."""
+        if self.session_factory is None:
+            return
+        root = recordings_root.resolve()
+        files = await asyncio.to_thread(_recording_files, root)
+        if not files:
+            return
+        async with self.session_factory() as session:
+            result = await session.execute(select(Recording))
+            rows = list(result.scalars().all())
+            result.close()
+            known = {Path(row.path).resolve() for row in rows}
+            changed = False
+            unrecognized: list[str] = []
+            for path in files:
+                if path in known:
+                    continue
+                try:
+                    call_id = UUID(path.stem)
+                except ValueError:
+                    unrecognized.append(_relative_path(root, path))
+                    continue
+                try:
+                    safe_recording_path(root, path)
+                except ValueError:
+                    LOGGER.warning(
+                        "skipping recording file",
+                        path=_relative_path(root, path),
+                        reason="unsafe_path",
+                    )
+                    continue
+                try:
+                    duration, size_bytes = await asyncio.to_thread(
+                        _recording_facts, path, require_metadata=True
+                    )
+                except (OSError, av.error.FFmpegError):
+                    LOGGER.warning(
+                        "skipping recording file",
+                        path=_relative_path(root, path),
+                        reason="metadata_unavailable",
+                    )
+                    continue
+                call = await session.get(Call, call_id)
+                if call is None:
+                    stat = await asyncio.to_thread(path.stat)
+                    session.add(
+                        Call(
+                            id=call_id,
+                            source_id="",
+                            started_at=datetime.fromtimestamp(stat.st_mtime, UTC),
+                            status="interrupted",
+                        )
+                    )
+                elif call.status not in {"recorded", "failed", "interrupted"}:
+                    call.status = "interrupted"
+                session.add(
+                    Recording(
+                        call_id=call_id,
+                        format="mp3" if path.suffix.lower() == ".mp3" else "opus",
+                        path=str(path),
+                        duration_s=duration,
+                        size_bytes=size_bytes,
+                    )
+                )
+                changed = True
+            if unrecognized:
+                LOGGER.info(
+                    "skipping unrecognized recording files",
+                    count=len(unrecognized),
+                    paths=unrecognized,
+                )
+            if changed:
+                commit_task = asyncio.create_task(
+                    session.commit(), name="tonewatch-reconcile-commit"
+                )
+                await asyncio.shield(commit_task)
+            await session.close()
 
     async def _persist_recording(
         self, session: AsyncSession, event: RecordingReady
@@ -137,7 +259,7 @@ class PersistenceSubscriber:
             )
 
 
-def _recording_facts(path: Path) -> tuple[float, int]:
+def _recording_facts(path: Path, *, require_metadata: bool = False) -> tuple[float, int]:
     """Read encoded-file metadata in a worker thread."""
     duration = 0.0
     try:
@@ -146,5 +268,26 @@ def _recording_facts(path: Path) -> tuple[float, int]:
             if stream is not None and stream.duration is not None and stream.time_base is not None:
                 duration = float(stream.duration * stream.time_base)
     except (OSError, av.error.FFmpegError):
+        if require_metadata:
+            raise
         duration = 0.0
     return duration, path.stat().st_size
+
+
+def _recording_files(root: Path) -> list[Path]:
+    """Find supported audio files without following symlinked files."""
+    if not root.exists():
+        return []
+    return [
+        path
+        for path in root.rglob("*")
+        if path.is_file() and path.suffix.lower() in {".mp3", ".ogg"}
+    ]
+
+
+def _relative_path(root: Path, path: Path) -> str:
+    """Return a log-safe path relative to the recordings root."""
+    try:
+        return path.relative_to(root).as_posix()
+    except ValueError:
+        return path.name

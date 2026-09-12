@@ -6,6 +6,7 @@ import json
 import os
 import time
 import wave
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast
 from uuid import uuid4
@@ -14,6 +15,7 @@ import av
 import httpx
 import numpy as np
 import pytest
+import structlog
 from pydantic import AnyUrl
 from sqlalchemy import select
 
@@ -30,8 +32,9 @@ from tonewatch.config.models import (
 )
 from tonewatch.config.store import ConfigStore
 from tonewatch.dsp.generator import concat, silence, tone, voice_like
-from tonewatch.events import FeedHealthChanged, RecordingStored, ToneDetected
-from tonewatch.recording.retention import RetentionPolicy, RetentionService
+from tonewatch.events import FeedHealthChanged, RecordingStored
+from tonewatch.recording.encoder import AudioEncoder
+from tonewatch.recording.retention import RetentionPolicy
 from tonewatch.settings import Settings
 from tonewatch.sources.file import FileAudioSource
 from tonewatch.storage.db import create_database, upgrade_database
@@ -78,11 +81,16 @@ def _settings(root: Path, **kwargs: Any) -> Settings:
 
 class _DelayedRecordingSession:
     def __init__(
-        self, context: Any, recording_started: asyncio.Event, release_recording: asyncio.Event
+        self,
+        context: Any,
+        recording_started: asyncio.Event,
+        release_recording: asyncio.Event | None = None,
+        commit_delay_s: float = 0.3,
     ) -> None:
         self.context = context
         self.recording_started = recording_started
         self.release_recording = release_recording
+        self.commit_delay_s = commit_delay_s
         self.session: Any = None
         self.has_recording = False
 
@@ -103,9 +111,12 @@ class _DelayedRecordingSession:
     async def commit(self) -> None:
         if self.has_recording:
             self.recording_started.set()
-            await self.release_recording.wait()
+            if self.release_recording is not None:
+                await self.release_recording.wait()
+            else:
+                await asyncio.sleep(self.commit_delay_s)
         else:
-            await asyncio.sleep(0.3)
+            await asyncio.sleep(self.commit_delay_s)
         await self.session.commit()
 
 
@@ -121,6 +132,48 @@ async def _delayed_session_factory(
     return engine, factory
 
 
+class _SlowEncoder(AudioEncoder):
+    def __init__(
+        self, root: Path, started: asyncio.Event, finished: asyncio.Event, delay_s: float
+    ) -> None:
+        super().__init__(root)
+        self.started = started
+        self.finished = finished
+        self.delay_s = delay_s
+
+    async def encode(self, *args: Any, **kwargs: Any) -> Any:
+        self.started.set()
+        await asyncio.sleep(self.delay_s)
+        result = await super().encode(*args, **kwargs)
+        self.finished.set()
+        return result
+
+
+class _PostEncodeDelayEncoder(AudioEncoder):
+    def __init__(self, root: Path, ready: asyncio.Event, delay_s: float) -> None:
+        super().__init__(root)
+        self.ready = ready
+        self.delay_s = delay_s
+
+    async def encode(self, *args: Any, **kwargs: Any) -> Any:
+        result = await super().encode(*args, **kwargs)
+        self.ready.set()
+        await asyncio.sleep(self.delay_s)
+        return result
+
+
+async def _slow_commit_session_factory(
+    root: Path, recording_started: asyncio.Event, delay_s: float
+) -> tuple[Any, Any]:
+    engine, base_sessions = create_database(f"sqlite+aiosqlite:///{root / 'tonewatch.db'}")
+    await upgrade_database(engine)
+
+    def factory() -> _DelayedRecordingSession:
+        return _DelayedRecordingSession(base_sessions(), recording_started, commit_delay_s=delay_s)
+
+    return engine, factory
+
+
 def _seed_config(root: Path, config: AppConfig) -> None:
     ConfigStore(root).save(config)
 
@@ -131,9 +184,33 @@ async def _is_file(path: Path) -> bool:
 
 async def _rows(app: Any) -> tuple[list[Call], list[Recording]]:
     async with app.state.session_factory() as session:
-        calls = list((await session.scalars(select(Call).order_by(Call.started_at))).all())
-        recordings = list((await session.scalars(select(Recording).order_by(Recording.id))).all())
+        call_result = await session.scalars(select(Call).order_by(Call.started_at))
+        calls = list(call_result.all())
+        call_result.close()
+        recording_result = await session.scalars(select(Recording).order_by(Recording.id))
+        recordings = list(recording_result.all())
+        recording_result.close()
     return calls, recordings
+
+
+async def _wait_for_persisted_rows(
+    app: Any, *, calls: int = 0, recordings: int = 0
+) -> tuple[list[Call], list[Recording]]:
+    async with asyncio.timeout(10):
+        while True:
+            result = await _rows(app)
+            if len(result[0]) >= calls and len(result[1]) >= recordings:
+                return result
+            await asyncio.sleep(0.05)
+
+
+async def _wait_for_recording_count(app: Any, count: int) -> None:
+    async with asyncio.timeout(10):
+        while True:
+            _, recordings = await _rows(app)
+            if len(recordings) == count:
+                return
+            await asyncio.sleep(0.05)
 
 
 @pytest.mark.asyncio
@@ -323,9 +400,7 @@ def _drain(subscription: Any) -> list[object]:
 
 
 @pytest.mark.asyncio
-async def test_retention_runs_in_app_lifespan(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+async def test_retention_runs_in_app_lifespan(tmp_path: Path) -> None:
     recordings_root = tmp_path / "recordings"
     old_path = recordings_root / "2020" / "01" / "01" / "old.mp3"
     old_path.parent.mkdir(parents=True)
@@ -341,15 +416,6 @@ async def test_retention_runs_in_app_lifespan(
         await session.commit()
     await engine.dispose()
     _seed_config(tmp_path, AppConfig())
-    enforced = asyncio.Event()
-    original_enforce = RetentionService.enforce
-
-    async def enforce_and_signal(self: RetentionService, session: Any) -> list[Path]:
-        result = await original_enforce(self, session)
-        enforced.set()
-        return result
-
-    monkeypatch.setattr(RetentionService, "enforce", enforce_and_signal)
     app = create_app(
         _settings(
             tmp_path,
@@ -357,10 +423,8 @@ async def test_retention_runs_in_app_lifespan(
         )
     )
     async with app.router.lifespan_context(app):
-        await asyncio.wait_for(enforced.wait(), 10)
-        async with app.state.session_factory() as session:
-            rows = list((await session.scalars(select(Recording))).all())
-    assert rows == [] and not old_path.exists()
+        await _wait_for_recording_count(app, 0)
+    assert not old_path.exists()
 
 
 async def _wait_for_attempt_phases(app: Any, phases: set[str]) -> list[AlertAttempt]:
@@ -602,7 +666,7 @@ async def test_toneset_created_via_api_detects_on_running_channel(tmp_path: Path
 
 
 @pytest.mark.asyncio
-async def test_app_shutdown_during_post_roll_finalizes_recording_within_timeout(
+async def test_shutdown_slow_encoder_still_leaves_consistent_recording_state(
     tmp_path: Path,
 ) -> None:
     source_path = tmp_path / "shutdown.wav"
@@ -618,35 +682,202 @@ async def test_app_shutdown_during_post_roll_finalizes_recording_within_timeout(
             ],
         ),
     )
-    current = [0.0]
+    encoder_started = asyncio.Event()
+    encoder_finished = asyncio.Event()
 
-    async def source_sleep(delay: float) -> None:
-        current[0] += max(delay, 0.1)
-        await asyncio.sleep(0)
-
-    async def supervisor_sleep(_delay: float) -> None:
-        await asyncio.sleep(0)
-
-    def source_factory(config: FileSource) -> FileAudioSource:
-        return FileAudioSource(config, clock=lambda: current[0], sleep=source_sleep)
+    def encoder_factory(root: Path) -> AudioEncoder:
+        return _SlowEncoder(root, encoder_started, encoder_finished, delay_s=0.25)
 
     app = create_app(
         _settings(tmp_path),
-        clock=lambda: current[0],
-        sleep=supervisor_sleep,
-        source_factory=source_factory,
-        shutdown_timeout_s=1,
-        watchdog_no_data_s=30,
+        encoder_factory=encoder_factory,
+        shutdown_finalize_timeout_s=0.2,
+        shutdown_drain_timeout_s=0.5,
     )
-    detected = app.state.bus.subscribe(ToneDetected)
-    started = time.perf_counter()
     async with app.router.lifespan_context(app):
-        await asyncio.wait_for(detected.__anext__(), 10)
-    elapsed = time.perf_counter() - started
+        await _wait_for_persisted_rows(app, calls=1)
+    await asyncio.wait_for(encoder_started.wait(), 10)
+    await asyncio.wait_for(encoder_finished.wait(), 10)
+    for task in tuple(app.state.supervisor._background_shutdown):
+        await asyncio.wait_for(asyncio.shield(task), 10)
     engine, sessions = create_database(f"sqlite+aiosqlite:///{tmp_path / 'tonewatch.db'}")
     async with sessions() as session:
+        calls = list((await session.scalars(select(Call))).all())
         recordings = list((await session.scalars(select(Recording))).all())
     await engine.dispose()
-    assert elapsed < 2
-    assert len(recordings) == 1
+    assert len(calls) == 1 and len(recordings) == 1
+    assert calls[0].status in {"interrupted", "recorded"}
     assert await _is_file(Path(recordings[0].path))
+
+
+@pytest.mark.asyncio
+async def test_shutdown_never_cancels_inflight_persistence_commit(tmp_path: Path) -> None:
+    source_path = tmp_path / "commit.wav"
+    _write_wav(source_path, concat(silence(0.5), _page(), voice_like(0.5)))
+    _seed_config(
+        tmp_path,
+        AppConfig(
+            tone_sets=[_tone_set(post_s=1)],
+            sources=[FileSource(id="radio", name="Radio", path=str(source_path), realtime=False)],
+        ),
+    )
+    commit_started = asyncio.Event()
+    backing_engine, delayed_sessions = await _slow_commit_session_factory(
+        tmp_path, commit_started, delay_s=0.5
+    )
+    app = create_app(
+        _settings(tmp_path),
+        session_factory=delayed_sessions,
+        shutdown_finalize_timeout_s=1,
+        shutdown_drain_timeout_s=1,
+    )
+    try:
+        async with app.router.lifespan_context(app):
+            await _wait_for_persisted_rows(app, calls=1)
+            await asyncio.wait_for(commit_started.wait(), 10)
+        engine, sessions = create_database(f"sqlite+aiosqlite:///{tmp_path / 'tonewatch.db'}")
+        async with sessions() as session:
+            recordings = list((await session.scalars(select(Recording))).all())
+        await engine.dispose()
+    finally:
+        await backing_engine.dispose()
+    assert len(recordings) == 1
+
+
+@pytest.mark.asyncio
+async def test_startup_reconciles_orphan_recording_files(tmp_path: Path) -> None:
+    recordings_root = tmp_path / "recordings"
+    call_id = uuid4()
+    encoded = await AudioEncoder(recordings_root).encode(
+        np.zeros(16_000, dtype=np.float32),
+        call_id=str(call_id),
+        call_start=datetime.now(UTC),
+        formats={"mp3"},
+        title="orphan",
+        toneset_ids={"page"},
+        source_id="radio",
+    )
+    outside = tmp_path / "outside.mp3"
+    outside.write_bytes(b"outside")
+    _seed_config(tmp_path, AppConfig())
+    app = create_app(_settings(tmp_path))
+    async with app.router.lifespan_context(app):
+        await asyncio.sleep(0)
+    engine, sessions = create_database(f"sqlite+aiosqlite:///{tmp_path / 'tonewatch.db'}")
+    async with sessions() as session:
+        call_result = await session.scalars(select(Call))
+        calls = list(call_result.all())
+        call_result.close()
+        recording_result = await session.scalars(select(Recording))
+        recordings = list(recording_result.all())
+        recording_result.close()
+    await engine.dispose()
+    assert len(calls) == 1 and calls[0].status == "interrupted"
+    assert len(recordings) == 1 and Path(recordings[0].path) == encoded[0].path
+    assert outside.read_bytes() == b"outside"
+
+
+@pytest.mark.asyncio
+async def test_startup_reconcile_never_deletes_unrecognised_audio_files(tmp_path: Path) -> None:
+    recordings_root = tmp_path / "recordings"
+    files = {
+        recordings_root / "user-note.mp3": b"user mp3",
+        recordings_root / "2026" / "09" / "11" / "2026-09-11 dispatch.ogg": b"user ogg",
+    }
+    for path, content in files.items():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(content)
+    _seed_config(tmp_path, AppConfig())
+    app = create_app(_settings(tmp_path))
+    with structlog.testing.capture_logs() as events:
+        async with app.router.lifespan_context(app):
+            await asyncio.sleep(0)
+    assert {path: path.read_bytes() for path in files} == files
+    skipped = [
+        event for event in events if event.get("event") == "skipping unrecognized recording files"
+    ]
+    assert len(skipped) == 1
+    assert skipped[0]["count"] == 2
+    assert set(skipped[0]["paths"]) == {
+        "user-note.mp3",
+        "2026/09/11/2026-09-11 dispatch.ogg",
+    }
+    engine, sessions = create_database(f"sqlite+aiosqlite:///{tmp_path / 'tonewatch.db'}")
+    async with sessions() as session:
+        result = await session.scalars(select(Recording))
+        recordings = list(result.all())
+        result.close()
+    await engine.dispose()
+    assert recordings == []
+
+
+@pytest.mark.asyncio
+async def test_startup_reconcile_skips_corrupt_uuid_file_without_crashing(tmp_path: Path) -> None:
+    recordings_root = tmp_path / "recordings"
+    corrupt = recordings_root / f"{uuid4()}.mp3"
+    corrupt.parent.mkdir(parents=True)
+    corrupt.write_bytes(b"not an mp3")
+    _seed_config(tmp_path, AppConfig())
+    app = create_app(_settings(tmp_path))
+    with structlog.testing.capture_logs() as events:
+        async with app.router.lifespan_context(app):
+            await asyncio.sleep(0)
+    assert corrupt.read_bytes() == b"not an mp3"
+    assert any(event.get("event") == "skipping recording file" for event in events)
+
+
+@pytest.mark.asyncio
+async def test_app_shutdown_leaves_no_tonewatch_tasks(tmp_path: Path) -> None:
+    source_path = tmp_path / "slow-shutdown.wav"
+    _write_wav(source_path, concat(silence(0.5), _page(), voice_like(0.3)))
+    _seed_config(
+        tmp_path,
+        AppConfig(
+            tone_sets=[_tone_set(post_s=1)],
+            sources=[
+                FileSource(
+                    id="radio", name="Radio", path=str(source_path), realtime=True, loop=True
+                )
+            ],
+        ),
+    )
+    backing_engine, delayed_sessions = await _slow_commit_session_factory(
+        tmp_path, asyncio.Event(), delay_s=1
+    )
+    encoder_ready = asyncio.Event()
+
+    def encoder_factory(root: Path) -> AudioEncoder:
+        return _PostEncodeDelayEncoder(root, encoder_ready, delay_s=1)
+
+    app = create_app(
+        _settings(tmp_path),
+        session_factory=delayed_sessions,
+        encoder_factory=encoder_factory,
+        shutdown_finalize_timeout_s=0.2,
+        shutdown_drain_timeout_s=0.2,
+    )
+    try:
+        async with app.router.lifespan_context(app):
+            await asyncio.wait_for(encoder_ready.wait(), 10)
+            started = time.perf_counter()
+        elapsed = time.perf_counter() - started
+        pending = [
+            task.get_name()
+            for task in asyncio.all_tasks()
+            if not task.done() and task.get_name().startswith("tonewatch-")
+        ]
+        assert pending == []
+        assert elapsed <= 0.2 + 0.2 + 0.5
+        _seed_config(tmp_path, AppConfig())
+        restart = create_app(_settings(tmp_path))
+        async with restart.router.lifespan_context(restart):
+            await asyncio.sleep(0)
+        engine, sessions = create_database(f"sqlite+aiosqlite:///{tmp_path / 'tonewatch.db'}")
+        async with sessions() as session:
+            result = await session.scalars(select(Recording))
+            recordings = list(result.all())
+            result.close()
+        await engine.dispose()
+        assert len(recordings) == 1
+    finally:
+        await backing_engine.dispose()
