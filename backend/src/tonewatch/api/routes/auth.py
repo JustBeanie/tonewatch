@@ -33,7 +33,10 @@ def _write_auth(request: Request) -> None:
 
 @router.post("/login")
 async def login(request: Request) -> JSONResponse:
-    body = await request.json()
+    try:
+        body = await request.json()
+    except ValueError:  # malformed JSON or non-UTF-8 body (found by the S5 ZAP API scan)
+        body = None
     password = body.get("password") if isinstance(body, dict) else None
     if not isinstance(password, str):
         raise HTTPException(422, "password is required")

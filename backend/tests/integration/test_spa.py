@@ -98,6 +98,8 @@ async def test_spa_html_csp_allows_self_only() -> None:
         assert "default-src 'self'" in csp
         assert "script-src 'self'" in csp and "style-src 'self'" in csp
         assert "connect-src 'self';" in csp
+        assert "form-action 'self'" in csp and "base-uri 'self'" in csp
+        assert "object-src 'none'" in csp
         assert "ws:" not in csp and "wss:" not in csp
         assert "'unsafe-inline'" not in csp and "https://" not in csp
         assert (

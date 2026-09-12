@@ -1,7 +1,6 @@
 # ZAP baseline and API scan rule configuration.
-# Medium and High findings are failures; low and informational findings keep
-# ZAP's default reporting behavior. There are no application-specific WARN or
-# IGNORE overrides, so no finding is suppressed.
+# Security-relevant rules FAIL; every other alert is a WARN that fails the job (exit 2).
+# Each IGNORE below is an informational false positive with its justification above it.
 10017	FAIL	(Cross-Domain JavaScript Source File Inclusion)
 10020	FAIL	(X-Frame-Options Header Not Set)
 10023	FAIL	(Information Disclosure - Debug Error Messages)
@@ -9,7 +8,7 @@
 10025	FAIL	(Information Disclosure - Sensitive Information in HTTP Referrer Header)
 10038	FAIL	(Content Security Policy Header Not Set)
 10054	FAIL	(Cookie without SameSite Attribute)
-10055	FAIL	(Content Security Policy - Wildcard Directive)
+10055	FAIL	(Content Security Policy - wildcard or missing no-fallback directive)
 90019	FAIL	(Server Side Include)
 90020	FAIL	(Remote OS Command Injection)
 90021	FAIL	(XPath Injection)
@@ -18,3 +17,13 @@
 40014	FAIL	(Cross Site Scripting - Persistent)
 40016	FAIL	(Cross Site Scripting - DOM)
 40018	FAIL	(SQL Injection)
+# Informational: API, auth and SPA-shell responses are deliberately not cacheable.
+10049	IGNORE	(Non-Storable Content)
+# Informational: detects that the UI is a JavaScript single-page app, which it is by design.
+10109	IGNORE	(Modern Web Application)
+# Also raised for expected 401/404/405/422 replies to unauthenticated or fuzzed probes; any 5xx
+# is gated separately by the dast job's container-log check, so server errors still fail CI.
+100000	IGNORE	(A Client or Server Error response code was returned by the server)
+# The OpenAPI import also probes the SPA shell at /, which is text/html by design; JSON content
+# types are asserted by the API integration tests.
+100001	IGNORE	(Unexpected Content-Type was returned)

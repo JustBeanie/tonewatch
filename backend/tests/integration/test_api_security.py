@@ -297,6 +297,38 @@ async def test_security_headers_present() -> None:
             assert response.headers["content-security-policy"] == (
                 "default-src 'none'; object-src 'none'; base-uri 'none'; frame-ancestors 'self'"
             )
+            assert "microphone=()" in response.headers["permissions-policy"]
+            assert response.headers["cross-origin-resource-policy"] == "same-origin"
+            assert response.headers["cross-origin-opener-policy"] == "same-origin"
+            assert response.headers["cross-origin-embedder-policy"] == "require-corp"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("content", "content_type"),
+    [
+        (b"password=wrong", "application/x-www-form-urlencoded"),
+        (b"{not json", "application/json"),
+        (b"\xff\xfe\x00", "application/json"),
+        (b'["password"]', "application/json"),
+        (b"", "application/json"),
+    ],
+)
+async def test_login_rejects_malformed_body_without_server_error(
+    content: bytes, content_type: str
+) -> None:
+    """ZAP's API scan crashed login into a 500 with non-JSON bodies; it must be a 422."""
+    with TemporaryDirectory() as directory:
+        app = make_app(Path(directory), ui_password="correct")
+        response = await request(
+            app,
+            "POST",
+            "/api/auth/login",
+            content=content,
+            headers={"content-type": content_type},
+        )
+        assert response.status_code == 422
+        assert response.json() == {"detail": "password is required"}
 
 
 @pytest.mark.asyncio

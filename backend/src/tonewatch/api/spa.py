@@ -15,7 +15,9 @@ SPA_CSP = (
     "default-src 'self'; script-src 'self'; style-src 'self'; "
     # CSP3 'self' already matches same-origin ws:/wss:; bare ws:/wss: would allow any host.
     "connect-src 'self'; img-src 'self'; media-src 'self'; "
-    "font-src 'self'; frame-ancestors 'self'"
+    "font-src 'self'; frame-ancestors 'self'; "
+    # form-action and base-uri have no default-src fallback, so they must be explicit.
+    "form-action 'self'; base-uri 'self'; object-src 'none'"
 )
 
 

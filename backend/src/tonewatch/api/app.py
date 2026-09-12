@@ -150,6 +150,15 @@ def create_app(
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["Referrer-Policy"] = "no-referrer"
         response.headers["X-Frame-Options"] = "SAMEORIGIN"
+        # The UI never uses browser device APIs: audio capture happens server-side.
+        response.headers["Permissions-Policy"] = (
+            "camera=(), microphone=(), geolocation=(), usb=(), payment=()"
+        )
+        # Every UI subresource is same-origin, and recordings need same-site cookies or a bearer
+        # token, so cross-origin embedding is never a supported use.
+        response.headers["Cross-Origin-Resource-Policy"] = "same-origin"
+        response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
+        response.headers["Cross-Origin-Embedder-Policy"] = "require-corp"
         if response.headers.get("content-type", "").startswith("text/html"):
             response.headers["Content-Security-Policy"] = SPA_CSP
         else:
