@@ -1,0 +1,5 @@
+# Exact-fingerprint false positives only; never add rule- or path-wide ignores here.
+# d05564e docs/pm/briefs/M8-fix.md:61 quoted an example curl bearer header whose value was the
+# throwaway smoke-test UI password "smoke-password" (not a credential). The brief text was
+# reworded afterwards; this entry covers the historical commit that gitleaks rescans.
+d05564e7b017b1f55c0f52ed0f28855188a00169:docs/pm/briefs/M8-fix.md:curl-auth-header:61

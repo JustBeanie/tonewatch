@@ -58,7 +58,7 @@ The PM checked each SHA with `git ls-remote --tags`:
 
 ## 6. Smoke-test nits
 - **External host:** the HTTPS check downloads from an external sample host, which is a flake and availability risk. Use a host with a stable, long-lived HTTPS audio file, or better, verify TLS against `https://github.com` / `https://pypi.org` with `av.open(..., options={"tls_verify": "1", "ca_file": certifi.where()})`, expecting an `InvalidDataError`. That proves the TLS handshake and verification succeeded before the non-media payload. Comment the reasoning in the workflow.
-- **Wrong credential:** `curl -H 'Authorization: Bearer smoke-password' /api/auth/status` sends the UI password as a bearer token. Either call it without auth if the endpoint is public, or read the generated token from the container: `docker exec … cat /data/api_token`.
+- **Wrong credential:** the smoke step's `/api/auth/status` call sent the UI password in a bearer Authorization header. Either call it without auth if the endpoint is public, or read the generated token from the container: `docker exec … cat /data/api_token`.
 
 ## Constraints and definition of done
 - **Scope:** `docker/`, `.dockerignore`, `.github/workflows/{docker,release}.yml`, `justfile`, `backend/pyproject.toml` (packaging only), `web/e2e/**` and `web/playwright.config.ts`, `scripts/`, `THIRD_PARTY_NOTICES.md`, `docs/decisions/0004-container-licensing.md`, `docs/PROGRESS.md`.

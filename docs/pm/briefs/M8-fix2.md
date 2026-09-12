@@ -7,8 +7,19 @@
 - Never weaken a gate: no raising the 350 MB budget, no trivy `--ignore` / `.trivyignore` for fixable HIGH or CRITICAL findings, no skipping e2e specs, and no gitleaks allowlist broader than the proven false-positive line.
 - Never delete or overwrite files outside scope.
 
-## Evidence from CI
-First run was on `d05564e`, then the PM diagnostics commit. The PM will add the diagnostics run's exact output below before dispatch.
+## Evidence from CI (diagnostics run on `3ff4057`)
+- 🚨 **Root cause of the smoke and e2e-container failures is a packaging bug, not Docker.**
+  - Both jobs crash with `ModuleNotFoundError: No module named 'httpx'`.
+  - `backend/src` imports **`httpx`** (webhook alerts; the stream redirect probe) and **`certifi`** (stream TLS `ca_file`). `httpx` is only in the **dev** dependency group, and `certifi` isn't in the runtime lock at all, so `uv sync --no-dev` drops both.
+  - Local tests always install dev deps, which is why this was invisible.
+  - **Fix:** add both as runtime `dependencies`, then run `uv lock`.
+  - **Guard:** add a non-Docker CI job or test that installs **only** runtime deps into a fresh environment (for example `uv venv` + `uv pip install --no-deps -r <(uv export --no-dev)` + the project wheel) and imports every module under `tonewatch`. Any future dev-only runtime import must fail fast in normal CI.
+  - Don't run `uv run --no-dev` in the main checkout; it strips the dev environment.
+- **Size is 353,979,998 bytes (354 MB) against a 350 MB budget.**
+  - `docker history`: the `/opt/venv` COPY is 218 MB, apt packages 9.5 MB, python base layers about 48 MB.
+  - Adding `httpx` and `certifi` adds a little, so plan for roughly 10 MB of real savings.
+- **Trivy python-pkg: 2 fixable HIGH findings.** Earlier run: `msgpack 1.1.2→1.2.1` and `setuptools 70.3.0→78.1.1`. The venv rows list 0 findings each, so they sit in the base image's `/usr/local/lib/python3.13/site-packages` (pip-vendored msgpack, setuptools). Confirm with the full trivy table.
+- **Gitleaks is already resolved by the PM.** The finding was a quoted example header in a PM brief (`docs/pm/briefs/M8-fix.md:61`, rule `curl-auth-header`). The PM reworded the brief and added an exact-fingerprint `.gitleaksignore`. **Don't touch gitleaks config.**
 - `build-amd64` and `build-arm64` **pass**. `compose-config`, the smoke entrypoint and actionlint were fixed by the PM.
 - **`size` fails:** the image is over 350 MB (compressed artifact 119 MB). The diagnostics run prints the exact size and `docker history`.
 - **`trivy` fails** with 2 fixable HIGH findings:
@@ -39,10 +50,11 @@ First run was on `d05564e`, then the PM diagnostics commit. The PM will add the 
      - `web_dist` missing from the installed package
    - Reproduce the startup path locally without Docker as far as possible: build a `--no-editable` venv copy, set `TONEWATCH_DATA_DIR` to a fresh directory and `HOME` to a read-only one, run `tonewatch serve`, then `curl /readyz`.
    - Add a regression test for the root cause if it's app code (for example "serve works when HOME is not writable").
-4. **Gitleaks.** Read the finding the diagnostics run printed.
-   - **If it's the release-please SHA pin** (a false positive), add a **narrowly scoped** `.gitleaks.toml` that extends the default config with an allowlist regex matching only `uses: <owner>/<repo>@<40-hex> # vX.Y.Z` lines, and add a same-file comment explaining why.
-   - **If it's anything else, treat it as real.** Never allowlist a real credential: remove it and report it.
-   - **Locally:** add a unit test that the allowlist regex matches a SHA-pin line and does **not** match a line like `api_key = "<40-hex>"`.
+4. **Runtime dependency closure (do this FIRST; it's the root cause of the smoke and e2e-container crashes).**
+   - **Dependencies:** move `httpx` from the `dev` group to runtime `dependencies`, add `certifi` as a runtime dependency, then run `uv lock`. Check for any other module under `backend/src/tonewatch` that imports a package missing from `uv export --no-dev`. The PM found exactly these two; prove there are no more.
+   - **Regression guard:** add a CI job in `ci.yml` (Linux, no Docker) that builds a clean environment with **only** runtime deps and the project installed non-editable, then imports every `tonewatch.*` module (walk the package with `pkgutil.walk_packages`). It must fail on a dev-only runtime import. Give it `timeout-minutes` and `permissions: {contents: read}`.
+   - **Proof:** locally, run the same import walk in a throwaway venv outside the main checkout's `.venv`, and show it failing before the dependency fix and passing after.
+   - **Don't touch gitleaks.** The PM handled it with an exact-fingerprint `.gitleaksignore`.
 
 ## Definition of done
 - `pre-commit run --all-files`, `just api-drift`, `just security`, and `just e2e` (Chrome) exit 0. `just check` runs **last**; paste its unfiltered tail.
