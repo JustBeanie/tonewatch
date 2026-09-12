@@ -301,7 +301,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/import/ttd": {
+    "/api/import/tones-cfg": {
         parameters: {
             query?: never;
             header?: never;
@@ -311,10 +311,10 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Import Ttd
-         * @description Preview or atomically apply a TTD tone-set import.
+         * Import Tones Cfg
+         * @description Preview or atomically apply a tones.cfg tone-set import.
          */
-        post: operations["import_ttd_api_import_ttd_post"];
+        post: operations["import_tones_cfg_api_import_tones_cfg_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1555,7 +1555,7 @@ export interface operations {
             };
         };
     };
-    import_ttd_api_import_ttd_post: {
+    import_tones_cfg_api_import_tones_cfg_post: {
         parameters: {
             query?: {
                 apply?: boolean;

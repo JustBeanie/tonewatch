@@ -59,7 +59,7 @@ Tick a task with `[x]`, then append ` — <PR link> — <one-line note>`. Blocke
 - [x] **M6.1** App shell, auth, ingress-aware base path (`base: './'`) and a light/dark theme. — local — Implemented and covered by the M6a Vitest suite; api-drift PM-verified.
 - [x] **M6.2** Dashboard: live call feed, channel levels and feed health. — local — Implemented and covered by `dashboard shows live call from ws event`, `level meter is accessible`, and health/level tests.
 - [x] **M6.3** Calls: a list with filters and a detail view with an audio player, matched tone sets and alert attempt resu... — local — Implemented and covered by `calls filters sync to url` and `call detail plays api-provided recording url`.
-- [x] **M6.4** Tone sets: a CRUD form with validation, a "test" button, and import from TTD config (M8.x importer). — local — Implemented and covered by the named validation, 422, 409, test, and accessibility tests (TTD import waits on M8.4).
+- [x] **M6.4** Tone sets: a CRUD form with validation, a "test" button, and import from legacy `tones.cfg` files (M8.x importer). — local — Implemented and covered by the named validation, 422, 409, test, and accessibility tests (import waits on M8.4).
 - [x] **M6.5** Frequency counter / spectrum: canvas plot, dominant frequency, pause/resume, capture tone and topic cleanup. — local — `spectrum subscribes and unsubscribes on unmount`, `capture tone prefills toneset form`, `spectrum live region throttled to 1 per second`.
 - [x] **M6.6** Sources: device picker, stream URL, and RTL-SDR parameters, with live level preview. — local — source CRUD form, MHz-to-Hz conversion, validation, device and level tests.
 - [x] **M6.7** Alerts configuration with a "send test" button, and Settings for retention, auth and MQTT. — local — write-only webhook secret, script warning/403, send test and read-only settings tests.
@@ -89,7 +89,7 @@ Tick a task with `[x]`, then append ` — <PR link> — <one-line note>`. Blocke
 - [x] **M8.1** Multi-stage `Dockerfile` — `e57ec0d` — PM-verified on CI run 34681525844: amd64 + arm64 build, image 347,219,215 bytes (< 350 MB budget), trivy clean, smoke (in-image imports, UID 10001, read-only root, PyAV TLS) green.
 - [x] **M8.2** Compose examples for soundcard (`/dev/snd`), stream, and RTL-SDR (`/dev/bus/usb`) with S5 hardening — `e57ec0d` — `compose-config` CI job validates all three files and the published 8099 port; device access under hardening remains a HIL checklist item.
 - [x] **M8.3** Multi-arch Docker CI and release workflows with signing, SBOM, provenance, and Trivy — `e57ec0d` — Docker (all 7 jobs incl. e2e-container 4/4), CI (incl. runtime-closure) and Security (8 jobs) green on runs 34681525844/34681525861/34681525845. Release publish path (GHCR, cosign, SBOM, provenance) runs only on a published release; release-please PR creation awaits a user repo-setting decision.
-- [x] **M8.4** `importers/ttd.py` — PM review passed (fix3); host ci-local green — Clean-room preview/apply importer with CLI/API/UI flows, pure-ASGI body limit (no truncated apply on oversized streams), synthetic CRLF/missing-tolerance fixtures and private-fixture structural test.
+- [x] **M8.4** `importers/tones_cfg.py` — PM review passed (fix3); host ci-local green — Clean-room preview/apply importer with CLI/API/UI flows, pure-ASGI body limit (no truncated apply on oversized streams), synthetic CRLF/missing-tolerance fixtures and private-fixture structural test.
 
 ## M9: Windows native
 - [~] **M9.1** PyInstaller onedir spec bundles the Docker-equivalent web UI staging, sounddevice PortAudio data, PyAV DLLs, certifi, migrations, and SQLAlchemy/aiosqlite imports — local — PENDING-CI; local build and frozen smoke pass.
@@ -124,7 +124,7 @@ Tick a task with `[x]`, then append ` — <PR link> — <one-line note>`. Blocke
 - [ ] **M12.1** mkdocs-material site: install guides (Docker, Pi, add-on, Windows), finding tone frequencies, tuning purity...
 - [ ] **M12.2** Threat model doc: exposed API, token storage, the script hook, and webhook SSRF, with an allowlist and bloc...
 - [ ] **M12.3** README disclaimer: this is a supplemental notification tool, not a certified primary alerting system, and r...
-- [ ] **M12.5** Clean-room naming scrub: rename the importer, route, CLI, fixtures and docs to neutral wording; add a pygrep gate. Queued after M8.4, M10a, M13 land.
+- [x] **M12.5** Clean-room naming scrub: rename the importer, route, CLI, fixtures and docs to neutral wording; add a pygrep gate. — local — Inventory is clean, audit migration and ASVS/threat-model evidence updated, pre-commit/just check green, and ci-local completed with four Playwright e2e tests on port 8799.
 - [ ] **M12.4** Release-please cuts v1.0.0 and the integration v1.0.0 is tagged. The user installs through HACS and runs th...
 
 ## S track: Security assurance (OWASP SAMM · DSOMM · ASVS)

@@ -23,7 +23,7 @@ from tonewatch.api.routes.auth import router as auth_router
 from tonewatch.api.routes.calls import router as calls_router
 from tonewatch.api.routes.config import router as config_router
 from tonewatch.api.routes.discovered_tones import router as discovered_tones_router
-from tonewatch.api.routes.import_ttd import router as import_ttd_router
+from tonewatch.api.routes.import_tones_cfg import router as import_tones_cfg_router
 from tonewatch.api.routes.recordings import router as recordings_router
 from tonewatch.api.routes.system import router as system_router
 from tonewatch.api.routes.ws import router as ws_router
@@ -43,7 +43,7 @@ from tonewatch.sources.soundcard import input_devices as _input_devices
 from tonewatch.storage.db import create_database, upgrade_database
 
 MAX_ANALYZE_BYTES = 20 * 1024 * 1024 + 64 * 1024
-MAX_TTD_IMPORT_BYTES = 256 * 1024
+MAX_TONES_CFG_IMPORT_BYTES = 256 * 1024
 
 
 def _parse_content_length(value: str | None) -> int | None:
@@ -76,8 +76,8 @@ async def _send_json(
     await send({"type": "http.response.body", "body": body})
 
 
-class _TtdBodyLimitMiddleware:
-    """Bound TTD request bytes without depending on Starlette private attributes."""
+class _TonesCfgBodyLimitMiddleware:
+    """Bound tones.cfg request bytes without depending on Starlette private attributes."""
 
     def __init__(self, app: Any, max_bytes: int) -> None:
         self.app = app
@@ -97,7 +97,7 @@ class _TtdBodyLimitMiddleware:
             and (path == root_path or path.startswith(root_path + "/"))
         ):
             path = path[len(root_path) :] or "/"
-        if scope.get("type") != "http" or path.rstrip("/") != "/api/import/ttd":
+        if scope.get("type") != "http" or path.rstrip("/") != "/api/import/tones-cfg":
             await self.app(scope, receive, send)
             return
         headers = Headers(scope=scope)
@@ -191,7 +191,7 @@ def create_app(
         auth_router,
         config_router,
         discovered_tones_router,
-        import_ttd_router,
+        import_tones_cfg_router,
         calls_router,
         recordings_router,
         analyze_router,
@@ -217,7 +217,7 @@ def create_app(
         settings.bind_port,
         enabled=settings.zeroconf_enabled and not settings.addon_mode,
     )
-    app.add_middleware(_TtdBodyLimitMiddleware, max_bytes=MAX_TTD_IMPORT_BYTES)
+    app.add_middleware(_TonesCfgBodyLimitMiddleware, max_bytes=MAX_TONES_CFG_IMPORT_BYTES)
 
     @app.middleware("http")
     async def security_middleware(request: Request, call_next: Any) -> Response:

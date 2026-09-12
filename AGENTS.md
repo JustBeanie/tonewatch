@@ -29,7 +29,7 @@ Only use `just` recipes: `setup`, `lint`, `fmt`, `typecheck`, `test`, `test-web`
 
 ## Gates
 
-Tasks marked 🛑 or `BLOCKED-ON-USER` need a human: M0.7 (GitHub repo creation/push), M8.4 (TTD config sample), M10 install on real HA, M12.4 release install. Prepare everything around them, but never perform them.
+Tasks marked 🛑 or `BLOCKED-ON-USER` need a human: M0.7 (GitHub repo creation/push), M8.4 (legacy `tones.cfg` sample), M10 install on real HA, M12.4 release install. Prepare everything around them, but never perform them.
 
 ## Local mode (active until the GitHub repo exists — M0.7)
 

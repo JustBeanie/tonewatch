@@ -1854,10 +1854,10 @@
         ]
       }
     },
-    "/api/import/ttd": {
+    "/api/import/tones-cfg": {
       "post": {
-        "description": "Preview or atomically apply a TTD tone-set import.",
-        "operationId": "import_ttd_api_import_ttd_post",
+        "description": "Preview or atomically apply a tones.cfg tone-set import.",
+        "operationId": "import_tones_cfg_api_import_tones_cfg_post",
         "parameters": [
           {
             "in": "query",
@@ -1890,7 +1890,7 @@
               "application/json": {
                 "schema": {
                   "additionalProperties": true,
-                  "title": "Response Import Ttd Api Import Ttd Post",
+                  "title": "Response Import Tones Cfg Api Import Tones Cfg Post",
                   "type": "object"
                 }
               }
@@ -1908,7 +1908,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Import Ttd",
+        "summary": "Import Tones Cfg",
         "tags": [
           "import"
         ]

@@ -84,7 +84,7 @@
         {"id": "TM-026", "category": "Elevation of privilege", "element": "Alert dispatcher (M7)", "status": "mitigated"},
         {"id": "TM-027", "category": "Elevation of privilege", "element": "Network stream origin", "status": "open"},
         {"id": "TM-028", "category": "Information disclosure", "element": "Supervisor MQTT credentials", "status": "mitigated"},
-        {"id": "TM-029", "category": "Tampering / Information disclosure", "element": "TTD importer", "status": "mitigated"},
+        {"id": "TM-029", "category": "Tampering / Information disclosure", "element": "legacy tones.cfg importer", "status": "mitigated"},
         {"id": "TM-030", "category": "Information disclosure / Tampering", "element": "Discovery clips and API", "status": "mitigated"}
       ]
     }

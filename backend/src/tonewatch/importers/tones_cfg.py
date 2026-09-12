@@ -1,4 +1,4 @@
-"""Clean-room importer for TwoToneDetect ``tones.cfg`` files."""
+"""Importer for legacy ``tones.cfg`` two-tone configuration files."""
 
 from __future__ import annotations
 
@@ -13,8 +13,8 @@ from pydantic import ValidationError
 
 from tonewatch.config.models import AppConfig, RecordingPolicy, ToneSet, ToneSpec
 
-TTD_MAX_BYTES = 256 * 1024
-TTD_MAX_SECTIONS = 500
+TONES_CFG_MAX_BYTES = 256 * 1024
+TONES_CFG_MAX_SECTIONS = 500
 _MIN_TOL_PCT = 0.1
 _MAX_TOL_PCT = 10.0
 _EMAIL_KEYS = {"text_emails", "mp3_emails", "amr_emails"}
@@ -34,39 +34,39 @@ _IMPORTED_KEYS = {
 }
 
 
-class TtdImportError(ValueError):
-    """Base error for invalid TTD importer input or application."""
+class TonesCfgImportError(ValueError):
+    """Base error for invalid tones.cfg input or application."""
 
 
-class TtdImportLimitError(TtdImportError):
+class TonesCfgImportLimitError(TonesCfgImportError):
     """Raised when an input exceeds the importer resource limits."""
 
     def __init__(self, limit: Literal["bytes", "sections"]) -> None:
         """Build a safe error naming only the exceeded importer limit."""
         message = (
-            "TTD config exceeds the 256 KiB limit"
+            "tones.cfg input exceeds the 256 KiB limit"
             if limit == "bytes"
-            else "TTD config exceeds the 500 section limit"
+            else "tones.cfg input exceeds the 500 section limit"
         )
         super().__init__(message)
 
 
-class TtdApplyError(TtdImportError):
+class TonesCfgApplyError(TonesCfgImportError):
     """Raised when imported tone sets cannot form a valid application config."""
 
     @classmethod
-    def invalid_mode(cls) -> TtdApplyError:
+    def invalid_mode(cls) -> TonesCfgApplyError:
         """Build the invalid mode error."""
         return cls("mode must be merge or replace")
 
     @classmethod
-    def invalid_config(cls, message: str) -> TtdApplyError:
+    def invalid_config(cls, message: str) -> TonesCfgApplyError:
         """Build an error from safe model validation text."""
         return cls(f"imported tone sets cannot be applied: {message}")
 
 
 @dataclass(frozen=True)
-class TtdSectionResult:
+class TonesCfgSectionResult:
     """Preview result for one source section."""
 
     name: str
@@ -81,10 +81,10 @@ class TtdSectionResult:
 
 
 @dataclass(frozen=True)
-class TtdImportResult:
+class TonesCfgImportResult:
     """All proposed tone sets and safe, per-section preview messages."""
 
-    sections: tuple[TtdSectionResult, ...]
+    sections: tuple[TonesCfgSectionResult, ...]
 
     @property
     def tone_sets(self) -> tuple[ToneSet, ...]:
@@ -260,7 +260,7 @@ def _dropped_notes(lower: dict[str, str]) -> list[str]:
 
 def _section_result(
     name: str, values: dict[str, str], used_ids: set[str], parse_errors: list[str]
-) -> TtdSectionResult:
+) -> TonesCfgSectionResult:
     errors = list(parse_errors)
     notes: list[str] = []
     lower = {key.casefold(): value.strip() for key, value in values.items()}
@@ -270,7 +270,7 @@ def _section_result(
     name_value = _safe_text(lower.get("description", "") or name)
     tone_id = _unique_slug(_slug(name_value), used_ids)
     if errors:
-        return TtdSectionResult(name, None, tuple(notes), tuple(errors))
+        return TonesCfgSectionResult(name, None, tuple(notes), tuple(errors))
     try:
         sequence = [
             ToneSpec(freq_hz=frequency, tol_pct=tolerance, min_s=length)
@@ -286,14 +286,14 @@ def _section_result(
         )
     except ValidationError as exc:
         message = f"invalid tone set: {exc.errors()[0]['msg']}"
-        return TtdSectionResult(name, None, tuple(notes), (message,))
-    return TtdSectionResult(name, tone_set, tuple(notes))
+        return TonesCfgSectionResult(name, None, tuple(notes), (message,))
+    return TonesCfgSectionResult(name, tone_set, tuple(notes))
 
 
-def parse_ttd(text: str) -> TtdImportResult:
-    """Parse TTD text without reading files or executing imported commands."""
-    if len(text.encode("utf-8", errors="replace")) > TTD_MAX_BYTES:
-        raise TtdImportLimitError("bytes")
+def parse_tones_cfg(text: str) -> TonesCfgImportResult:
+    """Parse tones.cfg text without reading files or executing imported commands."""
+    if len(text.encode("utf-8", errors="replace")) > TONES_CFG_MAX_BYTES:
+        raise TonesCfgImportLimitError("bytes")
     normalized = text.removeprefix("\ufeff").replace("\r\n", "\n").replace("\r", "\n")
     sections: list[tuple[str, dict[str, str], list[str]]] = []
     current_name: str | None = None
@@ -332,21 +332,21 @@ def parse_ttd(text: str) -> TtdImportResult:
             continue
         current_values[key] = value.strip()
     finish()
-    if len(sections) > TTD_MAX_SECTIONS:
-        raise TtdImportLimitError("sections")
+    if len(sections) > TONES_CFG_MAX_SECTIONS:
+        raise TonesCfgImportLimitError("sections")
     used_ids: set[str] = set()
     results = tuple(
         _section_result(name, values, used_ids, errors) for name, values, errors in sections
     )
-    return TtdImportResult(results)
+    return TonesCfgImportResult(results)
 
 
-def apply_import(
-    config: AppConfig, result: TtdImportResult, mode: Literal["merge", "replace"]
+def apply_tones_cfg(
+    config: AppConfig, result: TonesCfgImportResult, mode: Literal["merge", "replace"]
 ) -> AppConfig:
     """Return a validated config with only tone sets changed."""
     if mode not in {"merge", "replace"}:
-        raise TtdApplyError.invalid_mode()
+        raise TonesCfgApplyError.invalid_mode()
     if mode == "replace":
         tone_sets = list(result.tone_sets)
     else:
@@ -362,4 +362,4 @@ def apply_import(
             alert_targets=config.alert_targets,
         )
     except ValidationError as exc:
-        raise TtdApplyError.invalid_config(exc.errors()[0]["msg"]) from exc
+        raise TonesCfgApplyError.invalid_config(exc.errors()[0]["msg"]) from exc

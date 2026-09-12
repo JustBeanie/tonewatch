@@ -34,9 +34,9 @@ export function ToneSets() {
         const body = new FormData();
         body.append("file", file);
         try {
-            setPreview(await request<ImportPreview>("import/ttd", { method: "POST", body }));
+            setPreview(await request<ImportPreview>("import/tones-cfg", { method: "POST", body }));
         } catch {
-            setImportError("Unable to preview this TTD config.");
+            setImportError("Unable to preview this tones.cfg file.");
         }
     }
     async function applyImport(mode: "merge" | "replace") {
@@ -49,12 +49,12 @@ export function ToneSets() {
         const body = new FormData();
         body.append("file", importFile);
         try {
-            await request(`import/ttd?apply=true&mode=${mode}`, { method: "POST", body });
+            await request(`import/tones-cfg?apply=true&mode=${mode}`, { method: "POST", body });
             setPreview(null);
             setImportFile(null);
             await reload();
         } catch {
-            setImportError("Unable to apply this TTD config.");
+            setImportError("Unable to apply this tones.cfg file.");
         }
     }
     return (
@@ -63,10 +63,10 @@ export function ToneSets() {
             <Link to="/tonesets/new">
                 <button>New tone set</button>
             </Link>
-            <button onClick={() => fileInput.current?.click()}>Import from TwoToneDetect</button>
+            <button onClick={() => fileInput.current?.click()}>Import legacy tones.cfg</button>
             <input
                 ref={fileInput}
-                aria-label="TTD config file"
+                aria-label="tones.cfg file"
                 type="file"
                 accept=".cfg,text/plain"
                 onChange={previewImport}
@@ -78,8 +78,8 @@ export function ToneSets() {
                 </p>
             )}
             {preview && (
-                <section aria-labelledby="ttd-preview-heading">
-                    <h2 id="ttd-preview-heading">TwoToneDetect import preview</h2>
+                <section aria-labelledby="tones-cfg-preview-heading">
+                    <h2 id="tones-cfg-preview-heading">tones.cfg import preview</h2>
                     <p>
                         {preview.imported} imported, {preview.skipped} skipped
                     </p>

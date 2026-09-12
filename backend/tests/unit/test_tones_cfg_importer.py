@@ -1,4 +1,4 @@
-"""Tests for the clean-room TwoToneDetect importer."""
+"""Tests for the legacy tones.cfg importer."""
 
 from __future__ import annotations
 
@@ -13,21 +13,21 @@ from hypothesis import strategies as st
 from tonewatch.config.models import AppConfig, FileSource, MqttTarget, ToneSet, ToneSpec
 from tonewatch.dsp.engine import DetectionEngine
 from tonewatch.dsp.generator import concat, silence, tone
-from tonewatch.importers.ttd import (
-    TTD_MAX_BYTES,
-    TTD_MAX_SECTIONS,
-    TtdImportLimitError,
-    apply_import,
-    parse_ttd,
+from tonewatch.importers.tones_cfg import (
+    TONES_CFG_MAX_BYTES,
+    TONES_CFG_MAX_SECTIONS,
+    TonesCfgImportLimitError,
+    apply_tones_cfg,
+    parse_tones_cfg,
 )
 
-FIXTURE = Path(__file__).parents[1] / "fixtures" / "ttd" / "synthetic.cfg"
+FIXTURE = Path(__file__).parents[1] / "fixtures" / "tones_cfg" / "synthetic.cfg"
 
 
 def test_synthetic_fixture_maps_sections_and_redacts_untrusted_fields() -> None:
     source = FIXTURE.read_text(encoding="utf-8-sig")
-    result = parse_ttd(source)
-    crlf_result = parse_ttd(source.replace("\n", "\r\n"))
+    result = parse_tones_cfg(source)
+    crlf_result = parse_tones_cfg(source.replace("\n", "\r\n"))
 
     assert result.imported_count == 3
     assert result.skipped_count == 2
@@ -57,15 +57,15 @@ def test_synthetic_fixture_maps_sections_and_redacts_untrusted_fields() -> None:
 
 
 def test_apply_merge_deduplicates_and_replace_preserves_other_resources() -> None:
-    result = parse_ttd("[One]\nlongtone=1000\nlongtonelength=1\n")
+    result = parse_tones_cfg("[One]\nlongtone=1000\nlongtonelength=1\n")
     existing = AppConfig(
         tone_sets=[ToneSet(id="one", name="Old", sequence=[ToneSpec(freq_hz=500, min_s=1)])],
         sources=[FileSource(id="file", name="file", path="x.wav")],
         alert_targets=[MqttTarget(id="mqtt", name="mqtt")],
     )
 
-    merged = apply_import(existing, result, "merge")
-    replaced = apply_import(existing, result, "replace")
+    merged = apply_tones_cfg(existing, result, "merge")
+    replaced = apply_tones_cfg(existing, result, "replace")
     assert [item.id for item in merged.tone_sets] == ["one", "one-2"]
     assert [item.id for item in replaced.tone_sets] == ["one"]
     assert replaced.sources == existing.sources
@@ -73,7 +73,7 @@ def test_apply_merge_deduplicates_and_replace_preserves_other_resources() -> Non
 
 
 def test_imported_two_and_long_tones_detect_generated_audio() -> None:
-    result = parse_ttd(FIXTURE.read_text(encoding="utf-8-sig"))
+    result = parse_tones_cfg(FIXTURE.read_text(encoding="utf-8-sig"))
     two_tone, long_tone = result.tone_sets[:2]
 
     # The analyzer needs one FFT window of settling audio around each edge.
@@ -99,23 +99,24 @@ def test_imported_two_and_long_tones_detect_generated_audio() -> None:
 
 
 def test_limits_are_typed_and_strict() -> None:
-    with pytest.raises(TtdImportLimitError):
-        parse_ttd("x" * (TTD_MAX_BYTES + 1))
-    with pytest.raises(TtdImportLimitError):
-        parse_ttd("\n".join(f"[S{i}]" for i in range(TTD_MAX_SECTIONS + 1)))
+    with pytest.raises(TonesCfgImportLimitError):
+        parse_tones_cfg("x" * (TONES_CFG_MAX_BYTES + 1))
+    with pytest.raises(TonesCfgImportLimitError):
+        parse_tones_cfg("\n".join(f"[S{i}]" for i in range(TONES_CFG_MAX_SECTIONS + 1)))
 
 
 @given(st.text())
 def test_arbitrary_text_never_raises_an_untyped_error(text: str) -> None:
-    with suppress(TtdImportLimitError):
-        parse_ttd(text)
+    with suppress(TonesCfgImportLimitError):
+        parse_tones_cfg(text)
 
 
 def test_private_fixture_structural_properties_and_json_redaction() -> None:
-    private = Path(__file__).parents[1] / "fixtures" / "private" / "ttd" / "tones.cfg"
+    fixtures = Path(__file__).parents[1] / "fixtures"
+    private = fixtures / "private" / "tones_cfg" / "tones.cfg"
     if not private.exists():
-        pytest.skip("private TTD fixture is not available")
-    result = parse_ttd(private.read_text(encoding="utf-8-sig"))
+        pytest.skip("private tones.cfg fixture is not available")
+    result = parse_tones_cfg(private.read_text(encoding="utf-8-sig"))
     assert result.tone_sets
     assert not any(section.errors for section in result.sections)
     assert all(250 <= tone.freq_hz <= 3000 for item in result.tone_sets for tone in item.sequence)
@@ -124,7 +125,7 @@ def test_private_fixture_structural_properties_and_json_redaction() -> None:
     json.loads(result.to_json())
 
 
-def test_ttd_security_contract_is_documented() -> None:
+def test_tones_cfg_security_contract_is_documented() -> None:
     document = Path(__file__).parents[3] / "docs" / "security" / "threat-model" / "README.md"
     text = document.read_text(encoding="utf-8")
     assert "256 KiB" in text and "500 sections" in text

@@ -1,8 +1,8 @@
-# Plan: Modern TwoToneDetect clone (working name `tonewatch`)
+# Plan: Modern ToneWatch radio notifier (working name `tonewatch`)
 
 ## Context
 
-TwoToneDetect (TTD) listens to scanner or radio audio, detects two-tone and long-tone fire/EMS pages, sends a pre-alert, records the dispatch audio that follows, and pushes that audio out by email, script or other channels. It is an older desktop-style app. The goal is a clean-room rebuild on a modern stack, published on GitHub with strict linting and CI, and structured so that autonomous coding agents (ChatGPT/Codex-style, medium reasoning) can build it milestone by milestone without supervision.
+A legacy desktop-style radio notifier listens to scanner or radio audio, detects two-tone and long-tone fire/EMS pages, sends a pre-alert, records the dispatch audio that follows, and pushes that audio out by email, script or other channels. The goal is a clean-room rebuild on a modern stack, published on GitHub with strict linting and CI, and structured so that autonomous coding agents (ChatGPT/Codex-style, medium reasoning) can build it milestone by milestone without supervision.
 
 Decisions already made with the user:
 - **Stack:** Python backend and React/TypeScript web UI.
@@ -10,7 +10,7 @@ Decisions already made with the user:
 - **Audio inputs for v1:** sound card/USB, network stream, and RTL-SDR.
 - **Outputs for v1:** MQTT with HA discovery, webhook, run-script, and a direct way to get audio into Home Assistant.
 
-The working name `tonewatch` is a placeholder. Check the name is free on GitHub, PyPI and GHCR before M0. Do not reuse the "TwoToneDetect" name, code or UI; the project must be clean-room.
+The working name `tonewatch` is a placeholder. Check the name is free on GitHub, PyPI and GHCR before M0. Do not reuse any external product name, code or UI; the project must be clean-room.
 
 
 ---
@@ -106,7 +106,7 @@ tonewatch/
     api/{app.py,auth.py,ws.py,routes/}
     storage/{db.py,models.py,migrations/}
     integrations/{zeroconf.py,supervisor.py}   # add-on options + discovery
-    importers/ttd.py                            # TTD tone config import
+    importers/tones_cfg.py                      # legacy tones.cfg import
   backend/tests/{unit,integration,golden,benchmarks,fixtures}
   web/{package.json,vite.config.ts,eslint.config.js,tsconfig.json}
   web/src/{api/generated,features/{dashboard,calls,tonesets,sources,alerts,spectrum,settings},components,lib}
@@ -342,7 +342,7 @@ Each task has an ID. Agents mark `[x]` in `docs/PROGRESS.md` and reference the I
 - **M6.1** App shell, auth, ingress-aware base path (`base: './'`) and a light/dark theme.
 - **M6.2** **Dashboard:** live call feed, channel levels and feed health.
 - **M6.3** **Calls:** a list with filters and a detail view with an audio player, matched tone sets and alert attempt results.
-- **M6.4** **Tone sets:** a CRUD form with validation, a "test" button, and import from TTD config (M8.x importer).
+- **M6.4** **Tone sets:** a CRUD form with validation, a "test" button, and import from legacy `tones.cfg` files (M8.x importer).
 - **M6.5** **Frequency counter / spectrum:** a canvas spectrum, dominant frequency readout and "capture tone".
 - **M6.6** **Sources:** device picker, stream URL, and RTL-SDR parameters, with live level preview.
 - **M6.7** **Alerts** configuration with a "send test" button, and **Settings** for retention, auth and MQTT.
@@ -365,7 +365,7 @@ Each task has an ID. Agents mark `[x]` in `docs/PROGRESS.md` and reference the I
   - The runtime stage has `libportaudio2`, `rtl-sdr`, `tini`, the non-root `tonewatch` user in the `audio` and `plugdev` groups, `/data` as a volume, and a `HEALTHCHECK`.
 - **M8.2** Compose examples for soundcard (`devices: /dev/snd`, `group_add: audio`), stream, and rtlsdr (`/dev/bus/usb`, plus a note on blacklisting `dvb_usb_rtl28xxu` on the host).
 - **M8.3** `docker.yml` with buildx multi-arch, cosign, SBOM, provenance and Trivy. On `release.yml`, release-please tags and GHCR pushes `:X.Y.Z`, `:X.Y` and `:latest`.
-- **M8.4** `importers/ttd.py`: 🛑 **BLOCKED-ON-USER.** The user must supply a sample TTD tones config so the format can be confirmed. Agents build the importer interface and tests against that sample only once it exists.
+- **M8.4** `importers/tones_cfg.py`: 🛑 **BLOCKED-ON-USER.** The user must supply a sample legacy `tones.cfg` file so the format can be confirmed. Agents build the importer interface and tests against that sample only once it exists.
 - **Done when:** the image builds for both archs, the container runs the e2e stack, Trivy is clean, and the image is under 350 MB.
 
 ### M9: Windows native
