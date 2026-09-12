@@ -130,7 +130,7 @@ Tick a task with `[x]`, then append ` — <PR link> — <one-line note>`. Blocke
 ## S track: Security assurance (OWASP SAMM · DSOMM · ASVS)
 - [x] **S1** *(after M1)* Baseline SAMM (15 practices) + DSOMM assessment, `docs/security/` layout, scorecard script, gaps.md. — local — Evidence-bound scorecards, deterministic generator/tests, and all-files pre-commit plus `just check` passed.
 - [x] **S2** *(after S1)* DSOMM L1–2 pipeline controls: Semgrep, pip-audit, osv-scanner, zizmor, license checks, Trivy config, OpenSSF Scorecard, `just security`. — local — Security workflow, CI-only notices, dependency overrides, suppression validation, scorecard re-assessment, and all-files pre-commit passed; CI-only jobs remain PENDING-CI for PM observation.
-- [ ] **S3** *(after M5)* STRIDE threat model (Threat Dragon); replaces M12.2.
+- [x] **S3** *(after M5)* STRIDE threat model (Threat Dragon); replaces M12.2. — 9ea239a (review S3-20260911-154139 pass); since extended through TM-030 by M8.4/M10a/M13.
 - [x] **S4** *(after M7)* ASVS 5.0 L2 code audit with regression tests for every fix. — local — ASVS source pinned, 253 tests pass, security/pre-commit/API-drift gates pass, and S4 threats are mitigated or documented as accepted.
 - [x] **S5** *(after M8)* ZAP baseline/API DAST in e2e + container hardening (read-only fs, cap_drop, no-new-privileges). — `d3643d5`, `20d70e3`, `9b2e808` — Docker run 34687274921 green: zap-baseline and zap-api-scan exit 0, zero 5xx, FAIL-NEW 0 / WARN-NEW 0; the first real scan found and fixed a login 500 plus CSP/header gaps.
 - [ ] **S6** *(after M11)* HA integration and add-on security review.
