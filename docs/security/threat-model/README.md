@@ -4,11 +4,17 @@ Open `tonewatch.json` in [OWASP Threat Dragon](https://threatdragon.org/): use *
 
 ## Scope and assumptions
 
-This review covers the M0-M8 implementation as of 2026-09-12. ToneWatch is self-hosted for one household or department, with Home Assistant as the primary deployment. LAN traffic is not assumed confidential unless TLS is supplied by the deployment or HA ingress. Host filesystem permissions, container isolation, and Supervisor policy are deployment responsibilities unless explicitly evidenced here.
+This review covers the M0-M10a implementation as of 2026-09-12. ToneWatch is self-hosted for one household or department, with Home Assistant as the primary deployment. LAN traffic is not assumed confidential unless TLS is supplied by the deployment or HA ingress. Host filesystem permissions, container isolation, and Supervisor policy are deployment responsibilities unless explicitly evidenced here.
 
 The stream SSRF finding is concrete: a user who can write a `StreamSource` can set `url` to an internal HTTP endpoint such as `http://169.254.169.254/`; `StreamAudioSource` passes the URL directly to `av.open` in `backend/src/tonewatch/sources/stream.py:18-23`, and the config model only validates URL syntax. Minimal reproduction: save a config containing `{"type":"stream","url":"http://169.254.169.254/latest/meta-data/"}` (or an internal service URL), start the channel, and observe the application host/container making the request. No network allowlist or private-address rejection exists today.
 
 The running composition root now sends each channel through the recorder and persistence flow. Recordings use `Settings.recording_path`; add-on mode resolves the default root to `/media/tonewatch` in `backend/src/tonewatch/settings.py`, while the retention task and authenticated recordings route operate on that same root.
+
+## Sensitive assets
+
+| Asset | Protection requirement | Evidence |
+| --- | --- | --- |
+| Supervisor MQTT credentials | Fetch with the Supervisor bearer token, keep only in memory for one connection, and never persist or emit the resolved username/password. | `backend/src/tonewatch/alerts/mqtt.py:32`; `test_supervisor_mqtt_fetch_uses_bearer_and_resolves_all_fields`; `test_api_and_audit_never_expose_supervisor_credentials` |
 
 ## Threat inventory
 
@@ -43,6 +49,7 @@ Evidence uses repository-relative `path:line`; “no proving test” is intentio
 | TM-025 | Elevation of privilege | Supervisor discovery client | HA add-on permissions (`hassio_api`, `map: media:rw`) exceed least privilege after compromise. | low | high | planned | `backend/src/tonewatch/integrations/supervisor.py:24`; no proving test | M10 |
 | TM-026 | Elevation of privilege | Alert dispatcher (M7) | Webhook targets permit SSRF to internal services or cloud metadata. | med | high | mitigated | `backend/src/tonewatch/alerts/urlsafety.py:160`; `test_urlsafety_blocks_loopback_linklocal_metadata_and_encodings` | M7 |
 | TM-027 | Elevation of privilege | Network stream origin | A configured stream URL can target localhost, `169.254.169.254`, or private services (SSRF). | high | high | mitigated | `backend/src/tonewatch/sources/stream.py:21`; `test_stream_redirect_to_blocked_host_refused` | S4 |
+| TM-028 | Information disclosure | Supervisor MQTT credentials | Rotated broker credentials could leak through persisted config, audit data, logs, API responses, or discovery payloads. | med | high | mitigated | `backend/src/tonewatch/alerts/mqtt.py:32`; `test_supervisor_mqtt_fetch_uses_bearer_and_resolves_all_fields`; `test_api_and_audit_never_expose_supervisor_credentials` | M10.2 |
 
 ## Accepted risks
 

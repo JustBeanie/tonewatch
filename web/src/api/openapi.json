@@ -180,6 +180,11 @@
             "title": "Enabled",
             "type": "boolean"
           },
+          "ha_discovery": {
+            "default": true,
+            "title": "Ha Discovery",
+            "type": "boolean"
+          },
           "host": {
             "anyOf": [
               {
@@ -219,6 +224,15 @@
             "minimum": 1.0,
             "title": "Port",
             "type": "integer"
+          },
+          "source": {
+            "default": "manual",
+            "enum": [
+              "manual",
+              "supervisor"
+            ],
+            "title": "Source",
+            "type": "string"
           },
           "tls": {
             "default": false,

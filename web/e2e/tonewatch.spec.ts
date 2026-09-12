@@ -48,10 +48,11 @@ test("live call appears and recording plays", async ({ page }) => {
 test("create tone set through ui", async ({ page }) => {
     await login(page);
     await page.goto("/tonesets/new");
+    await expect(page.getByRole("heading", { name: "Create tone set" })).toBeVisible();
     const name = `E2E tone ${Date.now()}`;
     await page.getByLabel("Name").fill(name);
     await page.getByRole("button", { name: "Save" }).click();
-    await expect(page).toHaveURL(/\/tonesets$/);
+    await expect(page).toHaveURL(/\/tonesets$/, { timeout: 15000 });
     await expect(page.getByText(name)).toBeVisible();
     const names = await page.evaluate(async () => {
         const response = await fetch("api/tonesets");

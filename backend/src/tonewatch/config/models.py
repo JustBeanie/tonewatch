@@ -125,6 +125,8 @@ class MqttTarget(FrozenModel):
     tls: bool = False
     username: str | None = None
     password: str | None = None
+    source: Literal["manual", "supervisor"] = "manual"
+    ha_discovery: bool = True
     topic: str = "tonewatch"
     enabled: bool = True
 
@@ -163,7 +165,7 @@ class ScriptTarget(FrozenModel):
             try:
                 fields = Formatter().parse(template)
                 for _literal, field_name, _format_spec, _conversion in fields:
-                    if field_name is not None and field_name not in allowed:
+                    if field_name is not None and field_name not in allowed | {"recording_url"}:
                         raise ValueError(f"unsupported script placeholder: {{{field_name}}}")
             except ValueError as exc:
                 raise ValueError(f"invalid script args template: {template!r}: {exc}") from exc
@@ -209,7 +211,7 @@ class AppConfig(FrozenModel):
                         )
         return self
 
-    def lint(self) -> list[str]:
+    def lint(self, *, addon_mode: bool = False) -> list[str]:
         """Return non-fatal configuration warnings."""
         warnings: list[str] = []
         for toneset in self.tone_sets:
@@ -222,4 +224,10 @@ class AppConfig(FrozenModel):
                     warnings.append(
                         f"tone set {toneset.id}: adjacent tones {previous.freq_hz:g} and {current.freq_hz:g} overlap"
                     )
+        if not addon_mode:
+            warnings.extend(
+                f"alert target {target.id}: supervisor source requires add-on mode"
+                for target in self.alert_targets
+                if isinstance(target, MqttTarget) and target.source == "supervisor"
+            )
         return warnings

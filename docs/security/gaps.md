@@ -882,12 +882,6 @@ Each gap names the pinned requirement, the unmet condition, and a target milesto
 - Why unmet: No verified ToneWatch control and regression test currently satisfies this requirement.
 - Target milestone: S5
 
-## GAP-144 - V13.2.1
-
-- Requirement: Verify that communications between backend application components that don't support the application's standard user session mechanism, including APIs, middleware, and data layers, are authenticated. Authentication must use individual service accounts, short-term tokens, or certificate-based authentication and not unchanging credentials such as passwords, API keys, or shared accounts with privileged access.
-- Why unmet: No verified ToneWatch control and regression test currently satisfies this requirement.
-- Target milestone: S5
-
 ## GAP-145 - V13.2.2
 
 - Requirement: Verify that communications between backend application components, including local or operating system services, APIs, middleware, and data layers, are performed with accounts assigned the least necessary privileges.

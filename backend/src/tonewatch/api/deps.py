@@ -7,13 +7,14 @@ from typing import Any
 from fastapi import HTTPException, Request
 from pydantic import ValidationError
 
-from tonewatch.api.audit import record_audit
+from tonewatch.api.audit import mask_secrets, record_audit
 from tonewatch.config.models import AppConfig
 from tonewatch.config.store import ConfigConflictError
 
 
 def _dump(value: Any) -> Any:
-    return value.model_dump(mode="json") if hasattr(value, "model_dump") else value
+    raw = value.model_dump(mode="json") if hasattr(value, "model_dump") else value
+    return mask_secrets(raw)
 
 
 def authenticated(request: Request) -> None:

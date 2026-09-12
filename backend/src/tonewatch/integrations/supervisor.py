@@ -5,11 +5,41 @@ from __future__ import annotations
 import asyncio
 import os
 from collections.abc import Awaitable, Callable
+from typing import TYPE_CHECKING
 
 import httpx
 
+from tonewatch.config.models import AppConfig, MqttTarget
+
+if TYPE_CHECKING:
+    from tonewatch.config.store import ConfigStore
+
 DiscoveryClient = Callable[..., Awaitable[httpx.Response]]
 MAX_ATTEMPTS = 3
+
+
+def ensure_addon_mqtt_target(config: AppConfig, settings: object, store: ConfigStore) -> AppConfig:
+    """Persist the one-time Supervisor MQTT target created on add-on first boot."""
+    if (
+        not getattr(settings, "addon_mode", False)
+        or getattr(settings, "mqtt_mode", "supervisor") != "supervisor"
+    ):
+        return config
+    if any(isinstance(target, MqttTarget) for target in config.alert_targets):
+        return config
+    target = MqttTarget(
+        id="home-assistant-mqtt",
+        name="Home Assistant MQTT",
+        source="supervisor",
+        ha_discovery=True,
+    )
+    updated = AppConfig(
+        tone_sets=config.tone_sets,
+        sources=config.sources,
+        alert_targets=[*config.alert_targets, target],
+    )
+    store.save(updated)
+    return updated
 
 
 async def register_supervisor_discovery(

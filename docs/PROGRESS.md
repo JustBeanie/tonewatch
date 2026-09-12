@@ -98,7 +98,7 @@ Tick a task with `[x]`, then append ` — <PR link> — <one-line note>`. Blocke
 
 ## M10: HA add-on (in `JustBeanie/ha-addons`)
 - [ ] **M10.1** `tonewatch/config.yaml` settings:
-- [ ] **M10.2** The app, in add-on mode, fetches MQTT credentials from the Supervisor `/services/mqtt` endpoint, writes rec...
+- [~] **M10.2** **PENDING-HIL** — App-side add-on mode fetches MQTT credentials from Supervisor at connect time, writes recordings to `/media/tonewatch`, and posts discovery; real Home Assistant verification remains in `docs/hil-checklist.md`.
 - [ ] **M10.3** Add `DOCS.md`, `CHANGELOG.md`, icon/logo and `translations/en.yaml`. Run `frenck/action-addon-linter` in th...
 
 ## M11: HA custom integration (`JustBeanie/ha-tonewatch`)

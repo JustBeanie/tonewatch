@@ -101,7 +101,12 @@ class AlertDispatcher:
             await self._configure_targets(config)
 
     async def _configure_targets(self, config: AppConfig) -> None:
-        targets = {target.id: target for target in config.alert_targets if target.enabled}
+        mqtt_enabled = getattr(self.settings, "mqtt_mode", "supervisor") != "off"
+        targets = {
+            target.id: target
+            for target in config.alert_targets
+            if target.enabled and (mqtt_enabled or not isinstance(target, MqttTarget))
+        }
         for target_id in set(self._mqtt) - set(targets):
             await self._mqtt.pop(target_id).stop()
         for target in targets.values():
@@ -113,11 +118,12 @@ class AlertDispatcher:
                 )
                 self._mqtt[target.id] = publisher
                 await publisher.start()
-                self._discovery[target.id] = HADiscovery(
-                    publisher,
-                    self.instance_id,
-                    enabled=not bool(getattr(self.settings, "ha_integration_enabled", False)),
-                )
+                if target.ha_discovery:
+                    self._discovery[target.id] = HADiscovery(
+                        publisher,
+                        self.instance_id,
+                        enabled=not bool(getattr(self.settings, "ha_integration_enabled", False)),
+                    )
             elif isinstance(target, MqttTarget) and target.id in self._mqtt:
                 await self._mqtt[target.id].start()
         for discovery in self._discovery.values():
@@ -201,6 +207,8 @@ class AlertDispatcher:
             test,
             detected_at,
             recording_url=recording_url,
+            recording_id=event.recording_id if isinstance(event, RecordingStored) else None,
+            public_base_url=getattr(self.settings, "public_base_url", None),
         )
         await asyncio.gather(
             *(
@@ -237,7 +245,14 @@ class AlertDispatcher:
         detected_at: datetime | None,
         *,
         recording_url: str | None = None,
+        recording_id: int | None = None,
+        public_base_url: str | None = None,
     ) -> dict[str, object]:
+        if recording_id is not None:
+            relative_url = f"/api/recordings/{recording_id}"
+            recording_url = (
+                f"{public_base_url.rstrip('/')}{relative_url}" if public_base_url else relative_url
+            )
         payload: dict[str, object] = {
             "call_id": str(call_id),
             "tone_sets": list(state["tone_sets"]),
@@ -247,6 +262,8 @@ class AlertDispatcher:
             "source_id": state.get("source_id", ""),
             "test": bool(state.get("test") or test),
         }
+        if public_base_url is None:
+            payload["recording_path_relative"] = True
         payload["toneset"] = state["tone_sets"][0] if state["tone_sets"] else ""
         return payload
 

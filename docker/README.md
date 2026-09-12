@@ -30,3 +30,33 @@ Put HTTPS ingress in a reverse proxy or Home Assistant ingress and keep port
 ```text
 docker compose exec tonewatch tonewatch token rotate
 ```
+
+## Home Assistant add-on mode
+
+The add-on uses the same image and reads `/data/options.json` when
+`SUPERVISOR_TOKEN` is present. Its fixed options are:
+
+| Option | Values | Behavior |
+| --- | --- | --- |
+| `log_level` | `debug`, `info`, `warning`, `error` | Sets structured log verbosity. |
+| `public_base_url` | optional `http`/`https` URL | Makes recording links absolute; the trailing slash is normalized. |
+| `mqtt_mode` | `supervisor`, `manual`, `off` | Defaults to `supervisor`; `off` disables MQTT at runtime. |
+| `ui_password` | optional password | Enables the local UI password. |
+
+Environment variables override add-on options. Unknown option names are ignored
+with a warning that lists only the names. In supervisor mode, a first boot with
+no MQTT target creates `Home Assistant MQTT` in the editable config. The target
+fetches rotated credentials from Supervisor at each MQTT connection; credentials
+are never persisted or returned by the API. A direct `public_base_url` must be a
+host and port reachable by the consumer. An HA ingress URL requires an HA
+session, so it is not suitable for external recording links.
+
+Recordings default to `/media/tonewatch`, where Home Assistant can show them in
+Media. The add-on backup hook should run `tonewatch db checkpoint` before a hot
+backup; the command waits briefly for a live SQLite writer and reports a bounded
+failure if it cannot checkpoint safely.
+
+Audio follows the device-mapping decision in [ADR 0009](../docs/decisions/0009-addon-mode.md):
+the add-on must expose a usable host audio device and the operator selects its
+ALSA input. PulseAudio routing is not claimed by the image. Real MQTT,
+discovery, media, backup, and audio behavior still needs the HIL checks.

@@ -219,6 +219,21 @@ def _service(args: argparse.Namespace) -> None:
         raise SystemExit(code)
 
 
+def _checkpoint(_args: argparse.Namespace) -> None:
+    """Checkpoint the live SQLite WAL for a hot backup."""
+    import sys
+
+    from tonewatch.settings import Settings
+    from tonewatch.storage.db import DatabaseCheckpointError, checkpoint_database
+
+    settings = Settings.load()
+    try:
+        checkpoint_database(settings.data_dir / "tonewatch.db")
+    except DatabaseCheckpointError as exc:
+        raise SystemExit(str(exc)) from exc
+    sys.stdout.write("database checkpoint complete\n")
+
+
 def main() -> None:
     """Run the ToneWatch command-line interface."""
     parser = argparse.ArgumentParser(prog="tonewatch")
@@ -242,6 +257,9 @@ def main() -> None:
     selftest = subparsers.add_parser("selftest")
     selftest.add_argument("action", choices=("imports", "https"))
     selftest.add_argument("url", nargs="?", default="https://github.com")
+    db = subparsers.add_parser("db")
+    db_subparsers = db.add_subparsers(dest="db_command", required=True)
+    db_subparsers.add_parser("checkpoint")
     args = parser.parse_args()
     if args.command == "analyze":
         _analyze(args)
@@ -262,6 +280,8 @@ def main() -> None:
         from tonewatch.service import run_service_process
 
         run_service_process(args.data_dir)
+    elif args.command == "db" and args.db_command == "checkpoint":
+        _checkpoint(args)
 
 
 if __name__ == "__main__":

@@ -429,6 +429,11 @@ export interface components {
              * @default true
              */
             enabled: boolean;
+            /**
+             * Ha Discovery
+             * @default true
+             */
+            ha_discovery: boolean;
             /** Host */
             host?: string | null;
             /** Id */
@@ -442,6 +447,12 @@ export interface components {
              * @default 1883
              */
             port: number;
+            /**
+             * Source
+             * @default manual
+             * @enum {string}
+             */
+            source: "manual" | "supervisor";
             /**
              * Tls
              * @default false

@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import os
 import ssl
 import sys
 import threading
 from collections import deque
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 import aiomqtt
@@ -22,6 +23,7 @@ if TYPE_CHECKING:
 
 OUTBOX_SIZE = 100
 CLIENT_CLOSE_TIMEOUT_S = 2.0
+LOGGER = logging.getLogger("tonewatch.alerts.mqtt")
 
 
 @dataclass(frozen=True)
@@ -33,33 +35,93 @@ class MqttMessage:
     retain: bool = False
 
 
-async def addon_mqtt_credentials(
-    *,
-    client_factory: Callable[..., Any] = httpx.AsyncClient,
-) -> tuple[str, str] | None:
-    """Read credentials from Supervisor when running as an add-on."""
+@dataclass(frozen=True)
+class SupervisorMqttService:
+    """Credentials and connection settings returned by Supervisor."""
+
+    host: str
+    port: int
+    tls: bool
+    username: str = field(repr=False)
+    password: str = field(repr=False)
+    protocol: str = field(repr=False)
+
+
+class SupervisorMqttUnavailable(RuntimeError):
+    """Supervisor did not provide a usable MQTT service definition."""
+
+
+async def fetch_supervisor_mqtt(
+    *, client_factory: Callable[..., Any] = httpx.AsyncClient
+) -> SupervisorMqttService:
+    """Fetch the current MQTT service definition without persisting credentials."""
     token = os.getenv("SUPERVISOR_TOKEN")
     if not token:
-        return None
+        raise SupervisorMqttUnavailable("supervisor mqtt service unavailable")
     try:
         async with client_factory(timeout=5.0, trust_env=False) as client:
             response = await client.get(
                 "http://supervisor/services/mqtt",
                 headers={"Authorization": f"Bearer {token}"},
             )
+            status_code = getattr(response, "status_code", 200)
+            if status_code in {400, 404}:
+                raise SupervisorMqttUnavailable("supervisor mqtt service unavailable")
             response.raise_for_status()
-            data = response.json()
-            if isinstance(data, dict):
-                service = data.get("data", data)
-                if (
-                    isinstance(service, dict)
-                    and service.get("username")
-                    and service.get("password")
-                ):
-                    return str(service["username"]), str(service["password"])
-    except (httpx.HTTPError, OSError, ValueError):
+            raw = response.json()
+    except SupervisorMqttUnavailable:
+        raise
+    except (httpx.HTTPError, OSError, ValueError, TypeError) as exc:
+        raise SupervisorMqttUnavailable("supervisor mqtt service unavailable") from exc
+    if not isinstance(raw, dict):
+        raise SupervisorMqttUnavailable("supervisor mqtt service unavailable")
+    service = raw.get("data", raw)
+    if not isinstance(service, dict):
+        raise SupervisorMqttUnavailable("supervisor mqtt service unavailable")
+    host = service.get("host")
+    port = service.get("port")
+    tls = service.get("ssl")
+    username = service.get("username")
+    password = service.get("password")
+    protocol = service.get("protocol")
+    if isinstance(username, str) and username and isinstance(password, str) and password:
+        host = host or "localhost"
+        port = 1883 if port is None else port
+        tls = False if tls is None else tls
+        protocol = protocol or "mqtt"
+    if (
+        not isinstance(host, str)
+        or not host
+        or isinstance(port, bool)
+        or not isinstance(port, (int, str))
+        or not isinstance(tls, bool)
+        or not isinstance(username, str)
+        or not username
+        or not isinstance(password, str)
+        or not password
+        or not isinstance(protocol, str)
+        or not protocol
+    ):
+        raise SupervisorMqttUnavailable("supervisor mqtt service unavailable")
+    try:
+        numeric_port = int(port)
+    except ValueError as exc:
+        raise SupervisorMqttUnavailable("supervisor mqtt service unavailable") from exc
+    if not 1 <= numeric_port <= 65535:
+        raise SupervisorMqttUnavailable("supervisor mqtt service unavailable")
+    return SupervisorMqttService(host, numeric_port, tls, username, password, protocol)
+
+
+async def addon_mqtt_credentials(
+    *,
+    client_factory: Callable[..., Any] = httpx.AsyncClient,
+) -> tuple[str, str] | None:
+    """Read credentials from Supervisor when running as an add-on."""
+    try:
+        service = await fetch_supervisor_mqtt(client_factory=client_factory)
+    except SupervisorMqttUnavailable:
         return None
-    return None
+    return service.username, service.password
 
 
 class MqttPublisher:
@@ -73,17 +135,15 @@ class MqttPublisher:
         addon_mode: bool = False,
         credentials: tuple[str, str] | None = None,
         credential_loader: Callable[[], Awaitable[tuple[str, str] | None]] = addon_mqtt_credentials,
+        service_loader: Callable[[], Awaitable[SupervisorMqttService]] | None = None,
         sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
         outbox_size: int = OUTBOX_SIZE,
         client_factory: Callable[..., Any] = aiomqtt.Client,
     ) -> None:
         self.target, self.instance_id = target, instance_id
         self.addon_mode, self.credentials = addon_mode, credentials
-        self.credential_loader, self.sleep, self.client_factory = (
-            credential_loader,
-            sleep,
-            client_factory,
-        )
+        self.credential_loader, self.service_loader = credential_loader, service_loader
+        self.sleep, self.client_factory = sleep, client_factory
         self.outbox: deque[MqttMessage] = deque(maxlen=outbox_size)
         self._outbox_lock = threading.Lock()
         self.client: Any = None
@@ -95,6 +155,14 @@ class MqttPublisher:
         self._thread_stop: asyncio.Event | None = None
         self._thread_ready = threading.Event()
         self._thread_connected = threading.Event()
+        self.healthy = False
+        self.health_reason = "not connected"
+        self._unavailable_logged = False
+
+    @property
+    def status(self) -> tuple[bool, str]:
+        """Return the latest connection state and a user-facing reason."""
+        return self.healthy, self.health_reason
 
     @property
     def availability_topic(self) -> str:
@@ -136,6 +204,7 @@ class MqttPublisher:
             self.client = None
             return
         self._stopping = True
+        self._mark_unhealthy("stopped")
         self._connected.clear()
         if self.client is not None:
             try:
@@ -179,6 +248,7 @@ class MqttPublisher:
         except Exception:
             self._queue_left(message)
             self._connected.clear()
+            self._mark_unhealthy("mqtt connection unavailable")
 
     async def publish_call(self, payload: dict[str, object]) -> None:
         """Publish a call event."""
@@ -225,13 +295,43 @@ class MqttPublisher:
     async def _run(self) -> None:
         await self._run_client()
 
-    async def _credentials(self) -> tuple[str | None, str | None]:
-        username, password = self.target.username, self.target.password
-        if self.addon_mode and not (username and password):
-            loaded = await self.credential_loader()
-            if loaded is not None:
-                username, password = loaded
-        return username, password
+    async def _resolve_target(self) -> tuple[str, int, bool, str | None, str | None]:
+        if self.target.source == "supervisor":
+            if not self.addon_mode:
+                raise SupervisorMqttUnavailable("supervisor mqtt target requires add-on mode")
+            if self.service_loader is not None:
+                service = await self.service_loader()
+            elif self.credential_loader is addon_mqtt_credentials:
+                service = await fetch_supervisor_mqtt()
+            else:
+                service = None
+            if service is None:
+                loaded = await self.credential_loader()
+                if loaded is None:
+                    raise SupervisorMqttUnavailable("supervisor mqtt service unavailable")
+                return (
+                    self.target.hostname,
+                    self.target.port,
+                    self.target.tls,
+                    loaded[0],
+                    loaded[1],
+                )
+            return service.host, service.port, service.tls, service.username, service.password
+        return (
+            self.target.hostname,
+            self.target.port,
+            self.target.tls,
+            self.target.username,
+            self.target.password,
+        )
+
+    def _mark_healthy(self) -> None:
+        self.healthy = True
+        self.health_reason = "connected"
+
+    def _mark_unhealthy(self, reason: str) -> None:
+        self.healthy = False
+        self.health_reason = reason
 
     def _set_connected(self, connected: bool) -> None:
         if sys.platform == "win32":
@@ -270,18 +370,19 @@ class MqttPublisher:
         await asyncio.gather(*pending, return_exceptions=True)
 
     async def _connect_once(self, stop_event: asyncio.Event | None) -> None:
-        username, password = await self._credentials()
+        host, port, tls, username, password = await self._resolve_target()
         will = aiomqtt.Will(self.availability_topic, payload="offline", qos=1, retain=True)
         self.client = self.client_factory(
-            hostname=self.target.hostname,
-            port=self.target.port,
+            hostname=host,
+            port=port,
             username=username,
             password=password,
-            tls_context=ssl.create_default_context() if self.target.tls else None,
+            tls_context=ssl.create_default_context() if tls else None,
             will=will,
         )
         await self.client.__aenter__()
         self._set_connected(True)
+        self._mark_healthy()
         await self.client.publish(self.availability_topic, payload="online", qos=1, retain=True)
         while (message := self._pop_queued()) is not None:
             await self.client.publish(
@@ -318,7 +419,18 @@ class MqttPublisher:
                 delay = 1.0
             except asyncio.CancelledError:
                 raise
+            except SupervisorMqttUnavailable as exc:
+                self._mark_unhealthy(str(exc))
+                if not self._unavailable_logged:
+                    LOGGER.warning(
+                        "supervisor mqtt service unavailable",
+                        extra={"target_id": self.target.id, "reason": str(exc)},
+                    )
+                    self._unavailable_logged = True
+                await self._backoff(min(delay, 30.0), stop_event)
+                delay = min(delay * 2, 30.0)
             except Exception:
+                self._mark_unhealthy("mqtt connection unavailable")
                 self._set_connected(False)
                 await self._backoff(min(delay, 30.0), stop_event)
                 delay = min(delay * 2, 30.0)

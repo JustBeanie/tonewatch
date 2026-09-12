@@ -25,7 +25,10 @@ from tonewatch.api.spa import SPA_CSP, register_spa, serve_spa
 from tonewatch.config.models import AppConfig
 from tonewatch.config.store import ConfigStore
 from tonewatch.events import EventBus
-from tonewatch.integrations.supervisor import register_supervisor_discovery
+from tonewatch.integrations.supervisor import (
+    ensure_addon_mqtt_target,
+    register_supervisor_discovery,
+)
 from tonewatch.integrations.zeroconf import ZeroconfAdvertiser, instance_id
 from tonewatch.logging import clear_request_id, configure_logging, set_request_id
 from tonewatch.pipeline.supervisor import Supervisor
@@ -186,6 +189,7 @@ def create_app(
             if app.state.engine is not None:
                 await upgrade_database(app.state.engine)
             app.state.config = config_store.load()
+            app.state.config = ensure_addon_mqtt_target(app.state.config, settings, config_store)
             if app.state.supervisor is None:
                 app.state.supervisor = Supervisor(
                     app.state.config,

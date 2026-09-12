@@ -65,6 +65,7 @@ async def run_script(
             "call_id": str(payload.get("call_id", "")),
             "toneset": str(payload.get("toneset", "")),
             "recording_path": str(payload.get("recording_path", "")),
+            "recording_url": str(payload.get("recording_url", "")),
             "source_id": str(payload.get("source_id", "")),
             "phase": str(payload.get("phase", "")),
         }

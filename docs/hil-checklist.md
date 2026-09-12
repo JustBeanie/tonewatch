@@ -52,10 +52,25 @@ Steps:
 3. Open the add-on through ingress and verify the dashboard loads.
 4. Confirm the add-on container uses a read-only root, drops all capabilities,
    enables no-new-privileges and provides a writable `/tmp` tmpfs.
+5. With `mqtt_mode: supervisor`, confirm the target obtains MQTT credentials
+   through Supervisor and that a reconnect uses rotated credentials; inspect
+   logs and the UI/API for the absence of credential values.
+6. Confirm MQTT discovery creates the ToneWatch entities and that the M11
+   integration auto-discovers the add-on when it is installed.
+7. Trigger a recording and confirm it appears under **Media → tonewatch** and
+   that its alert payload uses the documented absolute or relative URL behavior.
+8. Run `tonewatch db checkpoint` during an active call and confirm the hot
+   backup completes without stopping the paging monitor.
+9. Follow [ADR 0009](decisions/0009-addon-mode.md)'s device-mapping decision:
+   verify the exposed ALSA input is selectable and capture a real page. Do not
+   treat PulseAudio visibility as verified unless the add-on mapping provides it.
 
 Expected results: the add-on starts, ingress loads the UI, Supervisor discovery
-works, recordings use the configured media root, and the hardening contract is
-visible in the add-on inspection output.
+works, MQTT credentials are rotated without disclosure, discovery and the M11
+integration find the device, recordings appear in Media → tonewatch, hot backup
+does not stop monitoring, the mapped audio input captures a page, and the
+hardening contract is visible in the add-on inspection output. These results are
+`PENDING-HIL` until run on a real Home Assistant host.
 
 Result: [ ]
 
