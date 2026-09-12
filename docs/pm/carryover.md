@@ -9,7 +9,11 @@ Accepted gaps that must be written into a later brief. Remove an entry once that
   - **Option 2:** give that job a fine-grained PAT secret with `contents` + `pull-requests` write.
   - This is a repository setting, so it needs the user's explicit OK. Until then that job stays red, and it doesn't block other work.
 
-- **M8 (Docker) — HTTPS in the image.** The image's PyAV wheel must open **public** HTTPS with the product options (`tls_verify=1` + certifi `ca_file`). Linux wheels honour `ca_file` (CI run 34673148889), but the image may ship a different wheel. *In `docs/pm/briefs/M8.md`.*
+- **Image size margin is only about 2.8 MB** (CI run 34681525844, `e57ec0d`): 347,219,215 bytes against the 350 MB budget, after trimming venv tests, `__pycache__` and numpy headers in the builder stage.
+  - The next runtime dependency will probably break the `size` job.
+  - **Next lever, in the builder stage only:** `strip --strip-unneeded` on the `.so` files in site-packages (`av.libs`, `numpy.libs`), with the in-image import smoke as a guard. Deleting files in the runtime stage cannot shrink lower layers.
+  - Put this in the S5, M9 or M10 brief, whichever adds dependencies first.
+- ~~**M8 (Docker) — HTTPS in the image.**~~ Resolved: smoke verifies PyAV TLS against github.com inside the image (CI run 34681525844). History: The image's PyAV wheel must open **public** HTTPS with the product options (`tls_verify=1` + certifi `ca_file`). Linux wheels honour `ca_file` (CI run 34673148889), but the image may ship a different wheel. *In `docs/pm/briefs/M8.md`.*
 - **M9 (Windows native).**
   - **MQTT selector thread:** `test_mqtt_real_broker_via_selector_thread` has an unconditional `@pytest.mark.skip`, so it runs on **no** platform, and the Windows selector-thread MQTT path has only a fake-client test. The M9 brief must require a real round-trip on windows-latest (amqtt in its own `SelectorEventLoop` thread, or a mosquitto binary) and remove the skip. The Linux real-broker test passes on ubuntu and ubuntu-arm.
   - **HTTPS:** Windows PyAV 18.1.0 does TLS through schannel, which **ignores `ca_file`** and uses the OS store. Public-CA feeds work. Document this.
