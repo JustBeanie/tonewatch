@@ -77,6 +77,17 @@ dev:
 e2e:
     {{pnpm}} --dir web exec playwright test
 
+[unix]
+windows-build:
+    @echo "windows-build requires a Windows host with PyInstaller." >&2; exit 1
+
+[windows]
+windows-build:
+    {{pnpm}} --dir web build
+    if (Test-Path backend/src/tonewatch/web_dist) { Remove-Item -Recurse -Force backend/src/tonewatch/web_dist }
+    Copy-Item -Recurse web/dist backend/src/tonewatch/web_dist
+    {{uv}} run --project backend pyinstaller --clean --noconfirm packaging/windows/tonewatch.spec
+
 bench:
     {{uv}} run --project backend python backend/scripts/run_pytest.py backend/tests/benchmarks --benchmark-only --no-cov
 

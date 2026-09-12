@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import sys
+import threading
 import warnings
 from datetime import UTC, datetime
 from importlib import import_module
@@ -122,7 +123,11 @@ async def _run_real_broker_test() -> None:
             instance_id="wire-instance",
         )
         await dispatcher.start()
-        await dispatcher._mqtt[target.id]._connected.wait()
+        publisher = dispatcher._mqtt[target.id]
+        if sys.platform == "win32":
+            assert await asyncio.wait_for(asyncio.to_thread(publisher._thread_connected.wait, 5), 6)
+        else:
+            await publisher._connected.wait()
         await subscriber.subscribe("tonewatch/#")
         await subscriber.subscribe("homeassistant/#")
         call_id = uuid4()
@@ -147,6 +152,16 @@ async def _run_real_broker_test() -> None:
         await _close_broker(broker)
 
 
+def _run_real_broker_test_in_selector_thread() -> None:
+    """Run amqtt and aiomqtt on a Windows selector loop in a dedicated thread."""
+    loop = asyncio.SelectorEventLoop()
+    asyncio.set_event_loop(loop)
+    try:
+        loop.run_until_complete(_run_real_broker_test())
+    finally:
+        loop.close()
+
+
 @pytest.mark.asyncio
 @pytest.mark.skipif(
     sys.platform == "win32",
@@ -161,13 +176,10 @@ async def test_mqtt_real_broker_call_health_lwt_and_discovery() -> None:
     sys.platform != "win32",
     reason="Windows-only selector-thread real-broker smoke; Linux wire coverage is above",
 )
-@pytest.mark.skip(
-    reason=(
-        "amqtt broker cannot run on the app's Windows Proactor loop; "
-        "selector-thread smoke is PENDING-CI"
-    ),
-)
 @pytest.mark.asyncio
 async def test_mqtt_real_broker_via_selector_thread() -> None:
-    """The Windows CI job runs the real broker smoke on the selector thread."""
-    await _run_real_broker_test()
+    """Exercise a real broker round-trip on Windows' required selector loop thread."""
+    thread = threading.Thread(target=_run_real_broker_test_in_selector_thread)
+    thread.start()
+    await asyncio.to_thread(thread.join, 30.0)
+    assert not thread.is_alive(), "selector-thread MQTT smoke did not shut down in time"

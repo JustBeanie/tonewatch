@@ -253,6 +253,9 @@ def test_soundcard_callback_thread_and_oldest_drop(monkeypatch) -> None:
         thread.join()
         await asyncio.sleep(0)
         assert source.dropped == 1
+        frame = await source.__aiter__().__anext__()
+        assert frame.samples.shape == (8,)
+        assert np.all(frame.samples == 1)
         await source.close()
 
     asyncio.run(run())

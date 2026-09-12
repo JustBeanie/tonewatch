@@ -17,5 +17,8 @@ invokes it as a separate subprocess and does not link it into the application;
 the GPL-2.0 notice is included with the Debian package and must remain with any
 redistributed image.
 
+The Windows build includes `pywin32`, licensed under the Python Software
+Foundation License (PSF-2.0), for the native Windows service wrapper.
+
 The complete dependency inventories are generated in CI by `pip-licenses` and
 `license-checker`.

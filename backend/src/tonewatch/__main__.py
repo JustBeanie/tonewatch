@@ -1,7 +1,10 @@
 """Command-line entry point for ToneWatch."""
 
 import argparse
+import importlib
 import json
+import pkgutil
+import sys
 import wave
 from pathlib import Path
 from typing import Any, cast
@@ -9,6 +12,7 @@ from typing import Any, cast
 import numpy as np
 import yaml
 
+import tonewatch
 from tonewatch import __version__
 from tonewatch.config.models import AppConfig
 from tonewatch.dsp.engine import DetectionEngine
@@ -170,6 +174,51 @@ def _token(args: argparse.Namespace) -> None:
     )
 
 
+def _selftest_imports(_args: argparse.Namespace) -> None:
+    """Import every discoverable ToneWatch module in the running distribution."""
+    modules = [tonewatch.__name__]
+    modules.extend(
+        module.name for module in pkgutil.walk_packages(tonewatch.__path__, "tonewatch.")
+    )
+    failures: list[str] = []
+    for name in modules:
+        try:
+            importlib.import_module(name)
+        except Exception as error:
+            failures.append(f"{name}: {error}")
+    if failures:
+        for failure in failures:
+            sys.stderr.write(f"import failed: {failure}\n")
+        raise SystemExit(1)
+    sys.stdout.write(f"imported {len(modules)} tonewatch modules\n")
+
+
+def _selftest_https(args: argparse.Namespace) -> None:
+    """Verify the product PyAV HTTPS options through the frozen executable."""
+    import av
+    import certifi
+    from av.error import InvalidDataError
+
+    options = {"tls_verify": "1", "ca_file": certifi.where()}
+    try:
+        container = av.open(args.url, options=options)
+    except InvalidDataError:
+        sys.stdout.write("HTTPS certificate verification passed\n")
+        return
+    container.close()
+    raise SystemExit("expected InvalidDataError after successful HTTPS handshake")
+
+
+def _service(args: argparse.Namespace) -> None:
+    """Run a Windows service command."""
+    from tonewatch.service import run_command
+    from tonewatch.settings import Settings
+
+    code = run_command(args.action, data_dir=args.data_dir or Settings.load().data_dir)
+    if code:
+        raise SystemExit(code)
+
+
 def main() -> None:
     """Run the ToneWatch command-line interface."""
     parser = argparse.ArgumentParser(prog="tonewatch")
@@ -185,6 +234,14 @@ def main() -> None:
     subparsers.add_parser("serve")
     token = subparsers.add_parser("token")
     token.add_argument("action", choices=("show", "rotate"))
+    service = subparsers.add_parser("service")
+    service.add_argument("action", choices=("install", "uninstall", "start", "stop", "status"))
+    service.add_argument("--data-dir", type=Path)
+    service_run = subparsers.add_parser("service-run", help=argparse.SUPPRESS)
+    service_run.add_argument("--data-dir", required=True, type=Path)
+    selftest = subparsers.add_parser("selftest")
+    selftest.add_argument("action", choices=("imports", "https"))
+    selftest.add_argument("url", nargs="?", default="https://github.com")
     args = parser.parse_args()
     if args.command == "analyze":
         _analyze(args)
@@ -194,6 +251,17 @@ def main() -> None:
         _serve(args)
     elif args.command == "token":
         _token(args)
+    elif args.command == "service":
+        _service(args)
+    elif args.command == "selftest":
+        if args.action == "imports":
+            _selftest_imports(args)
+        else:
+            _selftest_https(args)
+    elif args.command == "service-run":
+        from tonewatch.service import run_service_process
+
+        run_service_process(args.data_dir)
 
 
 if __name__ == "__main__":

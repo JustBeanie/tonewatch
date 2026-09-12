@@ -1,0 +1,185 @@
+name: Windows
+
+# Actions-minutes diet (2026-09-12): Windows runners bill at 2x, so build only when the frozen app's
+# inputs change, weekly, or on manual dispatch.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/src/**"
+      - "backend/pyproject.toml"
+      - "backend/uv.lock"
+      - "packaging/**"
+      - "web/**"
+      - "scripts/e2e_fixture.py"
+      - ".github/workflows/windows.yml"
+  pull_request:
+    paths:
+      - "backend/src/**"
+      - "backend/pyproject.toml"
+      - "backend/uv.lock"
+      - "packaging/**"
+      - "web/**"
+      - "scripts/e2e_fixture.py"
+      - ".github/workflows/windows.yml"
+  schedule:
+    - cron: "5 5 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: windows-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions: {contents: read}
+
+jobs:
+  runtime-export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions: {contents: read}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with: {persist-credentials: false}
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
+      - name: Diff Linux runtime and development exports
+        run: |
+          uv export --project backend --frozen --no-dev --no-emit-project --format requirements-txt > runtime.txt
+          uv export --project backend --frozen --no-emit-project --format requirements-txt > full.txt
+          diff -u runtime.txt full.txt || true
+          ! grep -Eiq '(^|[-=])pyinstaller|(^|[-=])pywin32|pywin32-ctypes|(^|[-=])altgraph|(^|[-=])pefile' runtime.txt
+
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    permissions: {contents: read}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with: {persist-credentials: false}
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+        with: {package_json_file: web/package.json}
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with: {node-version: 24, cache: pnpm, cache-dependency-path: web/pnpm-lock.yaml}
+      - name: Sync Python dependencies
+        run: uv sync --project backend
+      - name: Build the web UI exactly as the Docker image does
+        run: |
+          pnpm --dir web install --frozen-lockfile
+          pnpm --dir web build
+          if (Test-Path backend/src/tonewatch/web_dist) { Remove-Item -Recurse -Force backend/src/tonewatch/web_dist }
+          Copy-Item -Recurse web/dist backend/src/tonewatch/web_dist
+      - name: Build the frozen onedir executable
+        run: uv run --project backend pyinstaller --clean --noconfirm packaging/windows/tonewatch.spec
+      - name: Zip the onedir artifact
+        run: Compress-Archive -Path dist/tonewatch -DestinationPath tonewatch-windows.zip
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: tonewatch-windows
+          path: tonewatch-windows.zip
+          if-no-files-found: error
+
+  smoke:
+    needs: build
+    runs-on: windows-latest
+    timeout-minutes: 20
+    permissions: {contents: read}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with: {persist-credentials: false}
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with: {name: tonewatch-windows}
+      - name: Expand the frozen artifact
+        run: Expand-Archive -Path tonewatch-windows.zip -DestinationPath dist
+      - name: Generate the fixture used by the analyze smoke
+        run: |
+          uv sync --project backend
+          New-Item -ItemType Directory -Force -Path smoke-fixture | Out-Null
+          uv run --project backend python scripts/e2e_fixture.py `
+            --fixture "$PWD/smoke-fixture/fixture.wav" `
+            --config "$PWD/smoke-fixture/config.yaml" `
+            --source-path "$PWD/smoke-fixture/fixture.wav"
+      - name: Smoke the built executable
+        run: |
+          $exe = "$PWD/dist/tonewatch/tonewatch.exe"
+          & $exe --version
+          if ($LASTEXITCODE -ne 0) { throw "--version failed" }
+          $devices = (& $exe devices --json | Out-String)
+          if ($LASTEXITCODE -ne 0) { throw "devices failed" }
+          $null = $devices | ConvertFrom-Json
+          & $exe analyze "$PWD/smoke-fixture/fixture.wav" --config "$PWD/smoke-fixture/config.yaml" --json > smoke-fixture/analyze.json
+          if ($LASTEXITCODE -ne 0) { throw "analyze failed" }
+          $result = Get-Content smoke-fixture/analyze.json -Raw | ConvertFrom-Json
+          if (@($result.detections.toneset_id) -notcontains "fixture-page") { throw "fixture-page was not detected" }
+          & $exe selftest imports
+          if ($LASTEXITCODE -ne 0) { throw "frozen import walk failed" }
+
+  service-lifecycle:
+    needs: build
+    runs-on: windows-latest
+    timeout-minutes: 25
+    permissions: {contents: read}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with: {persist-credentials: false}
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with: {name: tonewatch-windows}
+      - name: Install and exercise the service
+        run: |
+          Expand-Archive -Path tonewatch-windows.zip -DestinationPath dist
+          uv sync --project backend
+          $data = Join-Path $env:RUNNER_TEMP "tonewatch-service-data"
+          New-Item -ItemType Directory -Force -Path $data | Out-Null
+          New-Item -ItemType Directory -Force -Path smoke-fixture | Out-Null
+          uv run --project backend python scripts/e2e_fixture.py `
+            --fixture "$PWD/smoke-fixture/fixture.wav" `
+            --config "$data/config.yaml" `
+            --source-path "$PWD/smoke-fixture/fixture.wav"
+          $env:TONEWATCH_DATA_DIR = $data
+          $exe = "$PWD/dist/tonewatch/tonewatch.exe"
+          & $exe service install --data-dir $data
+          if ($LASTEXITCODE -ne 0) { throw "service install failed" }
+          & $exe service start
+          if ($LASTEXITCODE -ne 0) { throw "service start failed" }
+          $ready = $false
+          for ($attempt = 0; $attempt -lt 60; $attempt++) {
+            try {
+              Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8099/readyz | Out-Null
+              $ready = $true
+              break
+            } catch {
+              Start-Sleep -Seconds 1
+            }
+          }
+          if (-not $ready) { & $exe service status; throw "service did not become ready" }
+          & $exe service stop
+          if ($LASTEXITCODE -ne 0) { throw "service stop failed" }
+          $status = & $exe service status
+          if ($LASTEXITCODE -ne 0 -or $status -notmatch "stopped") { throw "service did not stop cleanly" }
+          uv run --project backend python -c "import sqlite3; db=r'$data\tonewatch.db'; con=sqlite3.connect(db, timeout=2); con.execute('pragma user_version').fetchone(); con.close()"
+          & $exe service uninstall
+          if ($LASTEXITCODE -ne 0) { throw "service uninstall failed" }
+          & $exe service status
+          if ($LASTEXITCODE -eq 0) { throw "service still exists after uninstall" }
+      - if: failure()
+        name: Dump service and data-dir logs
+        run: |
+          Get-WinEvent -LogName Application -MaxEvents 50 -ErrorAction SilentlyContinue |
+            Where-Object {$_.ProviderName -match 'ToneWatch|Python'} | Format-List | Out-String
+          Get-ChildItem -LiteralPath "$env:RUNNER_TEMP\tonewatch-service-data" -Recurse -Force -ErrorAction SilentlyContinue |
+            Select-Object FullName,Length | Format-Table | Out-String
+
+  https:
+    needs: build
+    runs-on: windows-latest
+    timeout-minutes: 15
+    permissions: {contents: read}
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with: {name: tonewatch-windows}
+      - name: Verify schannel HTTPS behavior through the frozen executable
+        run: |
+          Expand-Archive -Path tonewatch-windows.zip -DestinationPath dist
+          & "$PWD/dist/tonewatch/tonewatch.exe" selftest https https://github.com
+          if ($LASTEXITCODE -ne 0) { throw "frozen HTTPS smoke failed" }

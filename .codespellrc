@@ -1,0 +1,3 @@
+[codespell]
+# PyInstaller's Analysis(datas=...) keyword in packaging/windows/tonewatch.spec is not a typo.
+ignore-words-list = datas

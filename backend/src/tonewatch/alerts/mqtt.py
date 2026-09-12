@@ -21,6 +21,7 @@ if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
 
 OUTBOX_SIZE = 100
+CLIENT_CLOSE_TIMEOUT_S = 2.0
 
 
 @dataclass(frozen=True)
@@ -293,13 +294,18 @@ class MqttPublisher:
         if self.client is not None:
             if self._stopping:
                 try:
-                    await self.client.publish(
-                        self.availability_topic, payload="offline", qos=1, retain=True
+                    await asyncio.wait_for(
+                        self.client.publish(
+                            self.availability_topic, payload="offline", qos=1, retain=True
+                        ),
+                        CLIENT_CLOSE_TIMEOUT_S,
                     )
                 except Exception:
                     pass
             try:
-                await self.client.__aexit__(None, None, None)
+                await asyncio.wait_for(
+                    self.client.__aexit__(None, None, None), CLIENT_CLOSE_TIMEOUT_S
+                )
             except Exception:
                 pass
             self.client = None

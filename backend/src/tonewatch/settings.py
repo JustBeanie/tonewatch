@@ -2,6 +2,7 @@
 
 import json
 import os
+import sys
 from pathlib import Path
 from typing import Any, cast
 
@@ -9,6 +10,13 @@ from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from tonewatch.recording.retention import RetentionPolicy
+
+
+def _default_data_dir() -> Path:
+    """Return the development or frozen Windows data directory."""
+    if getattr(sys, "frozen", False) and not os.getenv("TONEWATCH_DATA_DIR"):
+        return Path(os.environ.get("PROGRAMDATA", "C:/ProgramData")) / "tonewatch"
+    return Path("data")
 
 
 def _default_web_root() -> Path | None:
@@ -26,7 +34,7 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_prefix="TONEWATCH_", extra="ignore")
 
-    data_dir: Path = Path("data")
+    data_dir: Path = Field(default_factory=_default_data_dir)
     log_level: str = "INFO"
     bind_host: str = "127.0.0.1"
     bind_port: int = Field(default=8099, ge=1, le=65535)

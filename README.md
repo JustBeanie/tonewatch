@@ -14,5 +14,10 @@ just setup
 just check
 ```
 
+## Installation
+
+Docker is the primary deployment path. Native Windows users can install the
+onedir build from the [Windows installation guide](docs/windows.md).
+
 ToneWatch is intended as a supplemental notification tool, not a certified
 primary alerting system.

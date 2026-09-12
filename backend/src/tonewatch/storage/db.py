@@ -27,7 +27,11 @@ async def create_database_schema(engine: AsyncEngine) -> None:
 async def upgrade_database(engine: AsyncEngine) -> None:
     """Run Alembic's head migration for an async engine in a worker thread."""
     url = make_url(str(engine.url)).set(drivername="sqlite")
-    config = Config(str(Path(__file__).parents[3] / "alembic.ini"))
+    project_root = Path(__file__).parents[3]
+    alembic_ini = project_root / "alembic.ini"
+    if not alembic_ini.is_file():
+        alembic_ini = project_root / "_internal" / "alembic.ini"
+    config = Config(str(alembic_ini))
     config.set_main_option("script_location", str(Path(__file__).parent / "migrations"))
     config.set_main_option("sqlalchemy.url", url.render_as_string(hide_password=False))
     await asyncio.to_thread(command.upgrade, config, "head")
