@@ -110,3 +110,8 @@ Accepted gaps that must be written into a later brief. Remove an entry once that
 - `release-please-config.json` is unchanged since M8 (`component: backend`, `include-component-in-tag: false`, a single package). The PR title and body carry no component, so the merged PR never matches.
 - **Next:** fix the config from the exact release-please source, so future release PRs match. Then either let release-please tag v0.2.0 from PR #1, or create tag v0.2.0 at `e3397e6` plus a GitHub release, relabel PR #1 `autorelease: tagged`, and dispatch Release with `tag=v0.2.0` to publish the (private) GHCR image. Do this only after Docker and Windows CI are green (M9-ci-fix).
 - Also add `backend/uv.lock` to release-please extra-files (the stale-lock-after-bump issue).
+
+## v0.2.0 publish caveat (found 2026-09-12 15:40)
+- `release.yml` publish checks out `RELEASE_TAG`. A manual `workflow_dispatch tag=v0.2.0` would build the image from `e3397e6` (this morning's code): before S5 DAST fixes, M9, M10a, M8.4 and M13, and with the OLD Dockerfile, which still carries the fixed-available Debian HIGH/CRITICAL CVEs that Trivy flagged. The release workflow itself runs no Trivy gate.
+- **Recommendation for the user:** tag and create the v0.2.0 GitHub release for changelog continuity, but do NOT publish a v0.2.0 image. Fix the release-please config (`separate-pull-requests: true`) and let release-please cut v0.3.0 from current main as the first published (still private) GHCR image. Consider adding the Trivy scan to `publish` before push.
+- PR #1 still carries the label `autorelease: pending`. Relabel it `autorelease: tagged` once the v0.2.0 tag exists.
