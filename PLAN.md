@@ -406,6 +406,50 @@ Each task has an ID. Agents mark `[x]` in `docs/PROGRESS.md` and reference the I
 - **M11.8** CI: hassfest, `hacs/action`, ruff, mypy and pytest. Aim for HA **integration quality scale Silver** rules.
 - **Done when:** all CI is green and the tests cover config flow (all steps), entity creation from a mocked WS stream, and media_source browse/resolve.
 
+### M13: Tone auto-discovery (added 2026-09-12 at user request; ships before v1.0)
+Finds tone pages that no configured tone set matches, so users can see what is being paged on their feed and turn it into a tone set in one click. It builds on the M6.5 "capture tone" pre-fill.
+- **M13.1** `dsp/discovery.py`, per channel, fed by the existing segmenter output:
+  - **Candidates:** group stable tonal segments separated by at most `max_gap_s` into sequences:
+    - two-tone: two segments, each 0.3–3 s
+    - long tone: one segment of at least 2 s
+    - sequences of up to 5 tones
+  - **Reported only when unmatched:** a candidate counts as "discovered" only when **no enabled tone set** matched it (it consults the matcher's result for that time span), and it passes the purity and level gates.
+  - **Rejected:** DTMF-like simultaneous pairs, and anything outside 250–3000 Hz.
+  - **Output:** a `ToneDiscovered` domain event.
+- **M13.2** **Clustering and storage.**
+  - **Clustering:** observations whose tones agree within `tol_pct` (default 1.5 %) merge into one cluster with running mean frequencies, median durations, count, first/last seen and source ids.
+  - **Storage:** a `DiscoveredTone` table + Alembic migration, with caps (at most 1,000 clusters, oldest-unseen pruned by the retention job).
+  - **User marks:** a cluster can be marked *dismissed*, so it's never re-suggested, or *promoted*.
+- **M13.3** **Evidence clip (optional, default on).**
+  - **Clip:** each new cluster keeps its best observation as a short encoded clip: the tones plus up to 15 s after, via the existing encoder.
+  - **Retention and privacy:** clips count toward recording retention and are deleted with their cluster. The same privacy notes apply as for recordings.
+- **M13.4** **API + WS.**
+  - `GET /api/discovered-tones` (filters: source, since, status).
+  - `POST /api/discovered-tones/{id}/promote` returns a pre-filled `ToneSet` draft: frequencies, tolerance derived from the cluster's observed spread (clamped), durations and name "Discovered 612.4/1743.0 Hz".
+  - `POST .../dismiss` and `DELETE`.
+  - Clip download with Range.
+  - WS `tone_discovered` event.
+  - Everything requires auth + CSRF like other routes.
+- **M13.5** **UI "Discovered tones" page.**
+  - Table of frequencies, durations, times heard, last heard, source, clip player, **Create tone set** (opens the tone-set form pre-filled), and **Dismiss**.
+  - Dashboard badge for new discoveries.
+- **M13.6** **Notifications (off by default, to avoid noise).**
+  - An optional HA/MQTT `event` entity `tone_discovered` and a webhook event type.
+  - The M11 integration exposes a `sensor` "last discovered tone".
+- **M13.7** **Settings.**
+  - `discovery.enabled` (default true), minimum durations, clip on/off, and per-source opt-out.
+  - `tonewatch analyze` gains `--discover`, which lists unmatched candidates for a WAV file.
+- **Done when:**
+  - **Golden scenarios pass:**
+    - an unknown two-tone gives exactly one cluster
+    - a known tone set gives no discovery
+    - repeats with ±0.5 % jitter give one cluster with count 2+
+    - tones more than 2×tol apart give separate clusters
+    - a stacked known + unknown page gives one call plus one discovery
+  - **Zero discoveries** over the 1-hour synthetic voice/noise corpus.
+  - **Hypothesis property:** clustering is order-independent.
+  - **Promote → save → replay** of the same audio produces a detection.
+
 ### M12: Docs, hardening and v1.0.0
 - **M12.1** mkdocs-material site: install guides (Docker, Pi, add-on, Windows), finding tone frequencies, tuning purity/tolerance, troubleshooting missed pages with `analyze`, and HA recipes. Publish with GitHub Pages.
 - **M12.2** Update the S3 threat model for anything added since. Confirm the webhook SSRF allowlist blocks link-local and metadata IPs by default.
@@ -452,7 +496,7 @@ Each task has an ID. Agents mark `[x]` in `docs/PROGRESS.md` and reference the I
 7. **When uncertain about external behavior** (a PyAV encoder, Supervisor API, or HA entity schema), write a spike test or ADR proving it before building on it.
 8. **Stop condition.** Stop when every non-gated task is checked, or when only 🛑/BLOCKED tasks remain. Then write a summary at the top of `PROGRESS.md`.
 
-**Dependency order:** M0 → M1 → S1 → S2 → M2 → M3 → M4 → M5 → S3 → (M6 ∥ M7) → S4 → M8 → S5 → (M9 ∥ M10) → M11 → S6 → M12 (S7 before M12.4). M2 can start right after M1.1.
+**Dependency order:** M0 → M1 → S1 → S2 → M2 → M3 → M4 → M5 → S3 → (M6 ∥ M7) → S4 → M8 → S5 → (M9 ∥ M10 ∥ M13) → M11 → S6 → M12 (S7 before M12.4). M2 can start right after M1.1. M13 (tone auto-discovery) needs M2–M8 and must land before M11 so the integration can expose its sensor.
 
 ---
 

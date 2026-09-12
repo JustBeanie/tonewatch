@@ -4,10 +4,43 @@ Accepted gaps that must be written into a later brief. Remove an entry once that
 
 ## Open
 
-- 🛑 **USER DECISION: release-please can't open PRs.** Since `d05564e`, `release.yml / release-please` fails with "GitHub Actions is not permitted to create or approve pull requests". Before failing, it pushed branch `release-please--branches--main`.
-  - **Option 1:** enable *Settings → Actions → General → Allow GitHub Actions to create and approve pull requests*.
-  - **Option 2:** give that job a fine-grained PAT secret with `contents` + `pull-requests` write.
-  - This is a repository setting, so it needs the user's explicit OK. Until then that job stays red, and it doesn't block other work.
+- **Releases (user said "handle these", 2026-09-12).**
+  - **Done:** PM enabled *Allow GitHub Actions to create and approve pull requests*, keeping the default token `read`. release-please reran green and opened PR #1 (v0.2.0).
+  - 🚨 **Trap found before merging:** `release.yml / publish` triggered on `release: published`. release-please creates the release with `GITHUB_TOKEN`, and GitHub never starts workflows from `GITHUB_TOKEN` events, so the image would never publish. The PM fix (worktree `tonewatch-relfix`) chains `publish` on `needs.release-please.outputs.release_created`, and adds `workflow_dispatch` with a `tag` input for retries.
+  - **Sequence:** land that fix, then merge PR #1, then watch `publish` (first real run: GHCR push, cosign, SBOM, provenance).
+- 🛑 **GitHub Actions minutes exhausted (2026-09-12 13:33 UTC).** Every job fails with "recent account payments have failed or your spending limit needs to be increased". The user is aware; billing is the user's call (the PM never touches billing).
+  - **Release:** v0.2.0 was merged (`e3397e6`), but its Release run never started. When minutes return, `gh run rerun 34696778462 --failed`: release-please creates v0.2.0 and `publish` runs in the same run.
+  - **Usage this month:** 230 runs. Security 44 runs / ~608 wall-min (it ran on every push, docs-only PM commits included); CI 51 / 161; Docker 12 / 92.
+  - **User chose the CI diet:**
+    - skip docs-only pushes
+    - `concurrency` cancel-in-progress
+    - Security, ZAP/multi-arch, ARM and Windows run only when their code paths change, plus a weekly schedule
+  - **At M9 landing:** apply the same path filters to its new `windows.yml`.
+  - **While CI can't run:** local gates (`just check` / `security` / `e2e` / pre-commit) are the only verification, so run all of them before every push and record "CI pending (minutes)" in reviews.
+  - **Release merge turned main red (found by `just ci-local` on the CI diet).** `test_version_is_defined` hardcoded `"0.1.0"`, and PR #1 bumped the version to 0.2.0. The fix asserts X.Y.Z matching the installed metadata; it lands with the CI diet.
+    - **Lesson:** before merging a release PR, grep tests for the current version literal.
+  - **Stale `uv.lock` after release:** release-please bumps `backend/pyproject.toml` to 0.2.0 but not `backend/uv.lock` (still `tonewatch 0.1.0`), so every `uv sync`/`uv run` rewrites the lock and dirties worktrees. The CI-diet commit carries a refreshed lock.
+    - **Fix before the next release:** add `backend/uv.lock` to release-please `extra-files` (TOML jsonpath on the `tonewatch` package version), or run `uv lock` in the release PR.
+  - **Flake, not regression:** `test_app_wiring.py` hit the 60 s faulthandler dump once under concurrent engineer load, then passed 3/3 standalone (41 s each). If it recurs, look at the retention loop's `os.stat` under slow IO.
+  - **🛑 User: "for now lets only do local ci" (2026-09-12).**
+    - **Actions off:** PM disabled every repo workflow with `gh workflow disable` (no file changes; re-enable with `gh workflow enable <id>` only when the user says so).
+    - **CI diet:** landed anyway, so re-enabling is cheap.
+    - **Verification:** `just ci-local` (pre-commit → check → security → api-drift → e2e) is the only gate, run by the PM before every push.
+    - **Paused (Docker isn't installed on the PM host):** image build and 350 MB size budget, trivy, ZAP dast, container e2e/smoke, Linux and ARM pytest, and the release publish. Engineers' `PENDING-CI` items stay pending.
+    - **Resuming:** when CI returns, re-enable the workflows, dispatch CI/Docker/Security on main, then rerun Release 34696778462 for v0.2.0.
+- **Codex limits (user request 2026-09-12).** `docs/pm/limits.py` reads session (5 h) and weekly (7 d) usage via the Codex app-server `account/rateLimits/read`. First reading: plus plan, session 7%, weekly 6%, weekly reset Sat 2026-09-19 02:08 MDT. The scheduling policy lives in PM memory (`tonewatch_delegate_to_engineers.md`).
+  - **Until the dispatch.sh change:** run it before every dispatch and at every review.
+  - **TODO when NO dispatch is running:** edit `docs/pm/dispatch.sh` to append a `limits.py` reading to the run log and report at start and end. Bash reads a running script incrementally, so never edit dispatch.sh while any dispatcher process is alive; check for `dispatch.sh` in the process list first.
+- **User decisions 2026-09-12:**
+  - **Merge release PR #1 (v0.2.0):** approved.
+  - **Image visibility:** keep the GHCR package **PRIVATE until v1.0**, consistent with the private repo. Don't flip it. Revisit at M12.4 together with repo visibility.
+  - **Consequences:** M10b's `image` resolution job stays red, and the add-on can't install from the store, until then.
+  - **When flipping later:** it's irreversible (a public package can never go private) and UI-only (no REST endpoint; the PM `gh` token lacks `read:packages`).
+- **M8.4 unblocked (2026-09-12).** The user's TTD install was found at `Desktop\Stuff\fire\TwoToneDetect73g\`. Its `tones.cfg` holds the user's email, so it's a gitignored private fixture only.
+  - **Running:** brief `docs/pm/briefs/M8.4.md`, dispatched in worktree `tonewatch-m84`.
+  - **At M8.4 landing:** remove the M8.4 BLOCKED line in PROGRESS.md.
+- **M13 tone auto-discovery added to PLAN.md** (user request 2026-09-12), in parallel with M9/M10 and before M11.
+  - **At M9 landing:** add M13.1–M13.7 checkboxes to PROGRESS.md (the M9 engineer is editing that file), and write + dispatch the M13 brief when an engineer slot frees up. Three engineers are running: M9, M10a, M8.4.
 
 - **Image size margin is only about 2.8 MB** (CI run 34681525844, `e57ec0d`): 347,219,215 bytes against the 350 MB budget, after trimming venv tests, `__pycache__` and numpy headers in the builder stage.
   - The next runtime dependency will probably break the `size` job.
@@ -22,7 +55,17 @@ Accepted gaps that must be written into a later brief. Remove an entry once that
   - Needs a `public_base_url` setting, or for the add-on the ingress URL / Supervisor-discovered host.
   - The M11 integration should resolve `media_content_id` through its authenticated proxy. Decide this in the M10 brief.
 - **S6/S7 — remaining ASVS GAP rows.** S5 converted V3/V4 only, so 178 GAP rows remain. Convert them chapter by chapter on the gap-by-default rule; the PM reviews every positive row. Every positive row must carry a snippet that *proves* the control (S5 shipped a V3.4.2 snippet that was just a closing paren), and `fixed` means code changed in that milestone, otherwise use `pass`.
-- **S5 follow-up — DAST tuning (watch the first CI run).** `zap-baseline.py` exits 2 on any WARN, including informational alerts, and the job requires exit 0. If the first run is red with exit 2, read the uploaded `zap-dast-reports` and add each real false positive to `docker/zap/rules.tsv` as `IGNORE` with a one-line justification. Never use `-I`, and fix every genuine finding in code.
+- **S5 follow-up — DAST.** First ZAP run (`d3643d5`) found REAL bugs, fixed by PM in `20d70e3`:
+  - `POST /api/auth/login` returned 500 on non-JSON bodies
+  - the SPA CSP lacked `form-action`/`base-uri`/`object-src`
+  - Permissions-Policy/CORP/COOP/COEP headers were missing
+
+  `rules.tsv` now IGNOREs 10049/10109/100000/100001 with justifications. 100000 is only safe because the `dast` job fails on any 5xx in the container log.
+  - **Hollow gate:** `dast` went green on `20d70e3`, but the gate was hollow. `set +e` let `zap-baseline` exit 2 (WARN 10027, a minified-bundle false positive) pass. The follow-up re-enables `set -e` and IGNOREs 10027 with a justification.
+  - **Confirmed** on `9b2e808` (Docker run 34687274921): `zap-baseline exit=0 zap-api-scan exit=0`, `5xx responses during scans: 0`, FAIL-NEW 0 / WARN-NEW 0 in both scans; CI and Security green; image 347,220,433 bytes. S5 is CI-complete; tick it `[x]` in `docs/PROGRESS.md` when M9 lands (the M9 engineer is editing that file).
+  - **Watch:** COEP `require-corp` must not break the HA ingress iframe (HIL step for M10b).
+  - **Review rule:** grep workflow `run:` blocks for `set +e` / `|| true`.
+  - **Rule:** future scan findings are fixed in code first; an IGNORE needs a justification line.
 - **Pin updates must never downgrade.** When re-pinning a floating `@vN` tag, pin the newest `vN.x.y` commit (S5 silently moved codeql-action 3.38.0 → 3.28.18 and setup-uv 6.8.0 → 6.4.3). The pin checker only runs online on the PM host and in CI (`security.yml / action-pins`); the sandbox run skips it.
 - **Nit:** `storage/migrations/env.py` catches `AttributeError` as well as the context proxy's `NameError`; narrow it.
 - **Later cleanup:** `types-pyyaml` is listed as a runtime dependency in `backend/pyproject.toml`; move it to dev dependencies.

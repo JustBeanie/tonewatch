@@ -92,9 +92,9 @@ Tick a task with `[x]`, then append ` — <PR link> — <one-line note>`. Blocke
 - [ ] **M8.4** `importers/ttd.py`: 🛑 BLOCKED-ON-USER. The user must supply a sample TTD tones config so the format can ...
 
 ## M9: Windows native
-- [ ] **M9.1** PyInstaller onedir spec bundling the built web UI, PortAudio (shipped in the sounddevice wheel) and PyAV. D...
-- [ ] **M9.2** `tonewatch service install|uninstall` via NSSM docs *or* a pywin32 service wrapper, documented in an ADR.
-- [ ] **M9.3** `windows.yml` builds, smoke-tests (`--version`, `devices`, `analyze` on a fixture WAV) and uploads the zip....
+- [~] **M9.1** PyInstaller onedir spec bundles the Docker-equivalent web UI staging, sounddevice PortAudio data, PyAV DLLs, certifi, migrations, and SQLAlchemy/aiosqlite imports — local — PENDING-CI; local build and frozen smoke pass.
+- [~] **M9.2** `tonewatch service install|uninstall|start|stop|status` uses a pywin32 wrapper with graceful lifespan shutdown and an ADR — local — PENDING-CI; fake-manager and shutdown seam tests pass.
+- [~] **M9.3** `windows.yml` builds, smoke-tests, exercises the service lifecycle and schannel HTTPS, and uploads the zip — local — PENDING-CI; workflow lint and local frozen smoke pass.
 
 ## M10: HA add-on (in `JustBeanie/ha-addons`)
 - [ ] **M10.1** `tonewatch/config.yaml` settings:
@@ -111,6 +111,15 @@ Tick a task with `[x]`, then append ` — <PR link> — <one-line note>`. Blocke
 - [ ] **M11.7** Blueprints:
 - [ ] **M11.8** CI: hassfest, `hacs/action`, ruff, mypy and pytest. Aim for HA integration quality scale Silver rules.
 
+## M13: Tone auto-discovery (added 2026-09-12 at user request)
+- [ ] **M13.1** `dsp/discovery.py`: unmatched tone-sequence candidates (two-tone, long tone, N-tone) per channel, suppressed when any tone set matched.
+- [ ] **M13.2** Clustering within `tol_pct`, `DiscoveredTone` storage + migration, caps and dismiss/promote status.
+- [ ] **M13.3** Optional evidence clip per cluster (tones + up to 15 s), counted by retention.
+- [ ] **M13.4** API + WS: list, promote to a pre-filled tone-set draft, dismiss, delete, clip download, `tone_discovered` event.
+- [ ] **M13.5** Web "Discovered tones" page with clip player, Create tone set, Dismiss, and a dashboard badge.
+- [ ] **M13.6** Opt-in notifications: webhook/MQTT/HA `tone_discovered`, and the M11 "last discovered tone" sensor.
+- [ ] **M13.7** Settings (enabled, clip, durations, per-source opt-out) and `tonewatch analyze --discover`.
+
 ## M12: Docs, hardening and v1.0.0
 - [ ] **M12.1** mkdocs-material site: install guides (Docker, Pi, add-on, Windows), finding tone frequencies, tuning purity...
 - [ ] **M12.2** Threat model doc: exposed API, token storage, the script hook, and webhook SSRF, with an allowlist and bloc...
@@ -122,6 +131,6 @@ Tick a task with `[x]`, then append ` — <PR link> — <one-line note>`. Blocke
 - [x] **S2** *(after S1)* DSOMM L1–2 pipeline controls: Semgrep, pip-audit, osv-scanner, zizmor, license checks, Trivy config, OpenSSF Scorecard, `just security`. — local — Security workflow, CI-only notices, dependency overrides, suppression validation, scorecard re-assessment, and all-files pre-commit passed; CI-only jobs remain PENDING-CI for PM observation.
 - [ ] **S3** *(after M5)* STRIDE threat model (Threat Dragon); replaces M12.2.
 - [x] **S4** *(after M7)* ASVS 5.0 L2 code audit with regression tests for every fix. — local — ASVS source pinned, 253 tests pass, security/pre-commit/API-drift gates pass, and S4 threats are mitigated or documented as accepted.
-- [~] **S5** *(after M8)* ZAP baseline/API DAST in e2e + container hardening (read-only fs, cap_drop, no-new-privileges). — PENDING-CI — Local tests, evidence hygiene, workflow pinning, HIL checklist, and DAST workflow definition are complete; PM must confirm `docker.yml / dast`.
+- [x] **S5** *(after M8)* ZAP baseline/API DAST in e2e + container hardening (read-only fs, cap_drop, no-new-privileges). — `d3643d5`, `20d70e3`, `9b2e808` — Docker run 34687274921 green: zap-baseline and zap-api-scan exit 0, zero 5xx, FAIL-NEW 0 / WARN-NEW 0; the first real scan found and fixed a login 500 plus CSP/header gaps.
 - [ ] **S6** *(after M11)* HA integration and add-on security review.
 - [ ] **S7** *(before M12.4)* Final SAMM + DSOMM re-assessment. 🛑 USER GATE: accepted-risk sign-off.
