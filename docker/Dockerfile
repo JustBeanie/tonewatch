@@ -30,6 +30,7 @@ LABEL org.opencontainers.image.source="https://github.com/JustBeanie/tonewatch" 
       org.opencontainers.image.version="$VERSION" \
       org.opencontainers.image.licenses="MIT"
 RUN apt-get update \
+    && apt-get upgrade -y \
     && apt-get install --no-install-recommends -y libportaudio2 rtl-sdr tini ca-certificates \
     && rm -rf /var/lib/apt/lists/* \
     && rm -rf \

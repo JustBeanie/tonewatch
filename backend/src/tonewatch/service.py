@@ -240,6 +240,7 @@ async def serve_until_stopped(
         timeout_keep_alive=5,
         h11_max_incomplete_event_size=64 * 1024,
         limit_concurrency=100,
+        log_config=None,
     )
     server = (server_factory or uvicorn.Server)(config)
 

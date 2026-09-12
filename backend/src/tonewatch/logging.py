@@ -6,9 +6,12 @@ import logging
 import sys
 from collections.abc import MutableMapping
 from contextvars import ContextVar
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 request_id: ContextVar[str] = ContextVar("tonewatch_request_id", default="")
 _token: ContextVar[str] = ContextVar("tonewatch_api_token", default="")
@@ -37,7 +40,13 @@ def _redact(
     return event_dict
 
 
-def configure_logging(level: str, *, json: bool = True, api_token: str = "") -> None:
+def configure_logging(
+    level: str,
+    *,
+    json: bool = True,
+    api_token: str = "",
+    data_dir: Path | None = None,
+) -> None:
     """Route structlog through stdlib logging with UTC timestamps and redaction."""
     _token.set(api_token)
     timestamper = structlog.processors.TimeStamper(fmt="iso", utc=True)
@@ -46,7 +55,13 @@ def configure_logging(level: str, *, json: bool = True, api_token: str = "") -> 
         processor=renderer,
         foreign_pre_chain=[structlog.contextvars.merge_contextvars, _redact, timestamper],
     )
-    handler = logging.StreamHandler(sys.stderr)
+    if sys.stderr is not None:
+        handler: logging.Handler = logging.StreamHandler(sys.stderr)
+    elif data_dir is not None:
+        data_dir.mkdir(parents=True, exist_ok=True)
+        handler = logging.FileHandler(data_dir / "tonewatch.log", encoding="utf-8")
+    else:
+        handler = logging.NullHandler()
     handler.setFormatter(formatter)
     root = logging.getLogger()
     root.handlers[:] = [handler]

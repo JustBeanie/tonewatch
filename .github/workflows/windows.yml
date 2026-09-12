@@ -44,9 +44,7 @@ jobs:
       - name: Diff Linux runtime and development exports
         run: |
           uv export --project backend --frozen --no-dev --no-emit-project --format requirements-txt > runtime.txt
-          uv export --project backend --frozen --no-emit-project --format requirements-txt > full.txt
-          diff -u runtime.txt full.txt || true
-          ! grep -Eiq '(^|[-=])pyinstaller|(^|[-=])pywin32|pywin32-ctypes|(^|[-=])altgraph|(^|[-=])pefile' runtime.txt
+          uv run --project backend python scripts/check_runtime_export.py runtime.txt
 
   build:
     runs-on: windows-latest

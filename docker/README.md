@@ -14,9 +14,16 @@ the `/opt/venv` copy at about 218 MB, the Python base at about 48 MB, and the
 APT runtime packages at about 9.5 MB. The removed packaging tools are in the
 Python base layer; the CI size log is authoritative for the final byte count.
 
+The runtime stage upgrades the packages already present in the pinned Debian
+base image in the same APT layer before installing ToneWatch's runtime packages.
+This closes fixed Debian security updates that may land in `trixie-security`
+before the upstream Python image digest is refreshed. Once the pinned upstream
+digest includes those fixes, the explicit upgrade can be removed and the image
+should be rebuilt and rescanned.
+
 Published images are pushed to GHCR and signed and attested in the release
-workflow. For this private repository, GHCR pushes still work, but GitHub's
-public attestation UI may not be available.
+workflow. The repository is public; the GHCR package stays private until v1.0,
+so the public attestation UI may not show it until then.
 
 The compose examples apply a read-only root filesystem, a tmpfs at `/tmp`, all
 Linux capabilities dropped, and `no-new-privileges`. Hardware access with

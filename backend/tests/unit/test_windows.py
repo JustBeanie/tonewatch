@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import sys
 from pathlib import Path
 from threading import Event
 from typing import TYPE_CHECKING
 
 from tonewatch import service
+from tonewatch.logging import configure_logging
 from tonewatch.settings import Settings
 
 if TYPE_CHECKING:
@@ -123,3 +125,62 @@ def test_stop_request_reaches_application_shutdown_event() -> None:
         assert shutdown_event.is_set()
 
     asyncio.run(run())
+
+
+def test_service_server_does_not_configure_missing_stdio(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A service host with detached stdio must still construct its uvicorn server."""
+    stop_requested = Event()
+
+    class FakeServer:
+        def __init__(self) -> None:
+            self._stopped = asyncio.Event()
+
+        @property
+        def should_exit(self) -> bool:
+            return self._stopped.is_set()
+
+        @should_exit.setter
+        def should_exit(self, value: bool) -> None:
+            if value:
+                self._stopped.set()
+
+        async def serve(self) -> None:
+            await self._stopped.wait()
+
+    async def run() -> None:
+        monkeypatch.setattr(sys, "stdout", None)
+        monkeypatch.setattr(sys, "stderr", None)
+        task = asyncio.create_task(
+            service.serve_until_stopped(
+                Settings(),
+                stop_requested,
+                server_factory=lambda _config: FakeServer(),
+                app_factory=lambda _settings: object(),
+            )
+        )
+        await asyncio.sleep(0)
+        stop_requested.set()
+        await asyncio.wait_for(task, 1)
+
+    asyncio.run(run())
+
+
+def test_service_logging_routes_detached_stdio_to_data_dir(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Service logging must not retain a handler whose stream is None."""
+    previous_handlers = logging.getLogger().handlers[:]
+    try:
+        monkeypatch.setattr(sys, "stdout", None)
+        monkeypatch.setattr(sys, "stderr", None)
+        configure_logging("INFO", data_dir=tmp_path)
+        handlers = logging.getLogger().handlers
+        assert len(handlers) == 1
+        assert isinstance(handlers[0], logging.FileHandler)
+        assert (tmp_path / "tonewatch.log").is_file()
+    finally:
+        for handler in logging.getLogger().handlers:
+            handler.close()
+        logging.getLogger().handlers[:] = previous_handlers

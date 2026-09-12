@@ -4,7 +4,10 @@ uv := if os_family() == "windows" { ".tools/bin/uv.exe" } else { "uv" }
 uvx := if os_family() == "windows" { ".tools/bin/uvx.exe" } else { "uvx" }
 pnpm := if os_family() == "windows" { ".tools/bin/pnpm.cmd" } else { "pnpm" }
 export PLAYWRIGHT_CHANNEL := if os_family() == "windows" { "chrome" } else { "" }
-export TONEWATCH_E2E_PORT := if os_family() == "windows" { "8790" } else { "8765" }
+export TONEWATCH_E2E_PORT := env_var_or_default(
+    "TONEWATCH_E2E_PORT",
+    if os_family() == "windows" { "8790" } else { "8765" },
+)
 
 setup:
     {{uv}} sync --project backend
@@ -53,6 +56,10 @@ security:
     @echo "NOTICE: trivy config is CI-only (container required); skipped locally."
     @echo "NOTICE: gitleaks is CI-only (binary/container required); skipped locally."
 
+runtime-export-check:
+    {{uv}} export --project backend --frozen --no-dev --no-emit-project --format requirements-txt > .tools/runtime-requirements.txt
+    {{uv}} run --project backend python scripts/check_runtime_export.py .tools/runtime-requirements.txt
+
 check: lint typecheck test test-web security-scorecard
 
 precommit:
@@ -87,6 +94,15 @@ windows-build:
     if (Test-Path backend/src/tonewatch/web_dist) { Remove-Item -Recurse -Force backend/src/tonewatch/web_dist }
     Copy-Item -Recurse web/dist backend/src/tonewatch/web_dist
     {{uv}} run --project backend pyinstaller --clean --noconfirm packaging/windows/tonewatch.spec
+
+[windows]
+windows-smoke:
+    $smoke = Join-Path $PWD ".tools/windows-smoke"; New-Item -ItemType Directory -Force -Path $smoke | Out-Null
+    {{uv}} run --project backend python scripts/e2e_fixture.py --fixture "$PWD/.tools/windows-smoke/fixture.wav" --config "$PWD/.tools/windows-smoke/config.yaml" --source-path "$PWD/.tools/windows-smoke/fixture.wav"
+    $exe = "$PWD/dist/tonewatch/tonewatch.exe"; & $exe --version; if ($LASTEXITCODE -ne 0) { throw "--version failed" }
+    $exe = "$PWD/dist/tonewatch/tonewatch.exe"; $devices = (& $exe devices --json | Out-String); $null = $devices | ConvertFrom-Json; Write-Output "devices: valid JSON"
+    $exe = "$PWD/dist/tonewatch/tonewatch.exe"; $analysis = (& $exe analyze "$PWD/.tools/windows-smoke/fixture.wav" --config "$PWD/.tools/windows-smoke/config.yaml" --json | Out-String) | ConvertFrom-Json; if (@($analysis.detections.toneset_id) -notcontains "fixture-page") { throw "fixture-page was not detected" }; Write-Output "analyze: fixture-page detected"
+    $exe = "$PWD/dist/tonewatch/tonewatch.exe"; & $exe selftest imports; if ($LASTEXITCODE -ne 0) { throw "frozen import walk failed" }
 
 bench:
     {{uv}} run --project backend python backend/scripts/run_pytest.py backend/tests/benchmarks --benchmark-only --no-cov

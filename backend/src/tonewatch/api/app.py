@@ -68,7 +68,12 @@ def create_app(
 ) -> FastAPI:
     """Create an isolated API application with injectable runtime dependencies."""
     auth = AuthState(settings, clock or __import__("time").time)
-    configure_logging(settings.log_level, json=True, api_token=auth.token)
+    configure_logging(
+        settings.log_level,
+        json=True,
+        api_token=auth.token,
+        data_dir=settings.data_dir,
+    )
     config_store = store or ConfigStore(settings.data_dir)
     engine = None
     sessions = session_factory
