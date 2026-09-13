@@ -10,6 +10,7 @@
 
 `-race` needs cgo and a C compiler, which this Windows host lacks, so race tests run only in GitHub CI (Linux). Say this in the report; don't disable race anywhere.
 **Go caches:** set `GOCACHE`, `GOMODCACHE`, `GOPATH` and `GOTMPDIR` to directories under `.gocache/` in the work dir, and add `.gocache/` to `.gitignore`.
+**Go toolchain:** Go 1.27.0 is installed at `C:\Program Files\Go\bin\go.exe`. Prepend that directory to PATH in every shell, because your environment may predate the install. The PM pre-downloaded the module cache into `.gocache/` using exactly those variables, so builds work offline.
 
 ## Context
 - Read the reviewed plan first: `C:\Users\beanie\Documents\Proj\tonewatch\docs\pm\reports\M17-icad2mqtt-plan-20260912-234423.md` (sections 1, 6, 7, 8; tasks IC3, IC4, IC12).

@@ -10,6 +10,7 @@
 
 `-race` needs cgo, which is missing on this host, so race tests run in GitHub CI.
 **Go caches:** set `GOCACHE`, `GOMODCACHE`, `GOPATH` and `GOTMPDIR` to directories under `.gocache/` in the work dir, and gitignore `.gocache/`.
+**Go toolchain:** Go 1.27.0 is installed at `C:\Program Files\Go\bin\go.exe`. Prepend that directory to PATH in every shell, because your environment may predate the install. The PM pre-downloaded the module cache, including `golang.org/x/net`, into `.gocache/` using exactly those variables.
 
 ## Context
 - **Read first:** the reviewed plan `C:\Users\beanie\Documents\Proj\tonewatch\docs\pm\reports\M17-icad2mqtt-plan-20260912-234423.md` (sections 2–5, 7; tasks IC5–IC8, IC10), and the PM's verified page facts in `C:\Users\beanie\Documents\Proj\tonewatch\docs\pm\carryover.md` section "M14–M18 kickoff".
