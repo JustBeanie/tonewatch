@@ -124,3 +124,8 @@ Accepted gaps that must be written into a later brief. Remove an entry once that
 - Consequence: the ha-addons `tonewatch.yml` image job (anonymous multi-arch check) should now pass, which removes the "image is private" reason to hold M10b. Pushing to ha-addons still needs the user's yes.
 - The PM `gh` token lacks `read:packages`; verify package state with an anonymous registry pull, not the packages REST API.
 - Release-flow caveat kept: the Trivy gate scans a separate amd64 build of the same commit, not the pushed digest; arm64 is not scanned at release.
+
+## M10b published to ha-addons (2026-09-12 ~18:45)
+- The user asked to make the add-on public. `cf5855f` (tonewatch add-on manifest, version 0.3.0) is on `JustBeanie/ha-addons` main.
+- The first add-on CI run (`ada630c`) passed manifest tests and the anonymous multi-arch image check (the GHCR image is public), but the add-on linter failed: `'ingress_port' should be removed, it uses a default value`. PM fix `09c7a32`: dropped `ingress_port` (8099 is the Supervisor default the app listens on) and updated the manifest test.
+- Next for the add-on: the M10.2 hardware-in-the-loop checklist on the real HA box (user gate).
