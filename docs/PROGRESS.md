@@ -120,6 +120,28 @@ Tick a task with `[x]`, then append ` — <PR link> — <one-line note>`. Blocke
 - [x] **M13.6** Opt-in notifications: webhook/MQTT/HA `tone_discovered`, and the M11 "last discovered tone" sensor. — PM review passed (M13-fix, M13-rebase); host ci-local green.
 - [x] **M13.7** Settings (enabled, clip, durations, per-source opt-out) and `tonewatch analyze --discover`. — PM review passed (M13-fix, M13-rebase); host ci-local green.
 
+## M14: Live audio restream (added 2026-09-12 at user request)
+- [ ] **M14.1** `streaming/live.py` LiveHub: per-source fan-out, encoder only while listeners exist, bounded per-listener queues, squelch gate. — brief M14a
+- [ ] **M14.2** Signed live URL + `live.mp3` endpoint, listener caps, token never logged. — brief M14a
+- [ ] **M14.3** `live_stream` settings (off by default), per-source switch, audit. — brief M14a
+- [ ] **M14.4** Web UI: Listen live, listener count, copy player URL, disclaimer.
+- [ ] **M14.5** ha-tonewatch: media_source Live folder, `tonewatch.play_live`, blueprint (after M11.5).
+- [ ] **M14.6** Threat model, ASVS rows and "Listen live" docs page. — brief M14a
+
+## M15: Squelch (added 2026-09-12 at user request)
+- [ ] **M15.1** `dsp/squelch.py`: level and noise-floor modes, hysteresis, attack, hang. — brief M15a
+- [ ] **M15.2** `SourceBase.squelch`, legacy rtlsdr integer → `rtl_fm_squelch`, watchdog expects squelched silence. — brief M15a
+- [ ] **M15.3** Pipeline state, `SquelchChanged`, WS `squelch_open`, optional `record.stop_on_squelch`; never gates detection. — brief M15a
+- [ ] **M15.4** MQTT/HA activity binary_sensor and `last_activity_at`. — brief M15a
+- [ ] **M15.5** Web UI squelch controls, meter lines, "Set from noise floor".
+
+## M16: Agencies and map (added 2026-09-12 at user request)
+- [ ] **M16.1** `Agency` model (identity, address, location, stations, GeoJSON coverage, contacts), `ToneSet.agency_id`. — brief M16a
+- [ ] **M16.2** Agencies CRUD + GeoJSON API, call agency snapshot (migration 0005), agency on event payloads. — brief M16a
+- [ ] **M16.3** `map.tile_url` (off = no external requests), OSM preset, CSP adds only the tile origin. — brief M16a
+- [ ] **M16.4** Web UI: agencies editor, Leaflet map page, live pulse, calls filter.
+- [ ] **M16.5** HA: agency on MQTT events; ha-tonewatch `geo_location` per active call (after M11.4).
+
 ## M12: Docs, hardening and v1.0.0
 - [x] **M12.1** PM review passed; host ci-local green — Added the strict MkDocs Material site, public install and usage guides, internal-doc exclusions, offline `just docs`, and CI build; Pages publishing remains a user decision.
 - [ ] **M12.2** Threat model doc: exposed API, token storage, the script hook, and webhook SSRF, with an allowlist and bloc...

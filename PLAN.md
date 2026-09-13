@@ -450,6 +450,103 @@ Finds tone pages that no configured tone set matches, so users can see what is b
   - **Hypothesis property:** clustering is order-independent.
   - **Promote → save → replay** of the same audio produces a detection.
 
+**Order for M14–M16 (added 2026-09-12 at user request; they ship before v1.0):**
+1. Backends first, in parallel: M14.1–M14.3 ∥ M15.1–M15.4 ∥ M16.1–M16.3.
+2. Then the UIs: M14.4, M15.5, M16.4.
+3. Then the Home Assistant parts (M14.5, M16.5), after M11.4/M11.5.
+
+### M14: Live audio restream
+Lets users listen to a source live, in the web UI and on any Home Assistant `media_player`. Rebroadcasting radio traffic may be regulated where the user lives, so the feature is **off by default** and never reachable without auth.
+- **M14.1** `streaming/live.py` `LiveHub`, a per-source fan-out tapped from `Channel` after normalization (16 kHz mono float32):
+  - **Encoder:** starts only while at least one listener is connected (no listeners, no CPU). It uses PyAV incremental MP3 (CBR, mono, 44.1 kHz, `bitrate_kbps` default 48). Packets are self-framed, so concatenated packets form a valid stream.
+  - **Listener isolation:** each listener has a bounded queue of about 2 s. A slow listener drops its oldest chunks and is disconnected once it falls too far behind. **The pipeline never awaits a listener.**
+  - **Squelch gate:** while squelch (M15) is closed, the stream carries encoded silence so players keep the connection. Until M15 lands the gate is always open.
+- **M14.2** **API.**
+  - `POST /api/sources/{id}/live-url` (auth + CSRF) returns `{url, expires_at}` for `GET /api/sources/{id}/live.mp3?t=<token>`.
+  - **Token:** HMAC-SHA256 over source id, expiry, nonce and scope `live`, keyed by a separate secret in the data dir (created on first use, owner-only permissions).
+    - Scoped to one source and compared in constant time.
+    - TTL defaults to 3600 s, maximum 86400 s.
+    - Never logged: the query string is redacted from access logs.
+  - **Live endpoint:** accepts the normal API auth or a valid signed token. The response is chunked `audio/mpeg` with `Cache-Control: no-store` and no Range support.
+  - **Caps:** `max_listeners_per_source` (default 4) and `max_listeners_total` (default 12); over the cap returns 503. Listener counts appear in WS and in the source status.
+  - **URLs:** built ingress-aware; `public_base_url` is used for URLs handed to external players.
+- **M14.3** **Settings and audit.**
+  - `live_stream.enabled` (default **false**), `bitrate_kbps`, the caps and `token_ttl_s`.
+  - Per-source `live_stream_enabled` (default true when the global switch is on).
+  - An audit event for each URL issued.
+- **M14.4** **Web UI.**
+  - "Listen live" on dashboard and source cards (HTML audio), plus the listener count.
+  - "Copy player URL" showing its expiry.
+  - The rebroadcast disclaimer beside the settings toggle.
+- **M14.5** **Home Assistant.** MQTT can't carry live URLs because they expire. In `ha-tonewatch`, after M11.5:
+  - A `media_source` "Live" folder per source that mints a fresh signed URL at resolve time.
+  - A `tonewatch.play_live` service (source, `media_player`, duration).
+  - A blueprint: "play the live feed on a speaker when a tone set fires, stop after N minutes".
+- **M14.6** **Threat model, ASVS rows and docs.** Cover signed-URL leakage through player logs, listener-exhaustion DoS, and scope. Add a docs page "Listen live" with the disclaimer.
+- **Done when:**
+  - 2+ concurrent listeners decode valid MP3 from a file source.
+  - A stalled listener does not delay detection (bounded latency asserted).
+  - Expired, tampered and wrong-source tokens are rejected; caps return 503.
+  - No encoder runs with zero listeners.
+
+### M15: Squelch
+Software squelch for every source type, so activity is visible and live audio carries silence instead of noise. **Squelch never gates detection:** the detector always sees raw audio, because tones can start before squelch opens.
+- **M15.1** `dsp/squelch.py`, a pure state machine:
+  - `SquelchConfig {mode: off|level|noise_floor, open_dbfs: -40, close_dbfs: -45, attack_ms: 50, hang_ms: 1500, floor_margin_db: 10}`, with `close_dbfs ≤ open_dbfs` validated.
+  - **Behaviour:** hysteresis between open and close, attack before opening, hang before closing.
+  - **`noise_floor` mode:** tracks the floor with a slow low-percentile estimator (the quietest ~10 % of frames over a rolling window) and opens at floor + margin.
+- **M15.2** **Config.**
+  - `SourceBase.squelch: SquelchConfig` (default `mode: off`).
+  - The existing RTL-SDR `rtl_fm -l` integer becomes `RtlSdrSource.rtl_fm_squelch`. A legacy integer `squelch` on an rtlsdr source is accepted and migrated on load and save.
+  - The watchdog treats squelch-closed audio (including `rtl_fm` digital silence) as expected, not a flatline fault.
+- **M15.3** **Pipeline.**
+  - Per-channel squelch state and a `SquelchChanged(source_id, open, level_dbfs, at)` event.
+  - The WS level payload gains `squelch_open`.
+  - The M14 live stream follows the gate.
+  - Optional `record.stop_on_squelch` (default false) ends post-roll on squelch close + hang instead of the silence threshold.
+- **M15.4** **Outputs.** An MQTT/HA discovery `binary_sensor` "<source> activity" (squelch open) and `last_activity_at` in the source status. ha-tonewatch picks both up in M11.4.
+- **M15.5** **Web UI.**
+  - Squelch controls on the source form.
+  - The live level meter shows the open and close lines and an open/closed lamp.
+  - "Set from noise floor" fills open/close from the current floor + margin.
+- **Done when:**
+  - Unit tests cover hysteresis, attack and hang.
+  - **Hypothesis property:** noise hovering between close and open never chatters (at most one transition per hang window).
+  - **Golden:** voice bursts in noise give one open/close pair per burst.
+  - A tone page arriving while squelch is closed is still detected with unchanged latency.
+  - The legacy rtlsdr integer migrates.
+
+### M16: Agencies and map
+Rich per-agency data so every page says *who* was toned out, plus a map of agencies and their coverage.
+- **M16.1** **`Agency` config model** in `AppConfig.agencies` (at most 500):
+  - **Identity:** `id`, `name`, `short_name`, `kind` (`fire|ems|police|rescue|dispatch|other`), `color` (hex), `description`.
+  - **Place:** `address` (street, city, region, postal code, country), `location {lat, lon}` (ranges validated), and `stations: [{name, address, lat, lon}]`.
+  - **Coverage:** an optional GeoJSON Polygon/MultiPolygon, with closed rings, at most 10,000 vertices and 256 KB.
+  - **Contact and notes:** `contacts` (phone; website http/https only), `radio` notes (channel/talkgroup), `tags`, `notes` (at most 4,000 chars).
+  - **Link to tone sets:** `ToneSet.agency_id` (optional, reference-checked). Deleting an agency that tone sets still reference is rejected, and the error lists those tone sets.
+- **M16.2** **API.**
+  - CRUD `/api/agencies` (auth + CSRF + audit, like tone sets).
+  - `GET /api/agencies.geojson`: a FeatureCollection of locations, stations and coverage.
+  - Calls and call detail include the agency.
+  - Migration `0005` stores an agency snapshot (`agency_id`, `agency_name`, `agency_kind`) on `CallToneSet`, so history survives renames and deletes.
+  - Event payloads (WS, MQTT, webhook, HA `tonewatch_detected`) gain `agency {id, name, short_name, kind, lat, lon}`.
+- **M16.3** **Map settings.**
+  - `map.tile_url` defaults to empty, which means **no external requests**: markers and coverage draw on a plain background.
+  - `map.attribution`, plus a one-click OpenStreetMap preset in the UI that carries the attribution OSM requires.
+  - The SPA CSP adds only the configured tile origin to `img-src`.
+- **M16.4** **Web UI.**
+  - Agencies list and editor: click the map to set the location or stations; upload or paste GeoJSON coverage.
+  - A **Map** page (Leaflet) with markers and coverage coloured by kind. Clicking one opens an agency card with its tone sets and recent calls.
+  - Active calls pulse the agency marker live, and the calls list filters by agency.
+- **M16.5** **Home Assistant.** MQTT events carry the agency. In ha-tonewatch, after M11.4, a `geo_location` entity per active call sits at the agency location so it shows on HA's map, and is removed when the call closes.
+- **Done when:**
+  - **Validation tests:** bad coordinates, open rings, oversize coverage, dangling references.
+  - **API tests,** including the GeoJSON shape.
+  - The call snapshot survives an agency rename and delete.
+  - A CSP test proves there is no external origin without `map.tile_url`.
+  - **Playwright:** create an agency, place it on the map, link a tone set; a file-source page shows the agency on the call and pulses it on the map.
+- **Backlog:** opt-in address geocoding (external service), drawing coverage polygons in the UI, importing agency layers (for example county GeoJSON).
+
 ### M12: Docs, hardening and v1.0.0
 - **M12.1** mkdocs-material site: install guides (Docker, Pi, add-on, Windows), finding tone frequencies, tuning purity/tolerance, troubleshooting missed pages with `analyze`, and HA recipes. Publish with GitHub Pages.
 - **M12.2** Update the S3 threat model for anything added since. Confirm the webhook SSRF allowlist blocks link-local and metadata IPs by default.
