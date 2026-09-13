@@ -566,6 +566,13 @@ Rich per-agency data so every page says *who* was toned out, plus a map of agenc
     - `agency`, `type`, `address`, `municipality`, `cross_streets`, `status`
     - `received_at` as ISO 8601 with the feed's timezone offset (the page is minute precision, local time)
   - **Parsing:** find the header row by its labels, not by table index. Malformed pages publish nothing and log a counter.
+  - **Refined by the M17.0 plan and user decisions (2026-09-13).** The plan is in `docs/pm/reports/M17-icad2mqtt-plan-20260912-234423.md`; page facts are in carryover.
+    - **Topics and entities:** raw HTML stays on by default. HA discovery is opt-in, per-category active-incident counts only, with no address-bearing entities. Add an availability/LWT topic and a health topic.
+    - **Category:** derived from the agency name on the "All" page, one request per poll. The session-bound tabs are not fetched.
+    - **Fields:** raw and cleaned fields sit side by side.
+    - **Polling:** minimum 60 s, backoff with jitter.
+    - **Time:** a nonexistent DST local time drops that row, not the page.
+    - **Tasks:** IC-A (config, fetch, tzdata, CI) and IC-B (parse, normalize, model, diff) run in parallel, then IC-C (publish wiring, HA counts, docs). The add-on build context (the duplicated add-on source) is decided after IC-A.
 - **M17.2** **ToneWatch CAD feed input.**
   - `AppConfig.cad_feeds: [{id, type: icad2mqtt, broker settings or a reference to an MQTT target, topic, enabled}]`.
   - An aiomqtt subscriber with reconnect.

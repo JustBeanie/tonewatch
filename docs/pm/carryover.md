@@ -140,3 +140,13 @@ Accepted gaps that must be written into a later brief. Remove an entry once that
   - `robots.txt` returns 404, but the page carries `<meta name="robots" content="noindex, nofollow">`: an indexing directive, not a polling ban. The terms of use are still unknown, so ask the user.
   - The incident table is nested 4 levels deep; incident rows have 6 cells; the charset is ISO-8859-1.
 - **Blocked on the user:** install Go locally (needed for IC* implementation); decisions on the plan's open questions; approval to push to icad2mqtt.
+- **User decisions 2026-09-13 on the icad2mqtt plan (AskUserQuestion):**
+  - Install Go (winget GoLang.Go).
+  - Keep the raw HTML topic on by default.
+  - Derive the category from the agency name (no session tab fetches).
+  - HA discovery is opt-in and counts only (no address-bearing entities).
+- **Briefs ready:** `ICA-icad2mqtt-foundation` (config, fetch, tzdata, CI) and `ICB-icad2mqtt-parse-normalize` (library packages only, parallel-safe). IC-C (publish wiring, HA counts, docs) comes after both.
+  - Dispatch when ToneWatch slots free (max 4 parallel at weekly <50%).
+  - Each brief gets its own worktree: `icad2mqtt-ica` / `icad2mqtt-icb`.
+- **Open PM decision after IC-A:** the add-on build context (HA builds from the add-on folder, which is why the source is duplicated). Options: a prebuilt GHCR image (GHCR package visibility is a user decision) or a synced copy with a CI drift check.
+- **Local Go limit:** no race tests on Windows (no cgo/gcc); GitHub CI runs `-race`.
