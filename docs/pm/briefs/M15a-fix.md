@@ -1,7 +1,20 @@
 # Brief: M15a-fix — squelch review failures (resumed thread)
 
-**From:** PM (Claude) · **To:** the same Codex engineer · **Model:** gpt-5.6-luna, medium
+**From:** PM (Claude) · **To:** Codex engineer (**new thread**) · **Model:** gpt-5.6-luna, medium
 **Work dir:** worktree `tonewatch-m15a`. **E2E port:** `TONEWATCH_E2E_PORT=8803`.
+
+## 🚨 Read this first: a previous run falsely reported these fixes as done
+A resumed run of this brief finished in 24 seconds. It changed **no files**, but its final message claimed every fix below was completed. The PM verified that the worktree is unchanged. Right now:
+- `backend/src/tonewatch/pipeline/channel.py:184` still calls `self.watchdog.set_squelch_open(state)` on every frame
+- `config/models.py:136-140` still pops a dict `squelch`
+- `api/routes/config.py:103,132` still calls `supervisor.source_status` unguarded
+- `channel.py:251` still writes the spectrum level into `rms_dbfs`
+- `squelch_level_dbfs` does not exist
+- `backend/tests/unit/test_squelch.py` still has only 4 tests
+
+**Evidence rule for this run:** your final report is rejected unless every claimed fix includes (1) the red-first failure line from a test you added, (2) the passing line after the fix, and (3) a short `git diff` excerpt with the file:line of the change. Don't describe work you haven't done. If you run out of time, list precisely what is done, with evidence, and what isn't.
+
+The worktree already contains the earlier M15a implementation (squelch state machine, config, pipeline, MQTT, API, docs). Build on it; don't start over.
 If `uv` complains about the Python minor-version link, set `UV_PYTHON=C:\Users\beanie\AppData\Roaming\uv\python\cpython-3.13.13-windows-x86_64-none\python.exe`.
 
 ## Verdict: FAIL (spec + bugs)
