@@ -129,3 +129,14 @@ Accepted gaps that must be written into a later brief. Remove an entry once that
 - The user asked to make the add-on public. `cf5855f` (tonewatch add-on manifest, version 0.3.0) is on `JustBeanie/ha-addons` main.
 - The first add-on CI run (`ada630c`) passed manifest tests and the anonymous multi-arch image check (the GHCR image is public), but the add-on linter failed: `'ingress_port' should be removed, it uses a default value`. PM fix `09c7a32`: dropped `ingress_port` (8099 is the Supervisor default the app listens on) and updated the manifest test.
 - Next for the add-on: the M10.2 hardware-in-the-loop checklist on the real HA box (user gate).
+
+## M14–M18 kickoff (2026-09-12 ~23:40, user request, luna medium)
+- PLAN `770bc2e` and `acbde63`: M14 live restream, M15 squelch, M16 agencies + map, M17 icad2mqtt CAD correlation, M18 Meshtastic target.
+- **Running:** M15a (tonewatch-m15a, 8803), M16a (tonewatch-m16a, 8805), M14a-resume (tonewatch-m14a, 8804). **Next:** M18a (tonewatch-m18a, 8806).
+- **Env lesson:** set up every new worktree before dispatch (`uv sync --python 3.13.13 --all-groups`, `pnpm install --frozen-lockfile`). In the sandbox, uv may still need `UV_PYTHON=<managed 3.13.13 python.exe>`.
+- **icad2mqtt plan (M17.0)** is in `docs/pm/reports/M17-icad2mqtt-plan-20260912-234423.md`. Facts the PM verified on the live page:
+  - Category tabs and Closed Events are JSF session-bound POST-back links (`_rlvid.jsp;jsessionid=…?_rap=pc_Cad911Toweb.doLink{1..7}Action`), not stable URLs. Categories need a session (cookie) and extra requests, so derive the category from the agency name on the "All" page, or fetch tabs rarely.
+  - No `ETag`, `Last-Modified` or `Cache-Control`, so conditional requests do nothing. Change detection stays hash-based.
+  - `robots.txt` returns 404, but the page carries `<meta name="robots" content="noindex, nofollow">`: an indexing directive, not a polling ban. The terms of use are still unknown, so ask the user.
+  - The incident table is nested 4 levels deep; incident rows have 6 cells; the charset is ISO-8859-1.
+- **Blocked on the user:** install Go locally (needed for IC* implementation); decisions on the plan's open questions; approval to push to icad2mqtt.
