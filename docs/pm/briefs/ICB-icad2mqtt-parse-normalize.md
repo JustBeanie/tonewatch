@@ -17,8 +17,9 @@
 - **Scope:** you build **pure library packages only**: `internal/parse`, `internal/normalize`, `internal/model`, `internal/diff`, plus `testdata/`.
   - **Do not edit `main.go`, config, Dockerfiles, the add-on folder or CI.** Another engineer (IC-A) is changing those in parallel.
   - Your only permitted edits to existing files are `go.mod`/`go.sum` (adding `golang.org/x/net`) and `.gitignore`.
-- **Page fixture.** Your sandbox can't reach the live page. The PM built a fixture from the real page markup with **invented** incident values: `C:\Users\beanie\AppData\Local\Temp\claude\C--Users-beanie-Documents-claude\84fbbdaf-f9a6-4447-a9f1-4fd699a53ece\scratchpad\cad_events_fixture.html`.
-  - Copy it to `testdata/events_all.html` and treat its structure as ground truth.
+- **Page fixture.** Your sandbox can't reach the live page. The PM built a fixture from the real page markup with **invented** incident values, and placed it in your worktree at `testdata/events_all.html` (ISO-8859-1 bytes, as served).
+  - Treat its structure as ground truth. Don't regenerate or re-fetch it.
+  - Verified clean: no real incident values; the footer timestamp and session ids are replaced.
   - It keeps the real agency names, which are public bodies; everything else is invented.
   - Derive all other fixtures from it by editing values, never by fetching.
 - **Verified facts about the page:**

@@ -150,3 +150,7 @@ Accepted gaps that must be written into a later brief. Remove an entry once that
   - Each brief gets its own worktree: `icad2mqtt-ica` / `icad2mqtt-icb`.
 - **Open PM decision after IC-A:** the add-on build context (HA builds from the add-on folder, which is why the source is duplicated). Options: a prebuilt GHCR image (GHCR package visibility is a user decision) or a synced copy with a CI drift check.
 - **Local Go limit:** no race tests on Windows (no cgo/gcc); GitHub CI runs `-race`.
+- **icad2mqtt page fixture (2026-09-13):** the PM built `icad2mqtt-icb/testdata/events_all.html` from one saved fetch of the live "All" page, with real markup kept.
+  - **Replaced with invented values:** incident date/time, type, address, municipality and cross streets; the "Updated:" stamp; the footer timestamp; jsessionids. Agency names (public bodies) and page footer text are kept.
+  - **Two independent checks:** the sanitizer's exact-value check reports 0 leaks, and a text-node sweep of everything after the incident header finds only footer text and generic words inside the PM's own invented values.
+  - The builder script lived in the session scratchpad and isn't kept. Don't re-fetch pages for fixtures; derive them from this file.
