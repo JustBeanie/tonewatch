@@ -142,6 +142,22 @@ Tick a task with `[x]`, then append ` — <PR link> — <one-line note>`. Blocke
 - [ ] **M16.4** Web UI: agencies editor, Leaflet map page, live pulse, calls filter.
 - [ ] **M16.5** HA: agency on MQTT events; ha-tonewatch `geo_location` per active call (after M11.4).
 
+## M17: CAD incident correlation via icad2mqtt (added 2026-09-12 at user request)
+- [ ] **M17.0** Codex improvement plan for icad2mqtt (audit, parsing, data cleaning, contract, packaging) → PM review → user. — brief M17-icad2mqtt-plan
+- [ ] **M17.1** icad2mqtt structured JSON contract: retained `incidents` snapshot and `incident` new/updated/closed events. — brief M17a (icad2mqtt repo)
+- [ ] **M17.2** ToneWatch CAD feed subscriber, strict schema validation, `CadIncident` table (migration 0006).
+- [ ] **M17.3** Correlate incidents to calls by `Agency.cad_names` and time window; `CallEnriched` event.
+- [ ] **M17.4** Unmatched CAD agencies list with "Create agency".
+- [ ] **M17.5** Web UI: incident card, dashboard CAD panel, agency recent incidents.
+- [ ] **M17.6** Threat model, ASVS rows, privacy (addresses follow retention, never logged).
+
+## M18: Meshtastic notification target (added 2026-09-12 at user request)
+- [ ] **M18.1** ADR 0012: transport (MQTT JSON downlink vs TCP vs serial), firmware requirements, GPL-3.0 licensing check.
+- [ ] **M18.2** `MeshtasticTarget`: template, UTF-8-safe truncation, no URLs, coalescing, rate limits.
+- [ ] **M18.3** Public-channel acknowledgement and amateur-radio/legal docs.
+- [ ] **M18.4** API + UI: alert target form, byte-count preview, send test.
+- [ ] **M18.5** Document the HA Meshtastic integration path (after M11.7).
+
 ## M12: Docs, hardening and v1.0.0
 - [x] **M12.1** PM review passed; host ci-local green — Added the strict MkDocs Material site, public install and usage guides, internal-doc exclusions, offline `just docs`, and CI build; Pages publishing remains a user decision.
 - [ ] **M12.2** Threat model doc: exposed API, token storage, the script hook, and webhook SSRF, with an allowlist and bloc...

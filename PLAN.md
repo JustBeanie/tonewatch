@@ -523,6 +523,7 @@ Rich per-agency data so every page says *who* was toned out, plus a map of agenc
   - **Place:** `address` (street, city, region, postal code, country), `location {lat, lon}` (ranges validated), and `stations: [{name, address, lat, lon}]`.
   - **Coverage:** an optional GeoJSON Polygon/MultiPolygon, with closed rings, at most 10,000 vertices and 256 KB.
   - **Contact and notes:** `contacts` (phone; website http/https only), `radio` notes (channel/talkgroup), `tags`, `notes` (at most 4,000 chars).
+  - **CAD names:** `cad_names`, the agency names exactly as a CAD feed shows them (at most 20, matched case-insensitively). M17 uses them to correlate incidents.
   - **Link to tone sets:** `ToneSet.agency_id` (optional, reference-checked). Deleting an agency that tone sets still reference is rejected, and the error lists those tone sets.
 - **M16.2** **API.**
   - CRUD `/api/agencies` (auth + CSRF + audit, like tone sets).
@@ -546,6 +547,80 @@ Rich per-agency data so every page says *who* was toned out, plus a map of agenc
   - A CSP test proves there is no external origin without `map.tile_url`.
   - **Playwright:** create an agency, place it on the map, link a tone set; a file-source page shows the agency on the call and pulses it on the map.
 - **Backlog:** opt-in address geocoding (external service), drawing coverage polygons in the UI, importing agency layers (for example county GeoJSON).
+
+### M17: CAD incident correlation via icad2mqtt (added 2026-09-12 at user request)
+`JustBeanie/icad2mqtt` polls a county's public 911 CAD events page and publishes it to MQTT. ToneWatch subscribes, then attaches the matching incident (type, address, cross streets) to each tone page, so a call shows *what* and *where*, not just *who*.
+
+**Order:**
+1. **M17.0:** a Codex engineer writes an improvement plan for icad2mqtt (audit, parsing, data cleaning and normalization, contract, packaging). The PM reviews it, the user sees it, and it replaces the draft contract below with `IC*` tasks.
+2. M17.1 runs in parallel with the ToneWatch work.
+3. M17.2–M17.4 follow once M16a lands. M17.5 joins the UI wave.
+
+- **M17.1** **Structured output in icad2mqtt** (Go, its own repo). Today it publishes the page's raw HTML. It gains a versioned JSON contract, and the raw topic stays for compatibility.
+  - **Snapshot topic** `<base>/incidents`, retained, QoS 1, published on change:
+    - `{schema: 1, source, page_updated_at, fetched_at, incidents: [...]}`
+  - **Event topic** `<base>/incident`, not retained, QoS 1:
+    - `{schema: 1, event: new|updated|closed, incident}`
+  - **Incident fields:**
+    - `id`: stable hash of agency, received time, address and municipality
+    - `agency`, `type`, `address`, `municipality`, `cross_streets`, `status`
+    - `received_at` as ISO 8601 with the feed's timezone offset (the page is minute precision, local time)
+  - **Parsing:** find the header row by its labels, not by table index. Malformed pages publish nothing and log a counter.
+- **M17.2** **ToneWatch CAD feed input.**
+  - `AppConfig.cad_feeds: [{id, type: icad2mqtt, broker settings or a reference to an MQTT target, topic, enabled}]`.
+  - An aiomqtt subscriber with reconnect.
+  - Strict pydantic validation of `schema: 1`, with caps (1 MB payload, 500 incidents, bounded strings).
+  - A `CadIncident` table (migration `0006`): first seen, last seen, closed at. It follows call retention.
+- **M17.3** **Correlation.**
+  - **Match rule:** a call's agency (M16 `ToneSet.agency_id`) matches incidents whose normalized `agency` is in `Agency.cad_names` and whose `received_at` falls within [call start − 3 min, call start + 5 min] (configurable). The nearest match wins.
+  - **Late incidents:** an incident that arrives after the call still links, if it is within the window.
+  - **Storage and events:** links live in `call_cad_incidents`. A `CallEnriched` event goes out on WS, the MQTT call topic, webhook `call_enriched`, and the HA event attributes.
+- **M17.4** **Unmatched CAD agencies.** A list of distinct agency names seen, with counts and last seen, and "Create agency" pre-filled with `cad_names` (like discovered tones).
+- **M17.5** **Web UI.**
+  - An incident card on call detail.
+  - A dashboard CAD panel filtered to configured agencies.
+  - Recent incidents on the agency card and map page. With no coordinates, incidents list under their agency.
+- **M17.6** **Security and privacy.**
+  - MQTT input is untrusted: validate it, cap it, and never let it crash the pipeline.
+  - Incident addresses are personal data: they follow retention and never appear in logs.
+  - Add threat-model entries and ASVS rows.
+- **Done when:**
+  - A recorded JSON fixture replay links exactly the expected incidents.
+  - An out-of-window incident does not link.
+  - Two agencies paged in the same minute each link to their own incident.
+  - A late incident links retroactively.
+  - Malformed, oversize or wrong-schema payloads are counted and dropped without crashing.
+- **Backlog:** opt-in geocoding of incident addresses to place incidents on the map; more CAD sources behind the same contract.
+
+### M18: Meshtastic notification target (added 2026-09-12 at user request)
+Forwards a short page summary to a Meshtastic node, which rebroadcasts it over the LoRa mesh. This helps where cell coverage is poor.
+- **M18.1** **ADR spike** `docs/decisions/0012-meshtastic-transport.md`, comparing:
+  - (a) **MQTT JSON downlink** to a node with MQTT and JSON enabled (`sendtext` on the node's JSON downlink topic)
+  - (b) the **TCP API** (port 4403, framed protobufs)
+  - (c) **serial**
+
+  **What it must settle:**
+  - Verify from Meshtastic documentation and firmware source what (a) actually needs: firmware version, channel name and downlink settings, payload fields.
+  - **Licensing:** the Meshtastic Python library and protobufs are GPL-3.0 and ToneWatch is Apache-2.0, so decide whether (b) or (c) can ship without GPL code.
+  - **v1 default:** (a), which adds no dependency and reuses aiomqtt.
+- **M18.2** **`alerts/meshtastic.py` `MeshtasticTarget`.**
+  - **Fields:** `transport: mqtt`, broker settings or an MQTT target reference, `root_topic`, `gateway_node_id`, `channel_index` (0–7), `destination` (broadcast or node id), `template`, `max_bytes` (default 200, hard cap from the ADR), `min_interval_s` (default 30), `max_per_hour` (default 20).
+  - **Template:** fields `{agency_short}`, `{toneset}`, `{time}`, `{source}`, plus `{cad_type}` and `{cad_address}` once M17 lands. The rendered text is stripped of control characters and truncated on a UTF-8 code-point boundary.
+  - **No URLs, ever:** recording and live URLs carry tokens and never go on the mesh.
+  - **Phases:** `pre_alert` by default. An optional follow-up on `call_enriched` (M17) adds the incident type and address.
+  - **Stacked pages:** tone sets that match in the same call coalesce into one message.
+  - **Rate limits:** over the limit, the message is dropped and recorded as an `AlertAttempt` with outcome `rate_limited`.
+- **M18.3** **Safety and legal.**
+  - Channel 0 or the default key effectively broadcasts to anyone nearby, so it requires `acknowledge_public_channel: true`.
+  - Docs note that licensed amateur-radio mode forbids encryption and restricts content, and that mesh messages are readable by anyone with the channel key.
+- **M18.4** **API and UI.** A Meshtastic alert-target form with a live byte-count preview and "Send test".
+- **M18.5** **Home Assistant alternative.** Document forwarding through HA's Meshtastic integration from a ha-tonewatch blueprint (after M11.7).
+- **Done when:**
+  - Golden tests cover the downlink payload.
+  - **Hypothesis property:** truncation never exceeds `max_bytes` and never splits a code point.
+  - Tests cover rate limiting and coalescing.
+  - An embedded-broker integration test asserts topic and payload.
+  - A test proves no URL or token ever appears in a message.
 
 ### M12: Docs, hardening and v1.0.0
 - **M12.1** mkdocs-material site: install guides (Docker, Pi, add-on, Windows), finding tone frequencies, tuning purity/tolerance, troubleshooting missed pages with `analyze`, and HA recipes. Publish with GitHub Pages.

@@ -16,6 +16,7 @@ Implement `PLAN.md` M16.1–M16.3: rich per-agency data linked to tone sets, car
      - positions are `[lon, lat]` in range
      - linear rings have at least 4 positions and are closed
      - at most 10,000 vertices in total and 256 KB serialized
+   - `cad_names: list[str]`: at most 20 names, each 1–120 chars. Trim them and make them unique case-insensitively. For now only store and validate them. A later milestone (M17) matches them against CAD incident feeds, so also expose them in the API and in the GeoJSON `properties`.
    - `AppConfig.agencies` (at most 500) with unique ids.
    - `ToneSet.agency_id: Slug | None = None`, reference-checked in `AppConfig`'s validator like alert targets.
    - **Deleting an agency still referenced by tone sets** is rejected with a clear error that lists those tone-set ids (in the store/API layer, returning 409).
