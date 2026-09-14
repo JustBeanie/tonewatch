@@ -509,6 +509,24 @@ Software squelch for every source type, so activity is visible and live audio ca
   - Squelch controls on the source form.
   - The live level meter shows the open and close lines and an open/closed lamp.
   - "Set from noise floor" fills open/close from the current floor + margin.
+- **M15.6** **Auto squelch** (added 2026-09-13 at user request; after M15a lands). `mode: auto` sets thresholds without manual tuning:
+  - **Estimator:** reuses the bounded histogram, over a longer window (default 5 min) so a busy channel's voice doesn't become the "floor".
+    - `floor` = low percentile (p10); `spread` = p50 − p10.
+    - `open` = floor + clamp(k·spread, `min_margin_db` 6, `max_margin_db` 25); `close` = open − max(3 dB, spread/2).
+  - **Calibrating:** until the window has enough samples (default 30 s), state is `calibrating`, and squelch fails **open** for display and live audio.
+  - **Health signals:**
+    - **Stuck open:** open continuously longer than `stuck_open_s` (default 10 min) sets a `stuck_open` flag and raises the margin one step (bounded).
+    - **Chatter:** more than `max_transitions_per_min` (default 20) sets a `chatter` flag and lengthens hang (bounded).
+    - Both flags clear automatically and are reported, never silent.
+  - Tone detection is still never gated.
+- **M15.7** **Calibrate and diagnostics.**
+  - `POST /api/sources/{id}/squelch/calibrate` (auth + CSRF + audit) samples N seconds (5–120) of the live feed. It returns floor, spread, p10/p50/p90, a coarse level histogram, and suggested `level`-mode thresholds; the UI can apply them in one click.
+  - Source status and WS gain `squelch_mode_effective`, `noise_floor_dbfs`, `open_dbfs_effective`, `close_dbfs_effective`, `calibrating`, `stuck_open`, `chatter` and `transitions_per_min`.
+  - **Done when:**
+    - Hypothesis: auto thresholds are monotonic in the floor and always stay within the margin clamps.
+    - Golden: a busy channel (voice 60 % of the time) still yields a floor within 3 dB of the true noise.
+    - Synthetic stuck-carrier and chattering inputs raise and then clear their flags.
+    - Calibrate on a file source returns stable suggestions (±1 dB across runs).
 - **Done when:**
   - Unit tests cover hysteresis, attack and hang.
   - **Hypothesis property:** noise hovering between close and open never chatters (at most one transition per hang window).
@@ -628,6 +646,59 @@ Forwards a short page summary to a Meshtastic node, which rebroadcasts it over t
   - Tests cover rate limiting and coalescing.
   - An embedded-broker integration test asserts topic and payload.
   - A test proves no URL or token ever appears in a message.
+
+### M19: Admin tooling (added 2026-09-13 at user request)
+Tools for whoever runs ToneWatch: seeing that it's healthy, being told when it isn't, and changing it safely. Every mutating action uses auth + CSRF + an audit event; secrets are never shown, exported unmasked, or logged.
+
+**Order:** M19.1–M19.3 first (they make the system observable), then M19.4–M19.8, then M19.9–M19.12. Each slice is backend first, then UI.
+
+- **M19.1** **System health page and `GET /api/admin/health`.**
+  - **Per source:** feed health history, level, squelch state, the realtime factor (DSP time per audio second), dropped or late frames, restarts, last error.
+  - **Service-wide:** event-bus subscriber lag and queue depths.
+  - **Storage:** recordings disk usage and free space with a retention forecast ("full in N days at the current rate"), and DB size.
+  - **Outputs:** per alert target the last success, last error and consecutive failures; MQTT connection state.
+  - **Build:** version, build and uptime.
+- **M19.2** **Admin alerts.** Configurable conditions notify chosen alert targets, off by default:
+  - a feed unhealthy longer than N min
+  - disk above N % or a forecast under N days
+  - an alert target with N consecutive failures
+  - squelch stuck open (M15.6)
+  - the DSP realtime factor below 1.5× for N min
+
+  Alerts are rate-limited and deduplicated, carry a clear "resolved" follow-up, and are marked `admin` so they can't be mistaken for pages.
+- **M19.3** **Alert delivery log and retry.** Browse `AlertAttempt` rows by call, target, phase, outcome and time. "Retry" re-sends one failed delivery for a real call, with a single attempt, audited and marked `retry` in the payload.
+- **M19.4** **End-to-end drill.** Inject a synthetic tone-set waveform (from `dsp/generator.py`), optionally followed by a short test voice clip, into a running channel's input, mixed in or replacing input.
+  - It exercises detection, recording and every output.
+  - Everything is marked `test`/`drill` in all payloads and HA events.
+  - The drill call is auto-deleted after N hours unless kept.
+  - Admins only, audited, rate-limited.
+- **M19.5** **Config history, diff, rollback, export and import.**
+  - **History:** every saved config is kept as a version (bounded, e.g. the last 100) with a diff view built from the existing audit diffs.
+  - **Rollback:** restores any version through the normal validation path.
+  - **Export:** YAML/JSON with secrets masked by default; including them needs explicit confirmation and produces an encrypted-at-rest file warning.
+  - **Import:** a validation dry-run that shows the diff before applying.
+- **M19.6** **Backup and restore.**
+  - **Backup:** one archive with the config, a consistent SQLite online backup, and optionally the recordings, plus a manifest carrying versions and checksums.
+  - **Restore:** checks version compatibility and runs migrations, and refuses a newer-schema backup.
+  - This serves Docker and Windows users; the HA add-on already has Supervisor backups.
+- **M19.7** **Support bundle and log viewer.**
+  - **Log viewer:** tails structured logs in the UI with a level filter; secrets and tokens are redacted.
+  - **Support bundle:** a download zip with the redacted config, versions, health snapshot, recent logs and the last N detection summaries. **No recordings, no secrets, no addresses** by default.
+- **M19.8** **Credential management.** Rotate the API token (with a grace period for the old one), rotate the live-stream secret (which invalidates live URLs), change the UI password, and revoke all sessions.
+- **M19.9** **Maintenance.** Retention dry-run ("would delete N files / X GB") and run-now; SQLite checkpoint and vacuum; orphan recording cleanup (files without DB rows, and rows without files) with a preview.
+- **M19.10** **Prometheus `/metrics`.** Off by default, and token-protected when on. Metrics: detections, alert outcomes, feed health, realtime factor, queue depths, disk.
+- **M19.11** **Audit log page.** Search and filter audit events (actor, type, resource, time), with a diff view for config changes.
+- **M19.12** **Replay against a draft config.** Before saving tone-set or tuning changes, replay the recordings of the last N calls, or uploaded WAVs, through the **draft** config. The result is "would detect / would miss / new detections" compared with what actually happened. This extends the backlog "simulation mode".
+- **Done when** (per slice):
+  - API tests cover auth, CSRF, audit and secret masking.
+  - Health numbers are checked against injected metrics.
+  - Admin alerts fire once and resolve once under synthetic conditions.
+  - A retry creates exactly one attempt.
+  - The drill is marked `test` in every output.
+  - Rollback round-trips.
+  - A backup → restore round-trip preserves config and calls.
+  - The support bundle contains no secrets, tokens, addresses or audio, proven by a scan test.
+  - Metrics are off by default.
 
 ### M12: Docs, hardening and v1.0.0
 - **M12.1** mkdocs-material site: install guides (Docker, Pi, add-on, Windows), finding tone frequencies, tuning purity/tolerance, troubleshooting missed pages with `analyze`, and HA recipes. Publish with GitHub Pages.

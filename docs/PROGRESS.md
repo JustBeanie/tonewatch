@@ -134,6 +134,8 @@ Tick a task with `[x]`, then append ` — <PR link> — <one-line note>`. Blocke
 - [ ] **M15.3** Pipeline state, `SquelchChanged`, WS `squelch_open`, optional `record.stop_on_squelch`; never gates detection. — brief M15a
 - [ ] **M15.4** MQTT/HA activity binary_sensor and `last_activity_at`. — brief M15a
 - [ ] **M15.5** Web UI squelch controls, meter lines, "Set from noise floor".
+- [ ] **M15.6** Auto squelch: long-window floor/spread thresholds, calibrating fail-open, stuck-open and chatter flags (after M15a).
+- [ ] **M15.7** Calibrate endpoint with suggested thresholds; effective-threshold diagnostics in status/WS.
 
 ## M16: Agencies and map (added 2026-09-12 at user request)
 - [ ] **M16.1** `Agency` model (identity, address, location, stations, GeoJSON coverage, contacts), `ToneSet.agency_id`. — brief M16a
@@ -157,6 +159,20 @@ Tick a task with `[x]`, then append ` — <PR link> — <one-line note>`. Blocke
 - [ ] **M18.3** Public-channel acknowledgement and amateur-radio/legal docs.
 - [ ] **M18.4** API + UI: alert target form, byte-count preview, send test.
 - [ ] **M18.5** Document the HA Meshtastic integration path (after M11.7).
+
+## M19: Admin tooling (added 2026-09-13 at user request)
+- [ ] **M19.1** System health page + `/api/admin/health` (per-source realtime factor, drops, disk forecast, DB size, target status, versions).
+- [ ] **M19.2** Admin alerts: dead feed, disk, failing target, stuck squelch, slow DSP; rate-limited, resolved follow-ups.
+- [ ] **M19.3** Alert delivery log with single-attempt audited retry.
+- [ ] **M19.4** End-to-end drill: inject synthetic tones into a live channel, marked test everywhere.
+- [ ] **M19.5** Config history, diff, rollback, masked export, dry-run import.
+- [ ] **M19.6** Backup and restore archive (config, SQLite online backup, optional recordings).
+- [ ] **M19.7** Support bundle (redacted) and in-UI log viewer.
+- [ ] **M19.8** Credential management: rotate API token and live secret, change UI password, revoke sessions.
+- [ ] **M19.9** Maintenance: retention dry-run/run-now, checkpoint/vacuum, orphan cleanup.
+- [ ] **M19.10** Prometheus `/metrics`, off by default, token-protected.
+- [ ] **M19.11** Audit log page with config diff view.
+- [ ] **M19.12** Replay recent calls or WAVs against a draft config before saving.
 
 ## M12: Docs, hardening and v1.0.0
 - [x] **M12.1** PM review passed; host ci-local green — Added the strict MkDocs Material site, public install and usage guides, internal-doc exclusions, offline `just docs`, and CI build; Pages publishing remains a user decision.
