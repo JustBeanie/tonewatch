@@ -129,10 +129,10 @@ Tick a task with `[x]`, then append ` — <PR link> — <one-line note>`. Blocke
 - [x] **M14.6** Threat model, ASVS rows and "Listen live" docs page. — PM review passed (M14a-fix-resume); host ci-local green.
 
 ## M15: Squelch (added 2026-09-12 at user request)
-- [ ] **M15.1** `dsp/squelch.py`: level and noise-floor modes, hysteresis, attack, hang. — brief M15a
-- [ ] **M15.2** `SourceBase.squelch`, legacy rtlsdr integer → `rtl_fm_squelch`, watchdog expects squelched silence. — brief M15a
-- [ ] **M15.3** Pipeline state, `SquelchChanged`, WS `squelch_open`, optional `record.stop_on_squelch`; never gates detection. — brief M15a
-- [ ] **M15.4** MQTT/HA activity binary_sensor and `last_activity_at`. — brief M15a
+- [x] **M15.1** `dsp/squelch.py`: level and noise-floor modes, hysteresis, attack, hang. — bounded floor estimator and focused behavior tests added.
+- [x] **M15.2** `SourceBase.squelch`, legacy rtlsdr integer → `rtl_fm_squelch`, watchdog expects squelched silence. — config migration, RTL argv, and squelch-aware flatline handling added.
+- [x] **M15.3** Pipeline state, `SquelchChanged`, WS `squelch_open`, optional `record.stop_on_squelch`; never gates detection. — raw detection path preserved and channel state/event wiring added.
+- [x] **M15.4** MQTT/HA activity binary_sensor and `last_activity_at`. — activity discovery/state publication and generated API artifacts updated.
 - [ ] **M15.5** Web UI squelch controls, meter lines, "Set from noise floor".
 - [ ] **M15.6** Auto squelch: long-window floor/spread thresholds, calibrating fail-open, stuck-open and chatter flags (after M15a).
 - [ ] **M15.7** Calibrate endpoint with suggested thresholds; effective-threshold diagnostics in status/WS.

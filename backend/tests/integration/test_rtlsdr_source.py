@@ -14,7 +14,7 @@ from tonewatch.sources.rtlsdr import RtlSdrSource
 def test_rtlsdr_fake_process_restarts_without_shell(tmp_path: Path) -> None:
     log = tmp_path / "argv.log"
     fake = Path(__file__).with_name("fake_rtl_fm.py")
-    config = RtlConfig(id="rtl", name="rtl", freq_hz=154000000, gain=12, ppm=3, squelch=4)
+    config = RtlConfig(id="rtl", name="rtl", freq_hz=154000000, gain=12, ppm=3, rtl_fm_squelch=4)
     source = RtlSdrSource(
         config,
         executable=sys.executable,

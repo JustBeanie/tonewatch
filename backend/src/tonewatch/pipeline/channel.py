@@ -15,11 +15,13 @@ import numpy as np
 
 from tonewatch.dsp.discovery import DiscoveryTracker, ToneCandidate
 from tonewatch.dsp.engine import DetectionEngine
+from tonewatch.dsp.squelch import Squelch
 from tonewatch.events import (
     CallClosed,
     ChannelLevel,
     EventBus,
     SpectrumUpdate,
+    SquelchChanged,
     ToneCandidateObserved,
     ToneDetected,
 )
@@ -150,13 +152,28 @@ class Channel:
         self._anchor_stream_s = 0.0
         self._source: AudioSource | None = None
         self.live_hub = live_hub
+        self._squelch = Squelch(source_config.squelch)
+        self._squelch_open: bool | None = None
+        self._last_activity_at: datetime | None = None
 
     @property
     def source_id(self) -> str:
         """Configured source identifier."""
         return self.source_config.id
 
-    async def run(self) -> None:
+    @property
+    def squelch_open(self) -> bool | None:
+        """Current software squelch state, or None when disabled."""
+        return self._squelch_open
+
+    @property
+    def last_activity_at(self) -> datetime | None:
+        """UTC time of the most recent open transition."""
+        return self._last_activity_at
+
+    async def run(  # noqa: PLR0912,PLR0915 -- ordered stream lifecycle is intentionally explicit
+        self,
+    ) -> None:
         """Run until the source ends or raises; always finish open recordings."""
         source = self._source_factory(self.source_config)
         self._source = source
@@ -167,10 +184,29 @@ class Channel:
             engine = self._engine_factory(list(self.tonesets))
             async for frame in source:
                 self._observe_frame(frame)
-                self._feed_live(frame)
                 await self._close_expired(frame.stream_time_s)
                 self.ringbuffer.extend(frame.samples, stream_time_s=frame.stream_time_s)
                 output = engine.feed(frame.samples)
+                stop_on_squelch = False
+                for spectrum in output.frames:
+                    state, changed = self._squelch.feed(spectrum.level_dbfs, spectrum.t_end_s)
+                    self._squelch_open = state if self.source_config.squelch.mode != "off" else None
+                    if changed:
+                        at = self._to_wall_time(spectrum.t_end_s)
+                        if state:
+                            self._last_activity_at = at
+                        self.bus.publish(
+                            SquelchChanged(self.source_id, state, spectrum.level_dbfs, at)
+                        )
+                    self._update_watchdog_squelch(state)
+                    if not state and changed and self._stop_on_squelch:
+                        stop_on_squelch = True
+                self._feed_live(
+                    frame,
+                    gate_open=(
+                        self.source_config.squelch.mode == "off" or self._squelch_open is True
+                    ),
+                )
                 if self.discovery is not None:
                     for candidate in self.discovery.feed(
                         output.segment_update,
@@ -185,7 +221,8 @@ class Channel:
                                 self._candidate_clip(candidate) if self.discovery_clip else None,
                             )
                         )
-                self._publish_level(frame)
+                level = output.frames[-1].level_dbfs if output.frames else None
+                self._publish_level(frame, level)
                 if self.bus.spectrum_subscribed(self.source_id):
                     for spectrum in output.frames:
                         self.bus.publish(
@@ -210,6 +247,8 @@ class Channel:
                         frame.stream_time_s + frame.samples.size / 16_000, frame.samples
                     ):
                         await self._close_call()
+                if stop_on_squelch:
+                    await self._close_call()
                 await asyncio.sleep(0)
             await self._close_call()
             await asyncio.sleep(0)
@@ -222,11 +261,11 @@ class Channel:
             await source.close()
             self._source = None
 
-    def _feed_live(self, frame: AudioFrame) -> None:
+    def _feed_live(self, frame: AudioFrame, *, gate_open: bool) -> None:
         if self.live_hub is not None:
-            self.live_hub.feed(self.source_id, frame.samples, gate_open=True)
+            self.live_hub.feed(self.source_id, frame.samples, gate_open=gate_open)
 
-    def _publish_level(self, frame: AudioFrame) -> None:
+    def _publish_level(self, frame: AudioFrame, level_dbfs: float | None = None) -> None:
         """Publish at most five level samples per source second."""
         last = getattr(self, "_last_level_s", -math.inf)
         if frame.stream_time_s - last < LEVEL_INTERVAL_S:
@@ -241,6 +280,10 @@ class Channel:
                 20 * math.log10(max(rms, 1e-12)),
                 peak,
                 self._to_wall_time(frame.stream_time_s),
+                getattr(self, "_squelch_open", None),
+                level_dbfs
+                if getattr(getattr(self.source_config, "squelch", None), "mode", "off") != "off"
+                else None,
             )
         )
 
@@ -263,7 +306,18 @@ class Channel:
             self._anchor_wall = self._as_utc(self.clock())
             self._anchor_stream_s = frame.stream_time_s
         if self.watchdog is not None:
+            set_rtl_squelch = getattr(self.watchdog, "set_rtl_squelch", None)
+            if callable(set_rtl_squelch):
+                set_rtl_squelch(getattr(self.source_config, "rtl_fm_squelch", 0) > 0)
             self.watchdog.on_frame(frame)
+
+    def _update_watchdog_squelch(self, state: bool) -> None:
+        """Pass software squelch state without replacing hardware squelch state."""
+        if self.watchdog is None:
+            return
+        set_squelch_open = getattr(self.watchdog, "set_squelch_open", None)
+        if callable(set_squelch_open):
+            set_squelch_open(state if self.source_config.squelch.mode != "off" else None)
 
     async def _publish_detection(self, detection: Detection) -> None:
         toneset = next(tone for tone in self.tonesets if tone.id == detection.toneset_id)
@@ -299,6 +353,18 @@ class Channel:
             self.source_id,
             self._to_wall_time(self._open_call.first_detection_s),
             frozenset(self._open_call.toneset_ids),
+        )
+
+    @property
+    def _stop_on_squelch(self) -> bool:
+        """Whether an active tone set requests squelch-driven post-roll stop."""
+        return (
+            self.source_config.squelch.mode != "off"
+            and self._open_call is not None
+            and all(
+                next(tone for tone in self.tonesets if tone.id == tone_id).record.stop_on_squelch
+                for tone_id in self._open_call.toneset_ids
+            )
         )
 
     async def _close_expired(self, stream_time_s: float) -> None:

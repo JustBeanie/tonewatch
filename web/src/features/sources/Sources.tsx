@@ -11,7 +11,7 @@ type Source = {
     frequency_hz?: number;
     gain?: number;
     ppm?: number;
-    squelch?: number;
+    rtl_fm_squelch?: number;
 };
 export function Sources() {
     const [items, setItems] = useState<Source[]>([]);
@@ -52,7 +52,7 @@ export function Sources() {
             body.frequency_hz = Number(f.get("frequency") || 0) * 1e6;
             body.gain = Number(f.get("gain") || 0);
             body.ppm = Number(f.get("ppm") || 0);
-            body.squelch = Number(f.get("squelch") || 0);
+            body.rtl_fm_squelch = Number(f.get("squelch") || 0);
         }
         try {
             await request("sources", {

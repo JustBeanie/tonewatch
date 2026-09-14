@@ -8,14 +8,32 @@ from typing import Any, ClassVar, cast
 from uuid import uuid4
 
 import numpy as np
+import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 from sqlalchemy import select
 
-from tonewatch.config.models import AppConfig, FileSource, RecordingPolicy, ToneSet, ToneSpec
+from tonewatch.config.models import (
+    AppConfig,
+    FileSource,
+    RecordingPolicy,
+    RtlSdrSource,
+    ToneSet,
+    ToneSpec,
+)
 from tonewatch.dsp.engine import EngineOutput
 from tonewatch.dsp.matcher import Detection
-from tonewatch.events import CallClosed, Event, EventBus, FeedHealthChanged, ToneDetected
+from tonewatch.dsp.spectrum import SpectrumFrame
+from tonewatch.dsp.squelch import SquelchConfig
+from tonewatch.events import (
+    CallClosed,
+    ChannelLevel,
+    Event,
+    EventBus,
+    FeedHealthChanged,
+    SquelchChanged,
+    ToneDetected,
+)
 from tonewatch.pipeline.channel import Channel, RecorderCall
 from tonewatch.pipeline.persistence import PersistenceSubscriber
 from tonewatch.pipeline.ringbuffer import RingBuffer
@@ -135,6 +153,285 @@ def _detection(toneset_id: str, at: float) -> Detection:
 
 def _frame(source_id: str, at: float, *, discontinuity: bool = False) -> AudioFrame:
     return AudioFrame(np.zeros(1600, dtype=np.float32), at, source_id, discontinuity)
+
+
+def _spectrum(level_dbfs: float, at: float) -> SpectrumFrame:
+    return SpectrumFrame(at, 1000, level_dbfs, 1.0, True)
+
+
+def test_channel_wires_squelch_level_and_never_gates_detection() -> None:
+    async def run(config: Any, output: EngineOutput) -> list[Event]:
+        source = _Source([_frame("radio", 0)])
+        bus = EventBus()
+        subscription = bus.subscribe()
+        channel = Channel(
+            config,
+            [_toneset("page")],
+            bus,
+            clock=lambda: datetime(2026, 1, 1, tzinfo=UTC),
+            engine_factory=_Engine,
+            source_factory=cast("Any", lambda _: source),
+        )
+        _Engine.outputs = [output]
+        await channel.run()
+        await asyncio.sleep(0)
+        events: list[Event] = []
+        while not subscription.queue.empty():
+            events.append(cast("Any", subscription.queue.get_nowait()))
+        return events
+
+    async def scenario() -> None:
+        detected = _detection("page", 1.25)
+        enabled = FileSource(
+            id="radio",
+            name="radio",
+            path="unused.wav",
+            squelch=SquelchConfig(mode="level", open_dbfs=-10, close_dbfs=-20),
+        )
+        enabled_events = await run(
+            enabled,
+            EngineOutput((_spectrum(-30, 0.3),), (), (detected,)),
+        )
+        levels = [event for event in enabled_events if isinstance(event, ChannelLevel)]
+        detections = [event for event in enabled_events if isinstance(event, ToneDetected)]
+        assert levels and levels[0].squelch_level_dbfs == -30
+        assert levels[0].rms_dbfs == pytest.approx(-240, abs=1)
+        assert detections and detections[0].detected_at == datetime(
+            2026, 1, 1, 0, 0, 1, 250000, tzinfo=UTC
+        )
+
+        disabled = FileSource(id="radio", name="radio", path="unused.wav")
+        disabled_events = await run(
+            disabled,
+            EngineOutput((_spectrum(-30, 0.3),), (), (detected,)),
+        )
+        off_level = next(event for event in disabled_events if isinstance(event, ChannelLevel))
+        off_detection = next(event for event in disabled_events if isinstance(event, ToneDetected))
+        assert off_level.squelch_level_dbfs is None
+        assert off_detection.detected_at == detections[0].detected_at
+
+    asyncio.run(scenario())
+
+
+def test_channel_live_gate_follows_squelch_without_gating_detection() -> None:
+    class Hub:
+        def __init__(self) -> None:
+            self.gates: list[bool] = []
+
+        def feed(self, source_id: str, samples: np.ndarray, *, gate_open: bool = True) -> None:
+            del source_id, samples
+            self.gates.append(gate_open)
+
+    async def run(config: Any, outputs: list[EngineOutput]) -> tuple[list[bool], list[datetime]]:
+        source = _Source([_frame("radio", n) for n in (0, 1, 2)])
+        hub = Hub()
+        bus = EventBus()
+        subscription = bus.subscribe(ToneDetected)
+        _Engine.outputs = list(outputs)
+        await Channel(
+            config,
+            [_toneset("page")],
+            bus,
+            clock=lambda: datetime(2026, 1, 1, tzinfo=UTC),
+            engine_factory=_Engine,
+            source_factory=cast("Any", lambda _: source),
+            live_hub=cast("Any", hub),
+        ).run()
+        await asyncio.sleep(0)
+        detections = [
+            cast("ToneDetected", subscription.queue.get_nowait())
+            for _ in range(subscription.queue.qsize())
+        ]
+        return hub.gates, [event.detected_at for event in detections]
+
+    async def scenario() -> None:
+        outputs = [
+            EngineOutput((_spectrum(-60, 0.3),), (), (_detection("page", 0.1),)),
+            EngineOutput((_spectrum(-30, 1.3),), (), ()),
+            EngineOutput((_spectrum(-60, 2.3),), (), ()),
+        ]
+        off_gates, off_times = await run(
+            FileSource(id="radio", name="radio", path="unused.wav"), outputs
+        )
+        level_gates, level_times = await run(
+            FileSource(
+                id="radio",
+                name="radio",
+                path="unused.wav",
+                squelch=SquelchConfig(
+                    mode="level", open_dbfs=-40, close_dbfs=-45, attack_ms=0, hang_ms=0
+                ),
+            ),
+            outputs,
+        )
+        assert off_gates == [True, True, True]
+        assert level_gates == [False, True, False]
+        assert level_times == off_times
+
+    asyncio.run(scenario())
+
+
+def test_channel_watchdog_flatline_respects_software_and_rtl_squelch() -> None:
+    async def run(config: Any, outputs: list[EngineOutput]) -> list[FeedHealthChanged]:
+        now = [0.0]
+        bus = EventBus()
+        subscription = bus.subscribe(FeedHealthChanged)
+        watchdog = Watchdog("radio", bus, clock=lambda: now[0], flatline_s=5)
+        source = _Source([_frame("radio", 0), _frame("radio", 3), _frame("radio", 6)])
+        channel = Channel(
+            config,
+            [],
+            bus,
+            clock=lambda: datetime(2026, 1, 1, tzinfo=UTC),
+            engine_factory=_Engine,
+            source_factory=cast("Any", lambda _: source),
+            watchdog=watchdog,
+        )
+        _Engine.outputs = outputs
+        await channel.run()
+        now[0] = 6
+        watchdog.check()
+        await asyncio.sleep(0)
+        events: list[FeedHealthChanged] = []
+        while not subscription.queue.empty():
+            events.append(cast("Any", subscription.queue.get_nowait()))
+        return events
+
+    async def scenario() -> None:
+        def silent() -> list[EngineOutput]:
+            return [EngineOutput((), (), ())] * 3
+
+        off = FileSource(id="radio", name="radio", path="unused.wav")
+        assert any(event.reason == "flatline" for event in await run(off, silent()))
+
+        closed = FileSource(
+            id="radio",
+            name="radio",
+            path="unused.wav",
+            squelch=SquelchConfig(mode="level", open_dbfs=-10, close_dbfs=-20),
+        )
+        low = [EngineOutput((_spectrum(-60, n),), (), ()) for n in (0.3, 3.3, 6.3)]
+        assert not any(event.reason == "flatline" for event in await run(closed, low))
+
+        rtl = RtlSdrSource(id="radio", name="radio", freq_hz=154000000, rtl_fm_squelch=4)
+        assert not any(event.reason == "flatline" for event in await run(rtl, silent()))
+
+    asyncio.run(scenario())
+
+
+def test_channel_squelch_changed_is_transition_only() -> None:
+    async def run() -> None:
+        source = _Source([_frame("radio", n) for n in (0, 1, 2)])
+        bus = EventBus()
+        subscription = bus.subscribe(SquelchChanged)
+        config = FileSource(
+            id="radio",
+            name="radio",
+            path="unused.wav",
+            squelch=SquelchConfig(mode="level", open_dbfs=-40, close_dbfs=-45, attack_ms=0),
+        )
+        _Engine.outputs = [
+            EngineOutput((_spectrum(-30, 0.3),), (), ()),
+            EngineOutput((_spectrum(-30, 1.3),), (), ()),
+            EngineOutput((_spectrum(-30, 2.3),), (), ()),
+        ]
+        await Channel(
+            config,
+            [],
+            bus,
+            clock=lambda: datetime(2026, 1, 1, tzinfo=UTC),
+            engine_factory=_Engine,
+            source_factory=cast("Any", lambda _: source),
+        ).run()
+        await asyncio.sleep(0)
+        events: list[SquelchChanged] = []
+        while not subscription.queue.empty():
+            events.append(cast("Any", subscription.queue.get_nowait()))
+        assert len(events) == 1
+
+    asyncio.run(run())
+
+
+def test_stop_on_squelch_finishes_at_hang_and_stacked_mixed_policy_is_normal() -> None:
+    class Hook:
+        def __init__(self) -> None:
+            self.current_frame_s = -1.0
+            self.finished_at: list[float] = []
+
+        def __call__(self, frame: AudioFrame, *_args: Any) -> None:
+            self.current_frame_s = frame.stream_time_s
+
+        async def finish(self) -> None:
+            self.finished_at.append(self.current_frame_s)
+
+    async def run(stop_on_squelch: bool) -> float:
+        source = _Source([_frame("radio", n) for n in (0, 0.5, 1, 2)])
+        bus = EventBus()
+        tone = ToneSet(
+            id="page",
+            name="page",
+            sequence=[ToneSpec(freq_hz=1000, min_s=0.1)],
+            record=RecordingPolicy(post_s=10, stop_on_squelch=stop_on_squelch),
+        )
+        hook = Hook()
+        _Engine.outputs = [
+            EngineOutput((_spectrum(-30, 0.3),), (), (_detection("page", 0.1),)),
+            EngineOutput((_spectrum(-50, 0.8),), (), ()),
+            EngineOutput((_spectrum(-50, 1.1),), (), ()),
+            EngineOutput((_spectrum(-50, 2.1),), (), ()),
+        ]
+        config = FileSource(
+            id="radio",
+            name="radio",
+            path="unused.wav",
+            squelch=SquelchConfig(
+                mode="level", open_dbfs=-40, close_dbfs=-45, attack_ms=0, hang_ms=200
+            ),
+        )
+        await Channel(
+            config,
+            [tone],
+            bus,
+            clock=lambda: datetime(2026, 1, 1, tzinfo=UTC),
+            engine_factory=_Engine,
+            source_factory=cast("Any", lambda _: source),
+            recorder_hook=cast("Any", hook),
+        ).run()
+        assert len(hook.finished_at) == 1
+        return hook.finished_at[0]
+
+    async def scenario() -> None:
+        assert await run(True) == 1
+        assert await run(False) == 2
+
+        first = ToneSet(
+            id="first",
+            name="first",
+            sequence=[ToneSpec(freq_hz=1000, min_s=0.1)],
+            record=RecordingPolicy(stop_on_squelch=True),
+        )
+        second = ToneSet(
+            id="second",
+            name="second",
+            sequence=[ToneSpec(freq_hz=1100, min_s=0.1)],
+            record=RecordingPolicy(stop_on_squelch=False),
+        )
+        channel = Channel(
+            FileSource(
+                id="radio",
+                name="radio",
+                path="unused.wav",
+                squelch=SquelchConfig(mode="level"),
+            ),
+            [first, second],
+            EventBus(),
+        )
+        channel._anchor_wall = datetime(2026, 1, 1, tzinfo=UTC)
+        await channel._publish_detection(_detection("first", 1))
+        await channel._publish_detection(_detection("second", 1.1))
+        assert not channel._stop_on_squelch
+
+    asyncio.run(scenario())
 
 
 def test_channel_publishes_tones_and_groups_stacked_calls(monkeypatch) -> None:
@@ -597,6 +894,32 @@ def test_watchdog_flatline_clipping_disconnect_and_recovery() -> None:
         disconnect_watchdog.on_error(SourceUnavailable("gone"))
         await asyncio.sleep(0)
         assert subscription.queue.empty()
+
+    asyncio.run(run())
+
+
+def test_watchdog_squelch_inputs_keep_off_and_rtl_silence_distinct() -> None:
+    async def run() -> None:
+        now = [0.0]
+        bus = EventBus()
+        subscription = bus.subscribe(FeedHealthChanged)
+        watchdog = Watchdog("radio", bus, clock=lambda: now[0], flatline_s=5)
+        watchdog.set_squelch_open(None)
+        for offset in (0, 3, 6):
+            now[0] = offset
+            watchdog.on_frame(_frame("radio", offset))
+            watchdog.check()
+        await asyncio.sleep(0)
+        assert any(event.reason == "flatline" for event in _drain(subscription))
+
+        rtl = Watchdog("radio", bus, clock=lambda: now[0], flatline_s=5)
+        rtl.set_rtl_squelch(True)
+        for offset in (0, 3, 6):
+            now[0] = offset
+            rtl.on_frame(_frame("radio", offset))
+            rtl.check()
+        await asyncio.sleep(0)
+        assert not any(event.reason == "flatline" for event in _drain(subscription))
 
     asyncio.run(run())
 

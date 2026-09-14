@@ -37,6 +37,7 @@ from tonewatch.config.models import (
     FileSource,
     MqttTarget,
     ScriptTarget,
+    SquelchConfig,
     ToneSet,
     ToneSpec,
     WebhookTarget,
@@ -48,6 +49,7 @@ from tonewatch.events import (
     EventBus,
     RecordingReady,
     RecordingStored,
+    SquelchChanged,
     ToneDetected,
     ToneDiscovered,
 )
@@ -1010,6 +1012,76 @@ def test_ha_discovery_payloads_and_retained_clear_on_delete() -> None:
             }
             <= cleared
         )
+
+    asyncio.run(run())
+
+
+def test_squelch_activity_discovery_and_transition_states() -> None:
+    async def run() -> None:
+        class Publisher:
+            availability_topic = "tonewatch/instance/availability"
+
+            def __init__(self) -> None:
+                self.messages: list[tuple[str, object, bool]] = []
+
+            async def publish(self, topic: str, payload: object, *, retain: bool = False) -> None:
+                self.messages.append((topic, payload, retain))
+
+            async def publish_activity(self, source_id: str, active: bool) -> None:
+                self.messages.append((f"activity/{source_id}", "ON" if active else "OFF", False))
+
+        publisher = Publisher()
+        discovery = HADiscovery(publisher, "instance")
+        enabled = AppConfig(
+            sources=[
+                FileSource(
+                    id="radio",
+                    name="Radio",
+                    path="radio.wav",
+                    squelch=SquelchConfig(mode="level"),
+                )
+            ]
+        )
+        await discovery.publish(enabled)
+        activity_topic = discovery._topic("binary_sensor", "radio_activity")
+        assert any(topic == activity_topic for topic, _payload, _retain in publisher.messages)
+        publisher.messages.clear()
+        disabled = AppConfig(sources=[FileSource(id="radio", name="Radio", path="radio.wav")])
+        await discovery.publish(disabled)
+        assert (activity_topic, "", True) in publisher.messages
+        publisher.messages.clear()
+        await discovery.publish(enabled)
+        publisher.messages.clear()
+        await discovery.publish(AppConfig())
+        assert (activity_topic, "", True) in publisher.messages
+
+        bus = EventBus()
+        dispatcher = AlertDispatcher(AppConfig(), bus)
+        dispatcher._mqtt["mqtt"] = cast("Any", publisher)
+        dispatcher.subscription = bus.subscribe()
+        task = asyncio.create_task(dispatcher._consume())
+        await asyncio.sleep(0)
+        bus.publish(SquelchChanged("radio", True, -30, datetime.now(UTC)))
+        bus.publish(SquelchChanged("radio", False, -50, datetime.now(UTC)))
+        for _ in range(20):
+            if (
+                len([message for message in publisher.messages if message[0] == "activity/radio"])
+                == 2
+            ):
+                break
+            await asyncio.sleep(0)
+        dispatcher.subscription.close()
+        task.cancel()
+        await asyncio.gather(task, return_exceptions=True)
+        activity_messages = [
+            (topic, payload)
+            for topic, payload, _retain in publisher.messages
+            if topic == "activity/radio"
+        ]
+        assert activity_messages == [
+            ("activity/radio", "ON"),
+            ("activity/radio", "OFF"),
+        ]
 
     asyncio.run(run())
 

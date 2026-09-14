@@ -54,7 +54,7 @@ class RtlSdrSource:
             "-p",
             str(self.config.ppm),
             "-l",
-            str(self.config.squelch),
+            str(self.config.rtl_fm_squelch),
             "-",
         ]
 

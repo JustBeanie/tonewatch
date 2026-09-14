@@ -97,10 +97,22 @@ async def delete_toneset(request: Request, item_id: str) -> Any:
 def _crud(path: str, kind: str, model: Any) -> None:
     @router.get(path, dependencies=[Depends(authenticated)])
     async def list_items(request: Request) -> list[Any]:
-        values = [_dump(value) for value in collection(request, kind)]
-        if kind == "sources":
-            for value in values:
-                value["live_listeners"] = request.app.state.live_hub.listeners_for(value["id"])
+        values = []
+        for value in collection(request, kind):
+            item = _dump(value)
+            if kind == "sources":
+                supervisor = getattr(request.app.state, "supervisor", None)
+                status = (
+                    supervisor.source_status(value.id) if supervisor is not None else (None, None)
+                )
+                open_state, last_activity = status
+                item["squelch_open"] = open_state
+                item["last_activity_at"] = last_activity
+                live_hub = getattr(request.app.state, "live_hub", None)
+                item["live_listeners"] = (
+                    live_hub.listeners_for(value.id) if live_hub is not None else None
+                )
+            values.append(item)
         return values
 
     @router.post(path, dependencies=[Depends(write_auth)], status_code=201)
@@ -126,7 +138,15 @@ def _crud(path: str, kind: str, model: Any) -> None:
             raise HTTPException(404, "not found")
         result = _dump(item)
         if kind == "sources":
-            result["live_listeners"] = request.app.state.live_hub.listeners_for(item_id)
+            supervisor = getattr(request.app.state, "supervisor", None)
+            status = supervisor.source_status(item.id) if supervisor is not None else (None, None)
+            open_state, last_activity = status
+            result["squelch_open"] = open_state
+            result["last_activity_at"] = last_activity
+            live_hub = getattr(request.app.state, "live_hub", None)
+            result["live_listeners"] = (
+                live_hub.listeners_for(item_id) if live_hub is not None else None
+            )
         return result
 
     @router.put(f"{path}/{{item_id}}", dependencies=[Depends(write_auth)])

@@ -263,6 +263,13 @@ class MqttPublisher:
         state = "online" if healthy else "offline"
         await self.publish(f"tonewatch/{self.instance_id}/health/{source_id}", state)
 
+    async def publish_activity(self, source_id: str, active: bool) -> None:
+        """Publish software squelch activity."""
+        await self.publish(
+            f"tonewatch/{self.instance_id}/activity/{source_id}",
+            "ON" if active else "OFF",
+        )
+
     def _queue(self, message: MqttMessage) -> None:
         with self._outbox_lock:
             self.outbox.append(message)

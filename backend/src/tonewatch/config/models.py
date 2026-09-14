@@ -13,6 +13,8 @@ from pydantic import (
     model_validator,
 )
 
+from tonewatch.dsp.squelch import SquelchConfig
+
 Slug = Annotated[str, StringConstraints(pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$", min_length=1)]
 Positive = Annotated[float, Field(gt=0)]
 AlertEvent = Literal["pre_alert", "recording_ready", "closed", "tone_discovered"]
@@ -51,6 +53,7 @@ class RecordingPolicy(FrozenModel):
     post_s: Positive = 60
     silence_stop_s: Positive = 8
     max_s: Positive = 300
+    stop_on_squelch: bool = False
     formats: list[Literal["mp3", "opus"]] = ["mp3"]
 
     @field_validator("formats")
@@ -111,6 +114,7 @@ class SourceBase(FrozenModel):
     tonesets: list[Slug] | Literal["all"] = "all"
     discovery_enabled: bool = True
     live_stream_enabled: bool = True
+    squelch: SquelchConfig = Field(default_factory=SquelchConfig)
 
 
 class SoundcardSource(SourceBase):
@@ -136,7 +140,19 @@ class RtlSdrSource(SourceBase):
     freq_hz: float
     gain: float | None = None
     ppm: int = 0
-    squelch: int = 0
+    rtl_fm_squelch: int = 0
+
+    @model_validator(mode="before")
+    @classmethod
+    def migrate_legacy_squelch(cls, value: object) -> object:
+        if isinstance(value, dict) and "squelch" in value and "rtl_fm_squelch" not in value:
+            value = dict(value)
+            legacy = value.pop("squelch")
+            if isinstance(legacy, int) and not isinstance(legacy, bool):
+                value["rtl_fm_squelch"] = legacy
+            else:
+                value["squelch"] = legacy
+        return value
 
 
 class FileSource(SourceBase):

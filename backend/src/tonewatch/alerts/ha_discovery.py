@@ -94,6 +94,18 @@ class HADiscovery:
                 "availability": availability,
                 "device": device,
             }
+            if source.squelch.mode != "off":
+                key = f"{source.id}_activity"
+                topics[self._topic("binary_sensor", key)] = {
+                    "name": f"{source.name} activity",
+                    "unique_id": f"{self.instance_id}_{key}",
+                    "state_topic": f"tonewatch/{self.instance_id}/activity/{source.id}",
+                    "payload_on": "ON",
+                    "payload_off": "OFF",
+                    "device_class": "sound",
+                    "availability": availability,
+                    "device": device,
+                }
         for topic in self._topics - topics.keys():
             await self.publisher.publish(topic, "", retain=True)
         for topic, payload in topics.items():

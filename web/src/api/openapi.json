@@ -183,6 +183,9 @@
             "title": "Realtime",
             "type": "boolean"
           },
+          "squelch": {
+            "$ref": "#/components/schemas/SquelchConfig"
+          },
           "tonesets": {
             "anyOf": [
               {
@@ -434,6 +437,11 @@
             "exclusiveMinimum": 0.0,
             "title": "Silence Stop S",
             "type": "number"
+          },
+          "stop_on_squelch": {
+            "default": false,
+            "title": "Stop On Squelch",
+            "type": "boolean"
           }
         },
         "title": "RecordingPolicy",
@@ -488,10 +496,13 @@
             "title": "Ppm",
             "type": "integer"
           },
-          "squelch": {
+          "rtl_fm_squelch": {
             "default": 0,
-            "title": "Squelch",
+            "title": "Rtl Fm Squelch",
             "type": "integer"
+          },
+          "squelch": {
+            "$ref": "#/components/schemas/SquelchConfig"
           },
           "tonesets": {
             "anyOf": [
@@ -642,6 +653,9 @@
             "title": "Name",
             "type": "string"
           },
+          "squelch": {
+            "$ref": "#/components/schemas/SquelchConfig"
+          },
           "tonesets": {
             "anyOf": [
               {
@@ -675,6 +689,59 @@
         "title": "SoundcardSource",
         "type": "object"
       },
+      "SquelchConfig": {
+        "additionalProperties": false,
+        "description": "Validated software squelch settings.",
+        "properties": {
+          "attack_ms": {
+            "default": 50,
+            "maximum": 2000.0,
+            "minimum": 0.0,
+            "title": "Attack Ms",
+            "type": "number"
+          },
+          "close_dbfs": {
+            "default": -45,
+            "maximum": 0.0,
+            "minimum": -120.0,
+            "title": "Close Dbfs",
+            "type": "number"
+          },
+          "floor_margin_db": {
+            "default": 10,
+            "maximum": 40.0,
+            "minimum": 1.0,
+            "title": "Floor Margin Db",
+            "type": "number"
+          },
+          "hang_ms": {
+            "default": 1500,
+            "maximum": 30000.0,
+            "minimum": 0.0,
+            "title": "Hang Ms",
+            "type": "number"
+          },
+          "mode": {
+            "default": "off",
+            "enum": [
+              "off",
+              "level",
+              "noise_floor"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "open_dbfs": {
+            "default": -40,
+            "maximum": 0.0,
+            "minimum": -120.0,
+            "title": "Open Dbfs",
+            "type": "number"
+          }
+        },
+        "title": "SquelchConfig",
+        "type": "object"
+      },
       "StreamSource": {
         "additionalProperties": false,
         "properties": {
@@ -703,6 +770,9 @@
             "minLength": 1,
             "title": "Name",
             "type": "string"
+          },
+          "squelch": {
+            "$ref": "#/components/schemas/SquelchConfig"
           },
           "tonesets": {
             "anyOf": [

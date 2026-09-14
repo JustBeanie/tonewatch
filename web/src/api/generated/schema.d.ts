@@ -590,6 +590,7 @@ export interface components {
              * @default true
              */
             realtime: boolean;
+            squelch?: components["schemas"]["SquelchConfig"];
             /**
              * Tonesets
              * @default all
@@ -730,6 +731,11 @@ export interface components {
              * @default 8
              */
             silence_stop_s: number;
+            /**
+             * Stop On Squelch
+             * @default false
+             */
+            stop_on_squelch: boolean;
         };
         /** RtlSdrSource */
         RtlSdrSource: {
@@ -762,10 +768,11 @@ export interface components {
              */
             ppm: number;
             /**
-             * Squelch
+             * Rtl Fm Squelch
              * @default 0
              */
-            squelch: number;
+            rtl_fm_squelch: number;
+            squelch?: components["schemas"]["SquelchConfig"];
             /**
              * Tonesets
              * @default all
@@ -837,6 +844,7 @@ export interface components {
             live_stream_enabled: boolean;
             /** Name */
             name: string;
+            squelch?: components["schemas"]["SquelchConfig"];
             /**
              * Tonesets
              * @default all
@@ -847,6 +855,43 @@ export interface components {
              * @enum {string}
              */
             type: "soundcard";
+        };
+        /**
+         * SquelchConfig
+         * @description Validated software squelch settings.
+         */
+        SquelchConfig: {
+            /**
+             * Attack Ms
+             * @default 50
+             */
+            attack_ms: number;
+            /**
+             * Close Dbfs
+             * @default -45
+             */
+            close_dbfs: number;
+            /**
+             * Floor Margin Db
+             * @default 10
+             */
+            floor_margin_db: number;
+            /**
+             * Hang Ms
+             * @default 1500
+             */
+            hang_ms: number;
+            /**
+             * Mode
+             * @default off
+             * @enum {string}
+             */
+            mode: "off" | "level" | "noise_floor";
+            /**
+             * Open Dbfs
+             * @default -40
+             */
+            open_dbfs: number;
         };
         /** StreamSource */
         StreamSource: {
@@ -869,6 +914,7 @@ export interface components {
             live_stream_enabled: boolean;
             /** Name */
             name: string;
+            squelch?: components["schemas"]["SquelchConfig"];
             /**
              * Tonesets
              * @default all

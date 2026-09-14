@@ -21,6 +21,7 @@ from tonewatch.events import (
     FeedHealthChanged,
     RecordingReady,
     RecordingStored,
+    SquelchChanged,
     Subscription,
     ToneDetected,
     ToneDiscovered,
@@ -136,6 +137,15 @@ class AlertDispatcher:
         async for event in self.subscription:
             if isinstance(event, FeedHealthChanged):
                 await self._health(event)
+                continue
+            if isinstance(event, SquelchChanged):
+                await asyncio.gather(
+                    *(
+                        publisher.publish_activity(event.source_id, event.open)
+                        for publisher in self._mqtt.values()
+                    ),
+                    return_exceptions=True,
+                )
                 continue
             if isinstance(event, ToneDiscovered):
                 await self._handle_discovered(event)

@@ -35,3 +35,15 @@ matches from one page do not alert again immediately.
 
 Make one change at a time and validate it with a saved recording using the
 [analyzer workflow](troubleshooting.md).
+
+## Squelch
+
+Software squelch marks a source as active when its level rises above the open
+threshold and keeps it active through the configured attack and hang times.
+The `level` mode uses fixed dBFS thresholds; `noise_floor` tracks the quietest
+roughly ten percent of levels in a rolling window and applies `floor_margin_db`.
+Hysteresis prevents chatter between the open and close thresholds.
+
+Squelch controls activity display and future live audio gating only. It does
+not affect detection: the matcher, discovery, ring buffer, and recorder always
+receive the raw audio, including while squelch is closed.

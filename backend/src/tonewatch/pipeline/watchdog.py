@@ -36,11 +36,14 @@ class Watchdog:
         clip_ratio: float = 0.05,
         window_s: float = 10,
         recovery_s: float = 1,
+        squelch_expected: bool = False,
     ) -> None:
         """Create a clock-driven health monitor with configurable thresholds."""
         self.source_id, self.bus, self.clock, self.sleep = source_id, bus, clock, sleep
         self.no_data_s, self.flatline_s = no_data_s, flatline_s
         self.clip_ratio, self.window_s, self.recovery_s = clip_ratio, window_s, recovery_s
+        self.software_squelch_open: bool | None = False if squelch_expected else None
+        self.rtl_squelch_active = False
         self._last_frame_at: float | None = clock()
         self._flatline_started: float | None = None
         self._clips: deque[tuple[float, int, int]] = deque()
@@ -62,7 +65,7 @@ class Watchdog:
             self._set_unhealthy("disconnect", now)
         samples = np.asarray(frame.samples, dtype=np.float32)
         rms = float(np.sqrt(np.mean(samples.astype(np.float64) ** 2))) if samples.size else 0.0
-        if rms < 10 ** (-80 / 20):
+        if rms < 10 ** (-80 / 20) and not self.squelch_expected:
             if self._flatline_started is None:
                 self._flatline_started = now
         else:
@@ -83,6 +86,23 @@ class Watchdog:
         """Observe a source failure as a disconnect."""
         del error
         self._set_unhealthy("disconnect", self.clock())
+
+    def set_squelch_open(self, is_open: bool | None) -> None:
+        """Tell the watchdog whether software squelch currently expects silence."""
+        self.software_squelch_open = is_open
+        if self.squelch_expected:
+            self._flatline_started = None
+
+    def set_rtl_squelch(self, active: bool) -> None:
+        """Tell the watchdog whether the hardware squelch is suppressing audio."""
+        self.rtl_squelch_active = active
+        if self.squelch_expected:
+            self._flatline_started = None
+
+    @property
+    def squelch_expected(self) -> bool:
+        """Whether silence is expected from either configured squelch."""
+        return self.rtl_squelch_active or self.software_squelch_open is False
 
     def check(self) -> None:
         """Evaluate elapsed-time conditions; callers drive this with their clock."""

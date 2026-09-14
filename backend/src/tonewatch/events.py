@@ -67,6 +67,18 @@ class ChannelLevel:
     rms_dbfs: float
     peak: float
     measured_at: datetime
+    squelch_open: bool | None = None
+    squelch_level_dbfs: float | None = None
+
+
+@dataclass(frozen=True)
+class SquelchChanged:
+    """A software squelch transition for one source."""
+
+    source_id: str
+    open: bool
+    level_dbfs: float
+    at: datetime
 
 
 @dataclass(frozen=True)
@@ -118,6 +130,7 @@ Event = (
     | CallClosed
     | ConfigChanged
     | ChannelLevel
+    | SquelchChanged
     | SpectrumUpdate
     | ToneDiscovered
     | ToneCandidateObserved

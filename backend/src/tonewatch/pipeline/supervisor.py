@@ -79,6 +79,7 @@ class Supervisor:
         self._tasks: dict[str, asyncio.Task[None]] = {}
         self._background_shutdown: set[asyncio.Task[None]] = set()
         self._configs: dict[str, Source] = {}
+        self._channels: dict[str, Channel] = {}
         self._stopping = False
         self.persistence = PersistenceSubscriber(
             bus,
@@ -154,6 +155,7 @@ class Supervisor:
         await self.alerts.stop()
         self._tasks.clear()
         self._configs.clear()
+        self._channels.clear()
         if self._retention_task is not None:
             self._retention_task.cancel()
             await asyncio.gather(self._retention_task, return_exceptions=True)
@@ -201,6 +203,7 @@ class Supervisor:
     async def _stop_source(self, source_id: str) -> None:
         task = self._tasks.pop(source_id, None)
         self._configs.pop(source_id, None)
+        self._channels.pop(source_id, None)
         if task is None:
             return
         task.cancel()
@@ -220,6 +223,7 @@ class Supervisor:
             watchdog_task = asyncio.create_task(
                 watchdog.run(), name=f"tonewatch-watchdog-{source.id}"
             )
+            channel: Channel | None = None
             try:
                 channel = self.channel_factory(
                     source,
@@ -241,6 +245,7 @@ class Supervisor:
                     discovery_settings=self.config.discovery,
                     live_hub=self.live_hub,
                 )
+                self._channels[source.id] = channel
                 await channel.run()
             except asyncio.CancelledError:
                 raise
@@ -257,6 +262,17 @@ class Supervisor:
             else:
                 return
             finally:
+                if channel is not None and self._channels.get(source.id) is channel:
+                    self._channels.pop(source.id, None)
                 await watchdog.stop()
                 watchdog_task.cancel()
                 await asyncio.gather(watchdog_task, return_exceptions=True)
+
+    def source_status(self, source_id: str) -> tuple[bool | None, str | None]:
+        """Return live squelch state and last activity timestamp for a source."""
+        channel = self._channels.get(source_id)
+        if channel is None:
+            return None, None
+        return channel.squelch_open, (
+            channel.last_activity_at.isoformat() if channel.last_activity_at is not None else None
+        )
