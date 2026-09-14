@@ -109,6 +109,7 @@ Evidence-backed gaps from the S1 baseline. Planned work is intentionally scored 
 - DSOMM: **Test and Verification / Dynamic depth for infrastructure / Test for exposed services** (L2) — partial; owner **S5**.
 
 ## S3 STRIDE findings
+- TM-037 — partial: Concurrent or abandoned calibration taps could retain resources or cause a second source/device to be opened. Owner: M15.7.
 
 # ASVS gap register
 

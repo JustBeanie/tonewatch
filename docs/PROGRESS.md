@@ -134,8 +134,8 @@ Tick a task with `[x]`, then append ` — <PR link> — <one-line note>`. Blocke
 - [x] **M15.3** Pipeline state, `SquelchChanged`, WS `squelch_open`, optional `record.stop_on_squelch`; never gates detection. — raw detection path preserved and channel state/event wiring added.
 - [x] **M15.4** MQTT/HA activity binary_sensor and `last_activity_at`. — activity discovery/state publication and generated API artifacts updated.
 - [ ] **M15.5** Web UI squelch controls, meter lines, "Set from noise floor".
-- [ ] **M15.6** Auto squelch: long-window floor/spread thresholds, calibrating fail-open, stuck-open and chatter flags (after M15a).
-- [ ] **M15.7** Calibrate endpoint with suggested thresholds; effective-threshold diagnostics in status/WS.
+- [x] **M15.6** Auto squelch: long-window floor/spread thresholds, calibrating fail-open, stuck-open and chatter flags (after M15a). — shared percentile helper, `SquelchHealthChanged`, hypothesis and golden busy-channel tests.
+- [x] **M15.7** Calibrate endpoint with suggested thresholds; effective-threshold diagnostics in status/WS. — running-channel tap with cleanup on cancel, ASGI auth/CSRF/429 tests, 8 diagnostic fields.
 
 ## M16: Agencies and map (added 2026-09-12 at user request)
 - [x] **M16.1** `Agency` model (identity, address, location, stations, GeoJSON coverage, contacts), `ToneSet.agency_id`. — brief M16a

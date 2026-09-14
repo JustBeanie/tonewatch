@@ -38,6 +38,23 @@ Make one change at a time and validate it with a saved recording using the
 
 ## Squelch
 
+Squelch controls the optional live-audio gate and recorder stop behavior; it never gates
+tone detection. Set `squelch.mode` to `auto` to estimate a long-window noise floor and
+spread from the running stream. Auto mode fails open while it calibrates, then uses the
+10th percentile as the floor, a bounded `auto_k * spread` margin, and hysteresis for its
+open and close thresholds. `auto_window_s`, `auto_min_samples_s`, `auto_k`,
+`min_margin_db`, and `max_margin_db` tune the estimator.
+
+The source diagnostics expose `calibrating`, `stuck_open`, `chatter`, and
+`transitions_per_min`. A stuck carrier adds bounded 3 dB steps that decay after normal
+operation. Chatter temporarily increases the hang time. Both flags are transition-logged
+and visible in the REST and WebSocket status.
+
+To measure a running source without opening another device, call
+`POST /api/sources/{id}/squelch/calibrate` with `{ "seconds": 5 }` through `{ "seconds": 120 }`.
+The response contains p10/p50/p90, a coarse histogram, and suggested `level` thresholds.
+Calibration does not write configuration; apply the suggestion with a normal source update.
+
 Software squelch marks a source as active when its level rises above the open
 threshold and keeps it active through the configured attack and hang times.
 The `level` mode uses fixed dBFS thresholds; `noise_floor` tracks the quietest

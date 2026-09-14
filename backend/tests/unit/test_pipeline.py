@@ -44,12 +44,13 @@ from tonewatch.storage.db import create_database, create_database_schema
 from tonewatch.storage.models import Call, CallToneSet
 
 
-def _toneset(toneset_id: str, *, post_s: float = 3) -> ToneSet:
+def _toneset(toneset_id: str, *, post_s: float = 3, agency_id: str | None = None) -> ToneSet:
     return ToneSet(
         id=toneset_id,
         name=toneset_id,
         sequence=[ToneSpec(freq_hz=1000, min_s=0.1)],
         record=RecordingPolicy(post_s=post_s),
+        agency_id=agency_id,
     )
 
 
@@ -269,6 +270,85 @@ def test_channel_live_gate_follows_squelch_without_gating_detection() -> None:
         assert level_times == off_times
 
     asyncio.run(scenario())
+
+
+def test_channel_auto_squelch_calibrates_without_gating_detection() -> None:
+    class Hub:
+        def __init__(self) -> None:
+            self.gates: list[bool] = []
+
+        def feed(self, source_id: str, samples: np.ndarray, *, gate_open: bool = True) -> None:
+            del source_id, samples
+            self.gates.append(gate_open)
+
+    async def run(config: Any) -> tuple[list[bool], list[datetime]]:
+        source = _Source([_frame("radio", n) for n in (0, 1, 2)])
+        bus = EventBus()
+        hub = Hub()
+        subscription = bus.subscribe(ToneDetected)
+        _Engine.outputs = [
+            EngineOutput((_spectrum(-70, 0.3),), (), (_detection("page", 0.1),)),
+            EngineOutput((_spectrum(-30, 5.3),), (), ()),
+            EngineOutput((_spectrum(-120, 6.3),), (), ()),
+        ]
+        await Channel(
+            config,
+            [_toneset("page")],
+            bus,
+            clock=lambda: datetime(2026, 1, 1, tzinfo=UTC),
+            engine_factory=_Engine,
+            source_factory=cast("Any", lambda _: source),
+            live_hub=cast("Any", hub),
+        ).run()
+        await asyncio.sleep(0)
+        times = [
+            cast("ToneDetected", subscription.queue.get_nowait()).detected_at
+            for _ in range(subscription.queue.qsize())
+        ]
+        return hub.gates, times
+
+    async def scenario() -> None:
+        off_gates, off_times = await run(FileSource(id="radio", name="radio", path="unused.wav"))
+        auto_gates, auto_times = await run(
+            FileSource(
+                id="radio",
+                name="radio",
+                path="unused.wav",
+                squelch=SquelchConfig(mode="auto", auto_min_samples_s=5, attack_ms=0, hang_ms=0),
+            )
+        )
+        assert off_gates == [True, True, True]
+        assert auto_gates == [True, True, False]
+        assert auto_times == off_times
+
+    asyncio.run(scenario())
+
+
+def test_channel_auto_squelch_keeps_agency_on_detection() -> None:
+    async def run() -> ToneDetected:
+        source = _Source([_frame("radio", 0)])
+        bus = EventBus()
+        subscription = bus.subscribe(ToneDetected)
+        _Engine.outputs = [EngineOutput((_spectrum(-30, 0.3),), (), (_detection("page", 0.1),))]
+        await Channel(
+            FileSource(
+                id="radio",
+                name="radio",
+                path="unused.wav",
+                squelch=SquelchConfig(mode="auto", auto_min_samples_s=5),
+            ),
+            [_toneset("page", agency_id="fire")],
+            bus,
+            clock=lambda: datetime(2026, 1, 1, tzinfo=UTC),
+            engine_factory=_Engine,
+            source_factory=cast("Any", lambda _: source),
+            agency_lookup=lambda agency_id: {"id": agency_id, "name": "Fire"},
+        ).run()
+        await asyncio.sleep(0)
+        return cast("ToneDetected", subscription.queue.get_nowait())
+
+    event = asyncio.run(run())
+    assert event.agency == {"id": "fire", "name": "Fire"}
 
 
 def test_channel_watchdog_flatline_respects_software_and_rtl_squelch() -> None:

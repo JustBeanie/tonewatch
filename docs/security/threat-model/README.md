@@ -61,6 +61,7 @@ Evidence uses repository-relative `path:line`; “no proving test” is intentio
 | TM-034 | Information disclosure | live_stream_secret | A readable signing secret would permit forging live URLs. | low | high | mitigated | `backend/src/tonewatch/streaming/live.py:24`; `test_live_token_is_scoped_and_rotation_invalidates_it` | M14.2 |
 | TM-035 | Information disclosure | Map tile provider | When enabled, a tile provider receives viewer IP and requested map area; tiles are off by default. | med | med | mitigated | `backend/src/tonewatch/api/spa.py:30`; `backend/tests/integration/test_spa.py:86`; `test_spa_html_csp_allows_self_only` | M16.3 |
 | TM-036 | Denial of service | Agency GeoJSON input | Oversized or high-vertex coverage could consume memory or CPU during validation and export. | med | med | mitigated | `backend/src/tonewatch/config/models.py:112`; `backend/tests/unit/test_models.py:1`; `test_coverage_limits_and_ring_validation` | M16.1 |
+| TM-037 | Denial of service / Tampering | Squelch calibration endpoint | Concurrent or abandoned calibration taps could retain resources or cause a second source/device to be opened. | med | med | partial | `backend/src/tonewatch/api/routes/config.py:48`; no proving test | M15.7 |
 
 ## Accepted risks
 

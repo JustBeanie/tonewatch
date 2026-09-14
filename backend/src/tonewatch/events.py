@@ -71,6 +71,14 @@ class ChannelLevel:
     measured_at: datetime
     squelch_open: bool | None = None
     squelch_level_dbfs: float | None = None
+    squelch_mode_effective: str | None = None
+    noise_floor_dbfs: float | None = None
+    open_dbfs_effective: float | None = None
+    close_dbfs_effective: float | None = None
+    calibrating: bool | None = None
+    stuck_open: bool | None = None
+    chatter: bool | None = None
+    transitions_per_min: float | None = None
 
 
 @dataclass(frozen=True)
@@ -80,6 +88,16 @@ class SquelchChanged:
     source_id: str
     open: bool
     level_dbfs: float
+    at: datetime
+
+
+@dataclass(frozen=True)
+class SquelchHealthChanged:
+    """A transition in auto-squelch health flags."""
+
+    source_id: str
+    stuck_open: bool
+    chatter: bool
     at: datetime
 
 
@@ -133,6 +151,7 @@ Event = (
     | ConfigChanged
     | ChannelLevel
     | SquelchChanged
+    | SquelchHealthChanged
     | SpectrumUpdate
     | ToneDiscovered
     | ToneCandidateObserved

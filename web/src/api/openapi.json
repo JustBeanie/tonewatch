@@ -321,6 +321,21 @@
         "title": "Body_analyze_api_analyze_post",
         "type": "object"
       },
+      "CalibrateRequest": {
+        "properties": {
+          "seconds": {
+            "maximum": 120.0,
+            "minimum": 5.0,
+            "title": "Seconds",
+            "type": "number"
+          }
+        },
+        "required": [
+          "seconds"
+        ],
+        "title": "CalibrateRequest",
+        "type": "object"
+      },
       "DiscoveryConfig": {
         "additionalProperties": false,
         "description": "Global tone auto-discovery settings.",
@@ -948,6 +963,27 @@
             "title": "Attack Ms",
             "type": "number"
           },
+          "auto_k": {
+            "default": 1.5,
+            "maximum": 4.0,
+            "minimum": 0.25,
+            "title": "Auto K",
+            "type": "number"
+          },
+          "auto_min_samples_s": {
+            "default": 30,
+            "maximum": 300.0,
+            "minimum": 5.0,
+            "title": "Auto Min Samples S",
+            "type": "number"
+          },
+          "auto_window_s": {
+            "default": 300,
+            "maximum": 1800.0,
+            "minimum": 30.0,
+            "title": "Auto Window S",
+            "type": "number"
+          },
           "close_dbfs": {
             "default": -45,
             "maximum": 0.0,
@@ -969,12 +1005,34 @@
             "title": "Hang Ms",
             "type": "number"
           },
+          "max_margin_db": {
+            "default": 25,
+            "maximum": 60.0,
+            "minimum": 1.0,
+            "title": "Max Margin Db",
+            "type": "number"
+          },
+          "max_transitions_per_min": {
+            "default": 20,
+            "maximum": 600.0,
+            "minimum": 2.0,
+            "title": "Max Transitions Per Min",
+            "type": "integer"
+          },
+          "min_margin_db": {
+            "default": 6,
+            "maximum": 40.0,
+            "minimum": 1.0,
+            "title": "Min Margin Db",
+            "type": "number"
+          },
           "mode": {
             "default": "off",
             "enum": [
               "off",
               "level",
-              "noise_floor"
+              "noise_floor",
+              "auto"
             ],
             "title": "Mode",
             "type": "string"
@@ -984,6 +1042,13 @@
             "maximum": 0.0,
             "minimum": -120.0,
             "title": "Open Dbfs",
+            "type": "number"
+          },
+          "stuck_open_s": {
+            "default": 600,
+            "maximum": 7200.0,
+            "minimum": 30.0,
+            "title": "Stuck Open S",
             "type": "number"
           }
         },
@@ -2973,6 +3038,59 @@
         "summary": "Live Mp3",
         "tags": [
           "live"
+        ]
+      }
+    },
+    "/api/sources/{source_id}/squelch/calibrate": {
+      "post": {
+        "description": "Estimate thresholds from the already-running channel's level tap.",
+        "operationId": "calibrate_squelch_api_sources__source_id__squelch_calibrate_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "title": "Source Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalibrateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Calibrate Squelch Api Sources  Source Id  Squelch Calibrate Post"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Calibrate Squelch",
+        "tags": [
+          "configuration"
         ]
       }
     },

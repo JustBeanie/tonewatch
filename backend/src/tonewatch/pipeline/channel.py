@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Protocol
 from uuid import UUID, uuid4
 
 import numpy as np
+import structlog
 
 from tonewatch.dsp.discovery import DiscoveryTracker, ToneCandidate
 from tonewatch.dsp.engine import DetectionEngine
@@ -22,6 +23,7 @@ from tonewatch.events import (
     EventBus,
     SpectrumUpdate,
     SquelchChanged,
+    SquelchHealthChanged,
     ToneCandidateObserved,
     ToneDetected,
 )
@@ -38,6 +40,7 @@ if TYPE_CHECKING:
 
 WallClock = Callable[[], datetime | float]
 LEVEL_INTERVAL_S = 0.2
+logger = structlog.get_logger("tonewatch.squelch")
 
 
 @dataclass(frozen=True, slots=True)
@@ -157,6 +160,7 @@ class Channel:
         self._squelch = Squelch(source_config.squelch)
         self._squelch_open: bool | None = None
         self._last_activity_at: datetime | None = None
+        self._level_taps: set[Callable[[float], None]] = set()
 
     @property
     def source_id(self) -> str:
@@ -172,6 +176,17 @@ class Channel:
     def last_activity_at(self) -> datetime | None:
         """UTC time of the most recent open transition."""
         return self._last_activity_at
+
+    @property
+    def squelch(self) -> Squelch:
+        """Expose the channel estimator for diagnostics and calibration."""
+        return self._squelch
+
+    def add_level_tap(self, tap: Callable[[float], None]) -> None:
+        self._level_taps.add(tap)
+
+    def remove_level_tap(self, tap: Callable[[float], None]) -> None:
+        self._level_taps.discard(tap)
 
     async def run(  # noqa: PLR0912,PLR0915 -- ordered stream lifecycle is intentionally explicit
         self,
@@ -200,13 +215,25 @@ class Channel:
                         self.bus.publish(
                             SquelchChanged(self.source_id, state, spectrum.level_dbfs, at)
                         )
+                    if self._squelch.health_changed:
+                        stuck, chatter = self._squelch.health()
+                        self.bus.publish(SquelchHealthChanged(self.source_id, stuck, chatter, at))
+                        logger.log(
+                            "warning" if stuck or chatter else "info",
+                            "squelch health changed",
+                            source_id=self.source_id,
+                            stuck_open=stuck,
+                            chatter=chatter,
+                        )
                     self._update_watchdog_squelch(state)
                     if not state and changed and self._stop_on_squelch:
                         stop_on_squelch = True
                 self._feed_live(
                     frame,
                     gate_open=(
-                        self.source_config.squelch.mode == "off" or self._squelch_open is True
+                        self.source_config.squelch.mode == "off"
+                        or self._squelch.calibrating
+                        or self._squelch_open is True
                     ),
                 )
                 if self.discovery is not None:
@@ -276,6 +303,8 @@ class Channel:
         samples = frame.samples
         rms = float(np.sqrt(np.mean(samples * samples))) if samples.size else 0.0
         peak = float(np.max(np.abs(samples))) if samples.size else 0.0
+        squelch = getattr(self, "_squelch", None)
+        mode = getattr(getattr(self.source_config, "squelch", None), "mode", "off")
         self.bus.publish(
             ChannelLevel(
                 self.source_id,
@@ -283,11 +312,20 @@ class Channel:
                 peak,
                 self._to_wall_time(frame.stream_time_s),
                 getattr(self, "_squelch_open", None),
-                level_dbfs
-                if getattr(getattr(self.source_config, "squelch", None), "mode", "off") != "off"
-                else None,
+                level_dbfs if mode != "off" else None,
+                mode if mode != "off" else None,
+                squelch.noise_floor if squelch is not None else None,
+                squelch.open_threshold_dbfs if squelch is not None and mode != "off" else None,
+                squelch.close_threshold_dbfs if squelch is not None and mode != "off" else None,
+                squelch.calibrating if squelch is not None and mode != "off" else None,
+                squelch.stuck_open if squelch is not None and mode != "off" else None,
+                squelch.chatter if squelch is not None and mode != "off" else None,
+                squelch.transitions_per_min if squelch is not None and mode != "off" else None,
             )
         )
+        if level_dbfs is not None:
+            for tap in tuple(getattr(self, "_level_taps", ())):
+                tap(level_dbfs)
 
     def _candidate_clip(self, candidate: ToneCandidate) -> bytes | None:
         """Return the retained candidate window for persistence-side encoding."""

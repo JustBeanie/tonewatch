@@ -1,19 +1,108 @@
 """Configuration resource route registration boundary."""
 
+import asyncio
+from collections import Counter
 from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
-from pydantic import TypeAdapter, ValidationError
+from pydantic import BaseModel, Field, TypeAdapter, ValidationError
 
 from tonewatch.api.deps import _dump, authenticated, collection, put, save_config, write_auth
 from tonewatch.config.models import AlertTarget, AppConfig, Source, ToneSet
 from tonewatch.config.store import replace_config as rebuild_config
+from tonewatch.dsp.squelch import Squelch, SquelchConfig
 from tonewatch.events import CallClosed, ToneDetected
 from tonewatch.storage.models import DiscoveredTone
 
 router = APIRouter(prefix="/api", tags=["configuration"])
+_SQUELCH_DIAGNOSTIC_KEYS = (
+    "squelch_mode_effective",
+    "noise_floor_dbfs",
+    "open_dbfs_effective",
+    "close_dbfs_effective",
+    "calibrating",
+    "stuck_open",
+    "chatter",
+    "transitions_per_min",
+)
+
+
+def _empty_squelch_diagnostics() -> dict[str, None]:
+    return dict.fromkeys(_SQUELCH_DIAGNOSTIC_KEYS)
+
+
+def _source_diagnostics(supervisor: Any, source_id: str) -> dict[str, object] | None:
+    getter = getattr(supervisor, "source_diagnostics", None)
+    return getter(source_id) if callable(getter) else None
+
+
+class CalibrateRequest(BaseModel):
+    seconds: float = Field(ge=5, le=120)
+
+
+@router.post("/sources/{source_id}/squelch/calibrate", dependencies=[Depends(write_auth)])
+async def calibrate_squelch(request: Request, source_id: str, payload: CalibrateRequest) -> Any:
+    """Estimate thresholds from the already-running channel's level tap."""
+    source = next((item for item in request.app.state.config.sources if item.id == source_id), None)
+    if source is None:
+        raise HTTPException(404, "source not found")
+    supervisor = getattr(request.app.state, "supervisor", None)
+    channel = supervisor.channel_for(source_id) if supervisor is not None else None
+    if channel is None:
+        raise HTTPException(409, "source is not running")
+    active: set[str] = getattr(request.app.state, "squelch_calibrations", set())
+    request.app.state.squelch_calibrations = active
+    if source_id in active:
+        raise HTTPException(429, "calibration already running")
+    active.add(source_id)
+    levels: list[float] = []
+
+    def tap(level: float) -> None:
+        levels.append(level)
+
+    channel.add_level_tap(tap)
+    try:
+        await asyncio.sleep(payload.seconds)
+    finally:
+        channel.remove_level_tap(tap)
+        active.discard(source_id)
+    estimator = Squelch(SquelchConfig(mode="auto", auto_window_s=300))
+    for index, level in enumerate(levels):
+        estimator.feed(level, index * 0.2)
+    p10, p50, p90 = estimator.percentiles()
+    if p10 is None or p50 is None or p90 is None:
+        raise HTTPException(409, "source produced no levels")
+    spread = p50 - p10
+    open_dbfs = p10 + max(6.0, min(25.0, 1.5 * spread))
+    close_dbfs = open_dbfs - max(3.0, spread / 2)
+    buckets = Counter(round(level / 3) * 3 for level in levels)
+    result = {
+        "floor_dbfs": p10,
+        "spread_db": spread,
+        "p10": p10,
+        "p50": p50,
+        "p90": p90,
+        "histogram": [
+            {"dbfs": bucket, "count": count} for bucket, count in sorted(buckets.items())
+        ],
+        "suggested": {"mode": "level", "open_dbfs": open_dbfs, "close_dbfs": close_dbfs},
+    }
+    from tonewatch.api.audit import record_audit
+
+    await record_audit(
+        request.app.state.session_factory,
+        actor=getattr(request.state, "auth", "unknown"),
+        event_type="squelch_calibrated",
+        resource=source_id,
+        details={
+            "source_id": source_id,
+            "seconds": payload.seconds,
+            "suggested": result["suggested"],
+        },
+    )
+    return result
 
 
 @router.get("/config", dependencies=[Depends(authenticated)])
@@ -110,6 +199,10 @@ def _crud(path: str, kind: str, model: Any) -> None:
                 item["live_listeners"] = (
                     live_hub.listeners_for(value.id) if live_hub is not None else None
                 )
+                item.update(
+                    (_source_diagnostics(supervisor, value.id) if supervisor is not None else None)
+                    or _empty_squelch_diagnostics()
+                )
             values.append(item)
         return values
 
@@ -144,6 +237,10 @@ def _crud(path: str, kind: str, model: Any) -> None:
             live_hub = getattr(request.app.state, "live_hub", None)
             result["live_listeners"] = (
                 live_hub.listeners_for(item_id) if live_hub is not None else None
+            )
+            result.update(
+                (_source_diagnostics(supervisor, item.id) if supervisor is not None else None)
+                or _empty_squelch_diagnostics()
             )
         return result
 

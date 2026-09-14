@@ -484,6 +484,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/sources/{source_id}/squelch/calibrate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Calibrate Squelch
+         * @description Estimate thresholds from the already-running channel's level tap.
+         */
+        post: operations["calibrate_squelch_api_sources__source_id__squelch_calibrate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tonesets": {
         parameters: {
             query?: never;
@@ -701,6 +721,11 @@ export interface components {
         Body_analyze_api_analyze_post: {
             /** File */
             file: string;
+        };
+        /** CalibrateRequest */
+        CalibrateRequest: {
+            /** Seconds */
+            seconds: number;
         };
         /**
          * DiscoveryConfig
@@ -1064,6 +1089,21 @@ export interface components {
              */
             attack_ms: number;
             /**
+             * Auto K
+             * @default 1.5
+             */
+            auto_k: number;
+            /**
+             * Auto Min Samples S
+             * @default 30
+             */
+            auto_min_samples_s: number;
+            /**
+             * Auto Window S
+             * @default 300
+             */
+            auto_window_s: number;
+            /**
              * Close Dbfs
              * @default -45
              */
@@ -1079,16 +1119,36 @@ export interface components {
              */
             hang_ms: number;
             /**
+             * Max Margin Db
+             * @default 25
+             */
+            max_margin_db: number;
+            /**
+             * Max Transitions Per Min
+             * @default 20
+             */
+            max_transitions_per_min: number;
+            /**
+             * Min Margin Db
+             * @default 6
+             */
+            min_margin_db: number;
+            /**
              * Mode
              * @default off
              * @enum {string}
              */
-            mode: "off" | "level" | "noise_floor";
+            mode: "off" | "level" | "noise_floor" | "auto";
             /**
              * Open Dbfs
              * @default -40
              */
             open_dbfs: number;
+            /**
+             * Stuck Open S
+             * @default 600
+             */
+            stuck_open_s: number;
         };
         /** StreamSource */
         StreamSource: {
@@ -2388,6 +2448,41 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    calibrate_squelch_api_sources__source_id__squelch_calibrate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                source_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CalibrateRequest"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {

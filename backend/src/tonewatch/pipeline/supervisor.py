@@ -293,3 +293,25 @@ class Supervisor:
         return channel.squelch_open, (
             channel.last_activity_at.isoformat() if channel.last_activity_at is not None else None
         )
+
+    def source_diagnostics(self, source_id: str) -> dict[str, object] | None:
+        """Return channel squelch diagnostics, or None when it is not running."""
+        channel = self._channels.get(source_id)
+        if channel is None:
+            return None
+        squelch = channel.squelch
+        mode = channel.source_config.squelch.mode
+        return {
+            "squelch_mode_effective": mode if mode != "off" else None,
+            "noise_floor_dbfs": squelch.noise_floor,
+            "open_dbfs_effective": squelch.open_threshold_dbfs if mode != "off" else None,
+            "close_dbfs_effective": squelch.close_threshold_dbfs if mode != "off" else None,
+            "calibrating": squelch.calibrating if mode != "off" else None,
+            "stuck_open": squelch.stuck_open if mode != "off" else None,
+            "chatter": squelch.chatter if mode != "off" else None,
+            "transitions_per_min": squelch.transitions_per_min if mode != "off" else None,
+        }
+
+    def channel_for(self, source_id: str) -> Channel | None:
+        """Return a currently running channel."""
+        return self._channels.get(source_id)

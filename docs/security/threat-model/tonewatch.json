@@ -91,7 +91,8 @@
         {"id": "TM-033", "category": "Spoofing", "element": "Live token scope and replay", "status": "mitigated"},
         {"id": "TM-034", "category": "Information disclosure", "element": "live_stream_secret", "status": "mitigated"},
         {"id": "TM-035", "category": "Information disclosure", "element": "Map tile provider", "status": "mitigated"},
-        {"id": "TM-036", "category": "Denial of service", "element": "Agency GeoJSON input", "status": "mitigated"}
+        {"id": "TM-036", "category": "Denial of service", "element": "Agency GeoJSON input", "status": "mitigated"},
+        {"id": "TM-037", "category": "Denial of service / Tampering", "element": "Squelch calibration endpoint", "status": "partial"}
       ]
     }
   ]
