@@ -59,7 +59,7 @@
      - **DST, nonexistent** (spring-forward gap): **drop that row** with reason `nonexistent_local_time`.
      - **DST, ambiguous** (fall-back): pick the **earlier** instant.
 
-     Test both with invented dates. Parse the "Updated:" text into `page_updated_at` with the same rules; an unparseable page timestamp gives null plus a counted warning, not a page failure.
+     Test both with invented dates. Parse the "Updated:" text into `page_updated_at` with the same rules; an unparsable page timestamp gives null plus a counted warning, not a page failure.
    - **ID:** the first 16 lowercase hex characters of SHA-256 over `agency.key|received_at|address_clean|municipality.raw`.
    - **Dedupe** within a page by id; the first occurrence wins, and duplicates are counted.
 3. **`internal/model`: schema v1 types.**

@@ -25,7 +25,7 @@ If `uv` reports the Python minor-version link error, set `UV_PYTHON=C:\Users\bea
    - **Tests:** agency dict present, agency absent, agency `None`, and a stacked call with two agencies.
 3. **URL scrubbing misses most URLs.** `_URL` only matches `.com/.org/.net/.io/.dev`.
    - **Fix:** scrub any `scheme://…`, any host-like `label(.label)+` with an alphabetic TLD of 2+ chars (optionally with `:port`/path), IPv4 and bracketed IPv6 with optional port/path, and `www.`.
-   - **Tests** (each must not survive): `https://hass.example.zip/x`, `10.1.0.5:8080/api/recordings/1.mp3`, `[fe80::1]:8099/a`, `ftp://files.example/a`, `tonewatch.local/api`. Also make sure recording and live URLs present anywhere in the dispatcher payload never reach the message.
+   - **Tests** (each must not survive): `https://home.example.zip/x`, `10.1.0.5:8080/api/recordings/1.mp3`, `[fe80::1]:8099/a`, `ftp://files.example/a`, `tonewatch.local/api`. Also make sure recording and live URLs present anywhere in the dispatcher payload never reach the message.
 4. **Host timezone.** `render_message` formats `{time}` in the process's local zone; containers run UTC, so pages show the wrong time.
    - **Fix:** add `timezone: str | None` (an IANA name validated with `zoneinfo`) on `MeshtasticTarget`. When unset, use the `TZ` environment variable, falling back to UTC. Document it.
    - **Test** with a fixed UTC instant and `America/New_York`.
