@@ -17,6 +17,7 @@ from starlette.datastructures import Headers
 from starlette.requests import ClientDisconnect
 
 from tonewatch.api.auth import AuthState
+from tonewatch.api.routes.agencies import router as agencies_router
 from tonewatch.api.routes.analyze import router as analyze_router
 from tonewatch.api.routes.audit import router as audit_router
 from tonewatch.api.routes.auth import router as auth_router
@@ -28,7 +29,7 @@ from tonewatch.api.routes.live import router as live_router
 from tonewatch.api.routes.recordings import router as recordings_router
 from tonewatch.api.routes.system import router as system_router
 from tonewatch.api.routes.ws import router as ws_router
-from tonewatch.api.spa import SPA_CSP, register_spa, serve_spa
+from tonewatch.api.spa import register_spa, serve_spa, spa_csp
 from tonewatch.config.models import AppConfig
 from tonewatch.config.store import ConfigStore
 from tonewatch.events import EventBus, LiveListenersChanged
@@ -191,6 +192,7 @@ def create_app(
     app = FastAPI(title="ToneWatch API", docs_url=None, redoc_url=None)
     for router in (
         auth_router,
+        agencies_router,
         config_router,
         discovered_tones_router,
         import_tones_cfg_router,
@@ -283,7 +285,7 @@ def create_app(
         response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
         response.headers["Cross-Origin-Embedder-Policy"] = "require-corp"
         if response.headers.get("content-type", "").startswith("text/html"):
-            response.headers["Content-Security-Policy"] = SPA_CSP
+            response.headers["Content-Security-Policy"] = spa_csp(app.state.config)
         else:
             _set_api_csp(response)
         structlog.get_logger("tonewatch.api").info(

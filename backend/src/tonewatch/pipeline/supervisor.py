@@ -86,6 +86,7 @@ class Supervisor:
             session_factory,
             recordings_root=settings.recording_path if settings is not None else None,
             discovery_clip=bool(getattr(config.discovery, "clip", True)),
+            config=config,
         )
         self.alerts = AlertDispatcher(
             config,
@@ -184,6 +185,7 @@ class Supervisor:
                 await self._stop_source(source_id)
         self.config = config
         self.persistence.discovery_clip = bool(getattr(config.discovery, "clip", True))
+        self.persistence.config = config
         await self.alerts.reload(config)
         for source_id, source in desired.items():
             if (
@@ -244,6 +246,21 @@ class Supervisor:
                     source_settings=self.settings,
                     discovery_settings=self.config.discovery,
                     live_hub=self.live_hub,
+                    agency_lookup=lambda agency_id: next(
+                        (
+                            {
+                                "id": agency.id,
+                                "name": agency.name,
+                                "short_name": agency.short_name,
+                                "kind": agency.kind,
+                                "lat": agency.location.lat,
+                                "lon": agency.location.lon,
+                            }
+                            for agency in self.config.agencies
+                            if agency.id == agency_id
+                        ),
+                        None,
+                    ),
                 )
                 self._channels[source.id] = channel
                 await channel.run()

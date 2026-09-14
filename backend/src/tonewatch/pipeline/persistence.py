@@ -48,6 +48,7 @@ class PersistenceSubscriber:
         max_queue_size: int = 1000,
         recordings_root: Path | None = None,
         discovery_clip: bool = True,
+        config: Any = None,
     ) -> None:
         """Create a bounded persistence subscriber."""
         self.bus, self.session_factory = bus, session_factory
@@ -58,6 +59,7 @@ class PersistenceSubscriber:
         self._max_queue_size = max_queue_size
         self.recordings_root = recordings_root
         self.discovery_clip = discovery_clip
+        self.config = config
 
     async def start(self) -> None:
         """Subscribe and start the consumer."""
@@ -395,11 +397,24 @@ class PersistenceSubscriber:
                 started_at=event.detected_at,
             )
         if await session.get(CallToneSet, (event.call_id, event.toneset_id)) is None:
+            toneset = (
+                next((item for item in self.config.tone_sets if item.id == event.toneset_id), None)
+                if self.config is not None
+                else None
+            )
+            agency = (
+                next((item for item in self.config.agencies if item.id == toneset.agency_id), None)
+                if toneset is not None and toneset.agency_id is not None
+                else None
+            )
             await create_call_tone_set(
                 session,
                 call_id=event.call_id,
                 toneset_id=event.toneset_id,
                 detected_at=event.detected_at,
+                agency_id=agency.id if agency is not None else None,
+                agency_name=agency.name if agency is not None else None,
+                agency_kind=agency.kind if agency is not None else None,
             )
 
 

@@ -115,6 +115,7 @@ class Channel:
         source_settings: object | None = None,
         discovery_settings: object | None = None,
         live_hub: LiveHubLike | None = None,
+        agency_lookup: Callable[[str], dict[str, object] | None] | None = None,
     ) -> None:
         """Create a channel with its source, filtered tone sets, and event bus."""
         self.source_config = source_config
@@ -131,6 +132,7 @@ class Channel:
         self.tonesets = tuple(
             tone for tone in tonesets if tone.enabled and (allowed == "all" or tone.id in allowed)
         )
+        self.agency_lookup = agency_lookup or (lambda _agency_id: None)
         discovery = discovery_settings
         self.discovery = (
             DiscoveryTracker(
@@ -342,6 +344,8 @@ class Channel:
                 detection.toneset_id,
                 self._to_wall_time(detection.detected_at_s),
                 self.source_id,
+                False,
+                self.agency_lookup(toneset.agency_id) if toneset.agency_id is not None else None,
             )
         )
 

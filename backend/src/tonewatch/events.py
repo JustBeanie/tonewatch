@@ -5,6 +5,7 @@ from collections.abc import AsyncIterator
 from contextlib import suppress
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Any
 from uuid import UUID
 
 from tonewatch.dsp.discovery import ToneCandidate
@@ -17,6 +18,7 @@ class ToneDetected:
     detected_at: datetime
     source_id: str = ""
     test: bool = False
+    agency: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True)

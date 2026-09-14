@@ -11,14 +11,31 @@ import structlog
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse, Response
 
-SPA_CSP = (
+_SPA_CSP_PREFIX = (
     "default-src 'self'; script-src 'self'; style-src 'self'; "
     # CSP3 'self' already matches same-origin ws:/wss:; bare ws:/wss: would allow any host.
-    "connect-src 'self'; img-src 'self'; media-src 'self'; "
-    "font-src 'self'; frame-ancestors 'self'; "
+    "connect-src 'self'; img-src 'self'"
+    "; media-src 'self'; font-src 'self'; frame-ancestors 'self'; "
     # form-action and base-uri have no default-src fallback, so they must be explicit.
     "form-action 'self'; base-uri 'self'; object-src 'none'"
 )
+
+SPA_CSP = _SPA_CSP_PREFIX
+
+
+def spa_csp(config: object | None = None) -> str:
+    """Build the SPA CSP, allowing only the configured tile origin."""
+    tile_url = getattr(config, "tile_url", "") or getattr(
+        getattr(config, "map", None), "tile_url", ""
+    )
+    if not tile_url:
+        return SPA_CSP
+    from urllib.parse import urlsplit
+
+    parts = urlsplit(tile_url)
+    port = f":{parts.port}" if parts.port not in (None, 443) else ""
+    origin = f"{parts.scheme}://{parts.hostname}{port}"
+    return _SPA_CSP_PREFIX.replace("img-src 'self'", f"img-src 'self' {origin}")
 
 
 def _not_found() -> JSONResponse:

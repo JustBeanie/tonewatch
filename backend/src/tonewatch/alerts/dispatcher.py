@@ -235,6 +235,23 @@ class AlertDispatcher:
             if event.toneset_id not in state["tone_sets"]:
                 state["tone_sets"].append(event.toneset_id)
             state.update(source_id=event.source_id, test=state["test"] or test)
+            state["agency"] = next(
+                (
+                    {
+                        "id": agency.id,
+                        "name": agency.name,
+                        "short_name": agency.short_name,
+                        "kind": agency.kind,
+                        "lat": agency.location.lat,
+                        "lon": agency.location.lon,
+                    }
+                    for tone in self.config.tone_sets
+                    if tone.id == event.toneset_id and tone.agency_id is not None
+                    for agency in self.config.agencies
+                    if agency.id == tone.agency_id
+                ),
+                None,
+            )
             detected_at = event.detected_at
         elif isinstance(event, RecordingReady):
             call_id = event.call_id
@@ -314,6 +331,7 @@ class AlertDispatcher:
             "recording_url": recording_url,
             "source_id": state.get("source_id", ""),
             "test": bool(state.get("test") or test),
+            "agency": state.get("agency"),
         }
         if public_base_url is None:
             payload["recording_path_relative"] = True

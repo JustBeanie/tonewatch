@@ -24,6 +24,11 @@ class ConfigConflictError(ConfigError):
     """Raised when a write is based on an obsolete configuration revision."""
 
 
+def replace_config(config: AppConfig, **changes: Any) -> AppConfig:
+    """Return a validated config with only the requested fields replaced."""
+    return AppConfig.model_validate({**config.model_dump(), **changes})
+
+
 _PROCESS_LOCKS: dict[str, asyncio.Lock] = {}
 
 

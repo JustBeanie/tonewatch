@@ -32,13 +32,16 @@ async def create_call(
     return CallRecord(call.id, call.started_at, call.source_id, call.status)
 
 
-async def create_call_tone_set(
+async def create_call_tone_set(  # noqa: PLR0913 -- snapshot fields are the persistence contract.
     session: AsyncSession,
     *,
     call_id: UUID,
     toneset_id: str,
     detected_at: datetime,
     matched_segment_freqs: list[float] | None = None,
+    agency_id: str | None = None,
+    agency_name: str | None = None,
+    agency_kind: str | None = None,
 ) -> None:
     """Insert a matched tone set once for a call."""
     tone_set = CallToneSet(
@@ -46,6 +49,9 @@ async def create_call_tone_set(
         toneset_id=toneset_id,
         detected_at=detected_at,
         matched_segment_freqs=matched_segment_freqs or [],
+        agency_id=agency_id,
+        agency_name=agency_name,
+        agency_kind=agency_kind,
     )
     session.add(tone_set)
     await session.flush()

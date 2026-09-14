@@ -9,7 +9,7 @@ from pydantic import ValidationError
 
 from tonewatch.api.audit import mask_secrets, record_audit
 from tonewatch.config.models import AppConfig
-from tonewatch.config.store import ConfigConflictError
+from tonewatch.config.store import ConfigConflictError, replace_config
 
 
 def _dump(value: Any) -> Any:
@@ -71,15 +71,7 @@ async def put(request: Request, kind: str, item: Any) -> AppConfig:
     items = [value for value in collection(request, kind) if value.id != item.id]
     items.append(item)
     try:
-        config = AppConfig(
-            tone_sets=items if kind == "tone_sets" else request.app.state.config.tone_sets,
-            sources=items if kind == "sources" else request.app.state.config.sources,
-            alert_targets=items
-            if kind == "alert_targets"
-            else request.app.state.config.alert_targets,
-            discovery=request.app.state.config.discovery,
-            live_stream=request.app.state.config.live_stream,
-        )
+        config = replace_config(request.app.state.config, **{kind: items})
     except ValidationError as exc:
         raise HTTPException(422, str(exc)) from None
     return await save_config(request, config)

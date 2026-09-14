@@ -1,7 +1,10 @@
 """Validated, immutable ToneWatch configuration models."""
 
+import json
+import math
 from string import Formatter
 from typing import Annotated, Literal
+from urllib.parse import urlsplit
 
 from pydantic import (
     AnyUrl,
@@ -16,6 +19,7 @@ from pydantic import (
 from tonewatch.dsp.squelch import SquelchConfig
 
 Slug = Annotated[str, StringConstraints(pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$", min_length=1)]
+BoundedString = Annotated[str, StringConstraints(min_length=1, max_length=500)]
 Positive = Annotated[float, Field(gt=0)]
 AlertEvent = Literal["pre_alert", "recording_ready", "closed", "tone_discovered"]
 DEFAULT_ALERT_EVENTS: tuple[AlertEvent, ...] = ("pre_alert", "recording_ready", "closed")
@@ -68,13 +72,182 @@ class ToneSet(FrozenModel):
     """An ordered tone sequence and its alert policy."""
 
     id: Slug
-    name: str = Field(min_length=1)
+    name: str = Field(min_length=1, max_length=200)
+    agency_id: Slug | None = None
     sequence: list[ToneSpec] = Field(min_length=1, max_length=8)
     max_gap_s: Positive = 0.5
     cooldown_s: float = Field(default=60, ge=0)
     enabled: bool = True
     alert_targets: list[Slug] = []
     record: RecordingPolicy = Field(default_factory=RecordingPolicy)
+
+
+class AgencyLocation(FrozenModel):
+    """A WGS84 point, represented as latitude/longitude for API users."""
+
+    lat: float = Field(ge=-90, le=90)
+    lon: float = Field(ge=-180, le=180)
+
+    @model_validator(mode="after")
+    def finite_coordinates(self) -> "AgencyLocation":
+        if not math.isfinite(self.lat) or not math.isfinite(self.lon):
+            raise ValueError("location coordinates must be finite")
+        return self
+
+
+class AgencyAddress(FrozenModel):
+    street: str = Field(default="", max_length=300)
+    city: str = Field(default="", max_length=120)
+    region: str = Field(default="", max_length=120)
+    postal_code: str = Field(default="", max_length=40)
+    country: str = Field(default="", max_length=80)
+
+
+class AgencyStation(FrozenModel):
+    name: str = Field(min_length=1, max_length=200)
+    address: AgencyAddress = Field(default_factory=AgencyAddress)
+    lat: float = Field(ge=-90, le=90)
+    lon: float = Field(ge=-180, le=180)
+
+    @model_validator(mode="after")
+    def finite_coordinates(self) -> "AgencyStation":
+        if not math.isfinite(self.lat) or not math.isfinite(self.lon):
+            raise ValueError("station coordinates must be finite")
+        return self
+
+
+_RING_MIN_POSITIONS = 4
+_POSITION_SIZE = 2
+_LON_MIN, _LON_MAX, _LAT_MIN, _LAT_MAX = -180, 180, -90, 90
+_MAX_COVERAGE_VERTICES = 10_000
+_MAX_CAD_NAME_LENGTH = 120
+
+
+def _validate_coverage(value: object) -> object:  # noqa: PLR0912 -- bounded GeoJSON validator.
+    if value is None:
+        return None
+    if not isinstance(value, dict) or value.get("type") not in {"Polygon", "MultiPolygon"}:
+        raise ValueError("coverage must be a GeoJSON Polygon or MultiPolygon")
+    try:
+        serialized = json.dumps(value, separators=(",", ":"), ensure_ascii=False)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("coverage must be JSON serializable") from exc
+    if len(serialized.encode("utf-8")) > 256 * 1024:
+        raise ValueError("coverage exceeds the 256 KiB serialized limit")
+    coordinates = value.get("coordinates")
+    rings: list[object] = []
+    if value["type"] == "Polygon":
+        if not isinstance(coordinates, list):
+            raise ValueError("Polygon coordinates must be an array of linear rings")
+        rings = coordinates
+    elif isinstance(coordinates, list):
+        rings = [ring for polygon in coordinates if isinstance(polygon, list) for ring in polygon]
+    else:
+        raise ValueError("MultiPolygon coordinates must be an array of polygons")
+    vertices = 0
+    for ring in rings:
+        if not isinstance(ring, list) or len(ring) < _RING_MIN_POSITIONS or ring[0] != ring[-1]:
+            raise ValueError("coverage linear rings need at least 4 closed positions")
+        vertices += len(ring)
+        for position in ring:
+            if (
+                not isinstance(position, list)
+                or len(position) != _POSITION_SIZE
+                or not all(
+                    isinstance(item, (int, float)) and not isinstance(item, bool)
+                    for item in position
+                )
+                or not math.isfinite(float(position[0]))
+                or not math.isfinite(float(position[1]))
+                or not _LON_MIN <= float(position[0]) <= _LON_MAX
+                or not _LAT_MIN <= float(position[1]) <= _LAT_MAX
+            ):
+                raise ValueError("coverage positions must be finite [lon, lat] pairs in range")
+    if vertices > _MAX_COVERAGE_VERTICES:
+        raise ValueError("coverage exceeds the 10,000 vertex limit")
+    return value
+
+
+class Agency(FrozenModel):
+    """A configured agency and its optional map coverage."""
+
+    id: Slug
+    name: str = Field(min_length=1, max_length=200)
+    short_name: str = Field(min_length=1, max_length=80)
+    kind: Literal["fire", "ems", "police", "rescue", "dispatch", "other"]
+    color: str = Field(pattern=r"^#[0-9A-Fa-f]{6}$")
+    description: str = Field(default="", max_length=1000)
+    address: AgencyAddress = Field(default_factory=AgencyAddress)
+    location: AgencyLocation
+    stations: list[AgencyStation] = Field(default_factory=list, max_length=100)
+    coverage: dict[str, object] | None = None
+    phone: str = Field(default="", max_length=40)
+    website: str = Field(default="", max_length=2048)
+    radio: str = Field(default="", max_length=1000)
+    tags: list[str] = Field(default_factory=list, max_length=50)
+    notes: str = Field(default="", max_length=4000)
+    cad_names: list[str] = Field(default_factory=list, max_length=20)
+
+    _coverage = field_validator("coverage")(_validate_coverage)
+
+    @field_validator("website")
+    @classmethod
+    def https_website(cls, value: str) -> str:
+        if value and urlsplit(value).scheme not in {"http", "https"}:
+            raise ValueError("website must use http or https")
+        return value
+
+    @field_validator("cad_names")
+    @classmethod
+    def normalize_cad_names(cls, value: list[str]) -> list[str]:
+        result: list[str] = []
+        seen: set[str] = set()
+        for name in value:
+            trimmed = name.strip()
+            if not 1 <= len(trimmed) <= _MAX_CAD_NAME_LENGTH:
+                raise ValueError("each cad name must contain 1-120 characters")
+            key = trimmed.casefold()
+            if key not in seen:
+                result.append(trimmed)
+                seen.add(key)
+        return result
+
+
+class MapConfig(FrozenModel):
+    """Optional external map tile provider configuration."""
+
+    tile_url: str = Field(default="", max_length=2048)
+    attribution: str = Field(default="", max_length=1000)
+
+    @field_validator("tile_url")
+    @classmethod
+    def safe_tile_template(cls, value: str) -> str:
+        if not value:
+            return value
+        if any(char in value for char in "; \"'*"):
+            raise ValueError("tile_url contains forbidden characters")
+        parts = urlsplit(value)
+        if (
+            parts.scheme != "https"
+            or parts.username
+            or parts.password
+            or parts.query
+            or parts.fragment
+        ):
+            raise ValueError("tile_url must be an https template without credentials or query data")
+        if parts.port not in (None, 443):
+            raise ValueError("tile_url must use the default HTTPS port")
+        if "{" in parts.netloc or "}" in parts.netloc:
+            raise ValueError("tile_url subdomain templates are not supported")
+        if not all(token in value for token in ("{z}", "{x}", "{y}")):
+            raise ValueError("tile_url must contain {z}, {x}, and {y}")
+        return value
+
+
+OSM_MAP_PRESET = MapConfig(
+    tile_url="https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+    attribution="© OpenStreetMap contributors",
+)
 
 
 class DiscoveryConfig(FrozenModel):
@@ -251,6 +424,8 @@ class AppConfig(FrozenModel):
     tone_sets: list[ToneSet] = Field(default_factory=list, max_length=500)
     sources: list[Source] = Field(default_factory=list, max_length=16)
     alert_targets: list[AlertTarget] = Field(default_factory=list, max_length=128)
+    agencies: list[Agency] = Field(default_factory=list, max_length=500)
+    map: MapConfig = Field(default_factory=MapConfig)
     discovery: DiscoveryConfig = Field(default_factory=DiscoveryConfig)
     live_stream: LiveStreamConfig = Field(default_factory=LiveStreamConfig)
 
@@ -260,6 +435,7 @@ class AppConfig(FrozenModel):
             ("tone set", self.tone_sets),
             ("source", self.sources),
             ("alert target", self.alert_targets),
+            ("agency", self.agencies),
         ):
             seen: set[str] = set()
             for item in items:
@@ -268,7 +444,12 @@ class AppConfig(FrozenModel):
                 seen.add(item.id)
         tone_ids = {item.id for item in self.tone_sets}
         target_ids = {item.id for item in self.alert_targets}
+        agency_ids = {item.id for item in self.agencies}
         for toneset in self.tone_sets:
+            if toneset.agency_id is not None and toneset.agency_id not in agency_ids:
+                raise ValueError(
+                    f"tone set {toneset.id} references missing agency {toneset.agency_id}"
+                )
             for target in toneset.alert_targets:
                 if target not in target_ids:
                     raise ValueError(

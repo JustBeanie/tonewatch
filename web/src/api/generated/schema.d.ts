@@ -4,6 +4,60 @@
  */
 
 export interface paths {
+    "/api/agencies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Agencies */
+        get: operations["list_agencies_api_agencies_get"];
+        put?: never;
+        /** Create Agency */
+        post: operations["create_agency_api_agencies_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/agencies.geojson": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Agencies Geojson */
+        get: operations["agencies_geojson_api_agencies_geojson_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/agencies/{item_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Agency */
+        get: operations["get_agency_api_agencies__item_id__get"];
+        /** Update Agency */
+        put: operations["update_agency_api_agencies__item_id__put"];
+        post?: never;
+        /** Delete Agency */
+        delete: operations["delete_agency_api_agencies__item_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/alert-targets": {
         parameters: {
             query?: never;
@@ -321,6 +375,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/map-config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Map Config
+         * @description Return the active map policy and the opt-in OSM preset.
+         */
+        get: operations["get_map_config_api_map_config_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/recordings/{recording_id}": {
         parameters: {
             query?: never;
@@ -503,14 +577,121 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         /**
+         * Agency
+         * @description A configured agency and its optional map coverage.
+         */
+        Agency: {
+            address?: components["schemas"]["AgencyAddress"];
+            /** Cad Names */
+            cad_names?: string[];
+            /** Color */
+            color: string;
+            /** Coverage */
+            coverage?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /** Id */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "fire" | "ems" | "police" | "rescue" | "dispatch" | "other";
+            location: components["schemas"]["AgencyLocation"];
+            /** Name */
+            name: string;
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
+            /**
+             * Phone
+             * @default
+             */
+            phone: string;
+            /**
+             * Radio
+             * @default
+             */
+            radio: string;
+            /** Short Name */
+            short_name: string;
+            /** Stations */
+            stations?: components["schemas"]["AgencyStation"][];
+            /** Tags */
+            tags?: string[];
+            /**
+             * Website
+             * @default
+             */
+            website: string;
+        };
+        /** AgencyAddress */
+        AgencyAddress: {
+            /**
+             * City
+             * @default
+             */
+            city: string;
+            /**
+             * Country
+             * @default
+             */
+            country: string;
+            /**
+             * Postal Code
+             * @default
+             */
+            postal_code: string;
+            /**
+             * Region
+             * @default
+             */
+            region: string;
+            /**
+             * Street
+             * @default
+             */
+            street: string;
+        };
+        /**
+         * AgencyLocation
+         * @description A WGS84 point, represented as latitude/longitude for API users.
+         */
+        AgencyLocation: {
+            /** Lat */
+            lat: number;
+            /** Lon */
+            lon: number;
+        };
+        /** AgencyStation */
+        AgencyStation: {
+            address?: components["schemas"]["AgencyAddress"];
+            /** Lat */
+            lat: number;
+            /** Lon */
+            lon: number;
+            /** Name */
+            name: string;
+        };
+        /**
          * AppConfig
          * @description Complete configuration with reference integrity checks.
          */
         AppConfig: {
+            /** Agencies */
+            agencies?: components["schemas"]["Agency"][];
             /** Alert Targets */
             alert_targets?: (components["schemas"]["MqttTarget"] | components["schemas"]["WebhookTarget"] | components["schemas"]["ScriptTarget"])[];
             discovery?: components["schemas"]["DiscoveryConfig"];
             live_stream?: components["schemas"]["LiveStreamConfig"];
+            map?: components["schemas"]["MapConfig"];
             /** Sources */
             sources?: (components["schemas"]["SoundcardSource"] | components["schemas"]["StreamSource"] | components["schemas"]["RtlSdrSource"] | components["schemas"]["FileSource"])[];
             /** Tone Sets */
@@ -642,6 +823,22 @@ export interface components {
              * @default 3600
              */
             token_ttl_s: number;
+        };
+        /**
+         * MapConfig
+         * @description Optional external map tile provider configuration.
+         */
+        MapConfig: {
+            /**
+             * Attribution
+             * @default
+             */
+            attribution: string;
+            /**
+             * Tile Url
+             * @default
+             */
+            tile_url: string;
         };
         /** MqttTarget */
         MqttTarget: {
@@ -936,6 +1133,8 @@ export interface components {
          * @description An ordered tone sequence and its alert policy.
          */
         ToneSet: {
+            /** Agency Id */
+            agency_id?: string | null;
             /**
              * Alert Targets
              * @default []
@@ -1042,6 +1241,180 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    list_agencies_api_agencies_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown[];
+                };
+            };
+        };
+    };
+    create_agency_api_agencies_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    agencies_geojson_api_agencies_geojson_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    get_agency_api_agencies__item_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_agency_api_agencies__item_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_agency_api_agencies__item_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_items_api_alert_targets_get: {
         parameters: {
             query?: never;
@@ -1352,6 +1725,7 @@ export interface operations {
             query?: {
                 source_id?: string | null;
                 toneset_id?: string | null;
+                agency_id?: string | null;
                 since?: string | null;
                 until?: string | null;
                 limit?: number;
@@ -1723,6 +2097,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_map_config_api_map_config_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };

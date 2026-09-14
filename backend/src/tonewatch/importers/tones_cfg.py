@@ -12,6 +12,7 @@ from typing import Literal
 from pydantic import ValidationError
 
 from tonewatch.config.models import AppConfig, RecordingPolicy, ToneSet, ToneSpec
+from tonewatch.config.store import replace_config
 
 TONES_CFG_MAX_BYTES = 256 * 1024
 TONES_CFG_MAX_SECTIONS = 500
@@ -356,12 +357,6 @@ def apply_tones_cfg(
             unique_id = _unique_slug(item.id, used_ids)
             tone_sets.append(item.model_copy(update={"id": unique_id}))
     try:
-        return AppConfig(
-            tone_sets=tone_sets,
-            sources=config.sources,
-            alert_targets=config.alert_targets,
-            discovery=config.discovery,
-            live_stream=config.live_stream,
-        )
+        return replace_config(config, tone_sets=tone_sets)
     except ValidationError as exc:
         raise TonesCfgApplyError.invalid_config(exc.errors()[0]["msg"]) from exc

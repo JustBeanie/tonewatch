@@ -9,6 +9,7 @@ from pydantic import TypeAdapter, ValidationError
 
 from tonewatch.api.deps import _dump, authenticated, collection, put, save_config, write_auth
 from tonewatch.config.models import AlertTarget, AppConfig, Source, ToneSet
+from tonewatch.config.store import replace_config as rebuild_config
 from tonewatch.events import CallClosed, ToneDetected
 from tonewatch.storage.models import DiscoveredTone
 
@@ -84,12 +85,9 @@ async def delete_toneset(request: Request, item_id: str) -> Any:
     ]
     if refs:
         raise HTTPException(409, {"referrers": refs})
-    config = AppConfig(
+    config = rebuild_config(
+        request.app.state.config,
         tone_sets=[value for value in request.app.state.config.tone_sets if value.id != item_id],
-        sources=request.app.state.config.sources,
-        alert_targets=request.app.state.config.alert_targets,
-        discovery=request.app.state.config.discovery,
-        live_stream=request.app.state.config.live_stream,
     )
     return _dump(await save_config(request, config))
 
@@ -174,21 +172,21 @@ def _crud(path: str, kind: str, model: Any) -> None:
         if not any(value.id == item_id for value in collection(request, kind)):
             raise HTTPException(404, "not found")
         values = [value for value in collection(request, kind) if value.id != item_id]
-        config = AppConfig(
-            tone_sets=values if kind == "tone_sets" else request.app.state.config.tone_sets,
-            sources=values if kind == "sources" else request.app.state.config.sources,
-            alert_targets=values
-            if kind == "alert_targets"
-            else request.app.state.config.alert_targets,
-            discovery=request.app.state.config.discovery,
-            live_stream=request.app.state.config.live_stream,
-        )
+        config = rebuild_config(request.app.state.config, **{kind: values})
         await save_config(request, config)
         return {"ok": True}
 
 
 _crud("/sources", "sources", Source)
 _crud("/alert-targets", "alert_targets", AlertTarget)
+
+
+@router.get("/map-config", dependencies=[Depends(authenticated)])
+async def get_map_config(request: Request) -> dict[str, Any]:
+    """Return the active map policy and the opt-in OSM preset."""
+    from tonewatch.config.models import OSM_MAP_PRESET
+
+    return {"map": _dump(request.app.state.config.map), "osm_preset": _dump(OSM_MAP_PRESET)}
 
 
 @router.post("/tonesets/{item_id}/test", dependencies=[Depends(write_auth)])

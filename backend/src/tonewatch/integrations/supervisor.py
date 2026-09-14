@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 import httpx
 
 from tonewatch.config.models import AppConfig, MqttTarget
+from tonewatch.config.store import replace_config
 
 if TYPE_CHECKING:
     from tonewatch.config.store import ConfigStore
@@ -33,13 +34,7 @@ def ensure_addon_mqtt_target(config: AppConfig, settings: object, store: ConfigS
         source="supervisor",
         ha_discovery=True,
     )
-    updated = AppConfig(
-        tone_sets=config.tone_sets,
-        sources=config.sources,
-        alert_targets=[*config.alert_targets, target],
-        discovery=config.discovery,
-        live_stream=config.live_stream,
-    )
+    updated = replace_config(config, alert_targets=[*config.alert_targets, target])
     store.save(updated)
     return updated
 

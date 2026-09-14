@@ -32,6 +32,7 @@ async def list_calls(
     request: Request,
     source_id: str | None = None,
     toneset_id: str | None = None,
+    agency_id: str | None = None,
     since: datetime | None = None,
     until: datetime | None = None,
     limit: int = Query(default=50, ge=1),
@@ -49,6 +50,12 @@ async def list_calls(
     if toneset_id:
         tone_rows = await _rows(
             request, select(CallToneSet).where(CallToneSet.toneset_id == toneset_id)
+        )
+        ids = {row.call_id for row in tone_rows}
+        rows = [row for row in rows if row.id in ids]
+    if agency_id:
+        tone_rows = await _rows(
+            request, select(CallToneSet).where(CallToneSet.agency_id == agency_id)
         )
         ids = {row.call_id for row in tone_rows}
         rows = [row for row in rows if row.id in ids]
@@ -85,6 +92,9 @@ async def call_detail(request: Request, call_id: UUID) -> dict[str, Any]:
                 "toneset_id": row.toneset_id,
                 "detected_at": row.detected_at.isoformat(),
                 "matched_segment_freqs": row.matched_segment_freqs,
+                "agency": {"id": row.agency_id, "name": row.agency_name, "kind": row.agency_kind}
+                if row.agency_id is not None
+                else None,
             }
             for row in tones
         ],

@@ -33,6 +33,9 @@ class CallToneSet(Base):
     toneset_id: Mapped[str] = mapped_column(String(100), primary_key=True)
     detected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     matched_segment_freqs: Mapped[list[float]] = mapped_column(JSON, nullable=False)
+    agency_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    agency_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    agency_kind: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
 
 class Recording(Base):

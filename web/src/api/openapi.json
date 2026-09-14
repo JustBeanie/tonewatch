@@ -1,10 +1,235 @@
 {
   "components": {
     "schemas": {
+      "Agency": {
+        "additionalProperties": false,
+        "description": "A configured agency and its optional map coverage.",
+        "properties": {
+          "address": {
+            "$ref": "#/components/schemas/AgencyAddress"
+          },
+          "cad_names": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Cad Names",
+            "type": "array"
+          },
+          "color": {
+            "pattern": "^#[0-9A-Fa-f]{6}$",
+            "title": "Color",
+            "type": "string"
+          },
+          "coverage": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coverage"
+          },
+          "description": {
+            "default": "",
+            "maxLength": 1000,
+            "title": "Description",
+            "type": "string"
+          },
+          "id": {
+            "minLength": 1,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "fire",
+              "ems",
+              "police",
+              "rescue",
+              "dispatch",
+              "other"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "location": {
+            "$ref": "#/components/schemas/AgencyLocation"
+          },
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "notes": {
+            "default": "",
+            "maxLength": 4000,
+            "title": "Notes",
+            "type": "string"
+          },
+          "phone": {
+            "default": "",
+            "maxLength": 40,
+            "title": "Phone",
+            "type": "string"
+          },
+          "radio": {
+            "default": "",
+            "maxLength": 1000,
+            "title": "Radio",
+            "type": "string"
+          },
+          "short_name": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Short Name",
+            "type": "string"
+          },
+          "stations": {
+            "items": {
+              "$ref": "#/components/schemas/AgencyStation"
+            },
+            "maxItems": 100,
+            "title": "Stations",
+            "type": "array"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 50,
+            "title": "Tags",
+            "type": "array"
+          },
+          "website": {
+            "default": "",
+            "maxLength": 2048,
+            "title": "Website",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "short_name",
+          "kind",
+          "color",
+          "location"
+        ],
+        "title": "Agency",
+        "type": "object"
+      },
+      "AgencyAddress": {
+        "additionalProperties": false,
+        "properties": {
+          "city": {
+            "default": "",
+            "maxLength": 120,
+            "title": "City",
+            "type": "string"
+          },
+          "country": {
+            "default": "",
+            "maxLength": 80,
+            "title": "Country",
+            "type": "string"
+          },
+          "postal_code": {
+            "default": "",
+            "maxLength": 40,
+            "title": "Postal Code",
+            "type": "string"
+          },
+          "region": {
+            "default": "",
+            "maxLength": 120,
+            "title": "Region",
+            "type": "string"
+          },
+          "street": {
+            "default": "",
+            "maxLength": 300,
+            "title": "Street",
+            "type": "string"
+          }
+        },
+        "title": "AgencyAddress",
+        "type": "object"
+      },
+      "AgencyLocation": {
+        "additionalProperties": false,
+        "description": "A WGS84 point, represented as latitude/longitude for API users.",
+        "properties": {
+          "lat": {
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Lat",
+            "type": "number"
+          },
+          "lon": {
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Lon",
+            "type": "number"
+          }
+        },
+        "required": [
+          "lat",
+          "lon"
+        ],
+        "title": "AgencyLocation",
+        "type": "object"
+      },
+      "AgencyStation": {
+        "additionalProperties": false,
+        "properties": {
+          "address": {
+            "$ref": "#/components/schemas/AgencyAddress"
+          },
+          "lat": {
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Lat",
+            "type": "number"
+          },
+          "lon": {
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Lon",
+            "type": "number"
+          },
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "lat",
+          "lon"
+        ],
+        "title": "AgencyStation",
+        "type": "object"
+      },
       "AppConfig": {
         "additionalProperties": false,
         "description": "Complete configuration with reference integrity checks.",
         "properties": {
+          "agencies": {
+            "items": {
+              "$ref": "#/components/schemas/Agency"
+            },
+            "maxItems": 500,
+            "title": "Agencies",
+            "type": "array"
+          },
           "alert_targets": {
             "items": {
               "discriminator": {
@@ -36,6 +261,9 @@
           },
           "live_stream": {
             "$ref": "#/components/schemas/LiveStreamConfig"
+          },
+          "map": {
+            "$ref": "#/components/schemas/MapConfig"
           },
           "sources": {
             "items": {
@@ -278,6 +506,26 @@
           }
         },
         "title": "LiveStreamConfig",
+        "type": "object"
+      },
+      "MapConfig": {
+        "additionalProperties": false,
+        "description": "Optional external map tile provider configuration.",
+        "properties": {
+          "attribution": {
+            "default": "",
+            "maxLength": 1000,
+            "title": "Attribution",
+            "type": "string"
+          },
+          "tile_url": {
+            "default": "",
+            "maxLength": 2048,
+            "title": "Tile Url",
+            "type": "string"
+          }
+        },
+        "title": "MapConfig",
         "type": "object"
       },
       "MqttTarget": {
@@ -817,6 +1065,19 @@
         "additionalProperties": false,
         "description": "An ordered tone sequence and its alert policy.",
         "properties": {
+          "agency_id": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agency Id"
+          },
           "alert_targets": {
             "default": [],
             "items": {
@@ -851,6 +1112,7 @@
             "type": "number"
           },
           "name": {
+            "maxLength": 200,
             "minLength": 1,
             "title": "Name",
             "type": "string"
@@ -1034,6 +1296,223 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/agencies": {
+      "get": {
+        "operationId": "list_agencies_api_agencies_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {},
+                  "title": "Response List Agencies Api Agencies Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Agencies",
+        "tags": [
+          "agencies"
+        ]
+      },
+      "post": {
+        "operationId": "create_agency_api_agencies_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Payload",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Create Agency Api Agencies Post"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Agency",
+        "tags": [
+          "agencies"
+        ]
+      }
+    },
+    "/api/agencies.geojson": {
+      "get": {
+        "operationId": "agencies_geojson_api_agencies_geojson_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Agencies Geojson",
+        "tags": [
+          "agencies"
+        ]
+      }
+    },
+    "/api/agencies/{item_id}": {
+      "delete": {
+        "operationId": "delete_agency_api_agencies__item_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "title": "Item Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Delete Agency Api Agencies  Item Id  Delete"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Agency",
+        "tags": [
+          "agencies"
+        ]
+      },
+      "get": {
+        "operationId": "get_agency_api_agencies__item_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "title": "Item Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Get Agency Api Agencies  Item Id  Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Agency",
+        "tags": [
+          "agencies"
+        ]
+      },
+      "put": {
+        "operationId": "update_agency_api_agencies__item_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "title": "Item Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Payload",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Update Agency Api Agencies  Item Id  Put"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Agency",
+        "tags": [
+          "agencies"
+        ]
+      }
+    },
     "/api/alert-targets": {
       "get": {
         "operationId": "list_items_api_alert_targets_get",
@@ -1457,6 +1936,22 @@
                 }
               ],
               "title": "Toneset Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "agency_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Agency Id"
             }
           },
           {
@@ -2052,6 +2547,30 @@
         "summary": "Import Tones Cfg",
         "tags": [
           "import"
+        ]
+      }
+    },
+    "/api/map-config": {
+      "get": {
+        "description": "Return the active map policy and the opt-in OSM preset.",
+        "operationId": "get_map_config_api_map_config_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Map Config Api Map Config Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Map Config",
+        "tags": [
+          "configuration"
         ]
       }
     },
