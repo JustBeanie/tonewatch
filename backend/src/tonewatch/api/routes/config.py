@@ -89,6 +89,7 @@ async def delete_toneset(request: Request, item_id: str) -> Any:
         sources=request.app.state.config.sources,
         alert_targets=request.app.state.config.alert_targets,
         discovery=request.app.state.config.discovery,
+        live_stream=request.app.state.config.live_stream,
     )
     return _dump(await save_config(request, config))
 
@@ -96,7 +97,11 @@ async def delete_toneset(request: Request, item_id: str) -> Any:
 def _crud(path: str, kind: str, model: Any) -> None:
     @router.get(path, dependencies=[Depends(authenticated)])
     async def list_items(request: Request) -> list[Any]:
-        return [_dump(value) for value in collection(request, kind)]
+        values = [_dump(value) for value in collection(request, kind)]
+        if kind == "sources":
+            for value in values:
+                value["live_listeners"] = request.app.state.live_hub.listeners_for(value["id"])
+        return values
 
     @router.post(path, dependencies=[Depends(write_auth)], status_code=201)
     async def create_item(request: Request, payload: dict[str, Any] = Body(...)) -> Any:
@@ -119,7 +124,10 @@ def _crud(path: str, kind: str, model: Any) -> None:
         item = next((value for value in collection(request, kind) if value.id == item_id), None)
         if item is None:
             raise HTTPException(404, "not found")
-        return _dump(item)
+        result = _dump(item)
+        if kind == "sources":
+            result["live_listeners"] = request.app.state.live_hub.listeners_for(item_id)
+        return result
 
     @router.put(f"{path}/{{item_id}}", dependencies=[Depends(write_auth)])
     async def update_item(
@@ -153,6 +161,7 @@ def _crud(path: str, kind: str, model: Any) -> None:
             if kind == "alert_targets"
             else request.app.state.config.alert_targets,
             discovery=request.app.state.config.discovery,
+            live_stream=request.app.state.config.live_stream,
         )
         await save_config(request, config)
         return {"ok": True}

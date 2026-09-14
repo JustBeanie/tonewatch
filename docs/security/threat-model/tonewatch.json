@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "summary": "ToneWatch M0-M13 STRIDE threat model",
+  "summary": "ToneWatch M0-M14 STRIDE threat model",
   "detail": "Self-hosted ToneWatch deployment with Home Assistant as the primary deployment. Threat status and evidence are maintained in docs/security/threat-model/README.md.",
   "owner": "ToneWatch maintainers",
   "reviewer": "ToneWatch security review",
@@ -85,7 +85,11 @@
         {"id": "TM-027", "category": "Elevation of privilege", "element": "Network stream origin", "status": "open"},
         {"id": "TM-028", "category": "Information disclosure", "element": "Supervisor MQTT credentials", "status": "mitigated"},
         {"id": "TM-029", "category": "Tampering / Information disclosure", "element": "legacy tones.cfg importer", "status": "mitigated"},
-        {"id": "TM-030", "category": "Information disclosure / Tampering", "element": "Discovery clips and API", "status": "mitigated"}
+        {"id": "TM-030", "category": "Information disclosure / Tampering", "element": "Discovery clips and API", "status": "mitigated"},
+        {"id": "TM-031", "category": "Information disclosure", "element": "Live signed URL", "status": "mitigated"},
+        {"id": "TM-032", "category": "Denial of service", "element": "Live listener queues", "status": "mitigated"},
+        {"id": "TM-033", "category": "Spoofing", "element": "Live token scope and replay", "status": "mitigated"},
+        {"id": "TM-034", "category": "Information disclosure", "element": "live_stream_secret", "status": "mitigated"}
       ]
     }
   ]

@@ -58,4 +58,18 @@ Evidence uses repository-relative `path:line`; “no proving test” is intentio
 
 ## Accepted risks
 
+| TM-031 | Information disclosure | Live signed URL | Signed URLs can leak through player or proxy logs and Home Assistant history. | med | high | mitigated | \`backend/src/tonewatch/api/routes/live.py:42\`; \`test_live_token_is_scoped_and_rotation_invalidates_it\` | M14.2 |
+| TM-032 | Denial of service | Live listener queues | Unbounded listeners or stalled consumers could exhaust encoder and memory resources. | med | med | mitigated | \`backend/src/tonewatch/streaming/live.py:160\`; \`test_feed_drops_oldest_without_awaiting_listener\` | M14.1 |
+| TM-033 | Spoofing | Live token scope and replay | A token used for another source or before expiry could authorize unintended playback. | med | high | mitigated | \`backend/src/tonewatch/streaming/live.py:53\`; \`test_live_token_is_scoped_and_rotation_invalidates_it\` | M14.2 |
+| TM-034 | Information disclosure | live_stream_secret | A readable signing secret would permit forging live URLs. | low | high | mitigated | \`backend/src/tonewatch/streaming/live.py:24\`; \`test_live_token_is_scoped_and_rotation_invalidates_it\` | M14.2 |
+
+M14 live restream adds four reviewed threats. Signed URLs can leak through
+player/proxy logs or Home Assistant history; the short TTL, `no-store` response,
+and documentation warning limit exposure. Listener exhaustion is bounded by
+per-source and global caps plus bounded queues and lag eviction. Tokens are
+HMAC-SHA256 scoped to `live|source|expiry|nonce`; replay is possible only within
+the configured TTL, and rotating `live_stream_secret` invalidates prior tokens.
+The dedicated secret is generated in the data directory with owner-only mode
+0600 on POSIX and is never the API token.
+
 TM-015 remains accepted under AR-002; planned future surfaces remain explicitly out of scope until their owning milestone implements and tests them.

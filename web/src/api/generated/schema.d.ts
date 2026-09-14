@@ -375,6 +375,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/sources/{source_id}/live-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Issue Live Url */
+        post: operations["issue_live_url_api_sources__source_id__live_url_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sources/{source_id}/live.mp3": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Live Mp3 */
+        get: operations["live_mp3_api_sources__source_id__live_mp3_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        /** Live Mp3 */
+        head: operations["live_mp3_api_sources__source_id__live_mp3_head"];
+        patch?: never;
+        trace?: never;
+    };
     "/api/tonesets": {
         parameters: {
             query?: never;
@@ -475,6 +510,7 @@ export interface components {
             /** Alert Targets */
             alert_targets?: (components["schemas"]["MqttTarget"] | components["schemas"]["WebhookTarget"] | components["schemas"]["ScriptTarget"])[];
             discovery?: components["schemas"]["DiscoveryConfig"];
+            live_stream?: components["schemas"]["LiveStreamConfig"];
             /** Sources */
             sources?: (components["schemas"]["SoundcardSource"] | components["schemas"]["StreamSource"] | components["schemas"]["RtlSdrSource"] | components["schemas"]["FileSource"])[];
             /** Tone Sets */
@@ -536,6 +572,11 @@ export interface components {
             /** Id */
             id: string;
             /**
+             * Live Stream Enabled
+             * @default true
+             */
+            live_stream_enabled: boolean;
+            /**
              * Loop
              * @default false
              */
@@ -564,6 +605,42 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /**
+         * LiveStreamConfig
+         * @description Global live MP3 restream policy.
+         */
+        LiveStreamConfig: {
+            /**
+             * Bitrate Kbps
+             * @default 48
+             */
+            bitrate_kbps: number;
+            /**
+             * Enabled
+             * @default false
+             */
+            enabled: boolean;
+            /**
+             * Max Lag S
+             * @default 10
+             */
+            max_lag_s: number;
+            /**
+             * Max Listeners Per Source
+             * @default 4
+             */
+            max_listeners_per_source: number;
+            /**
+             * Max Listeners Total
+             * @default 12
+             */
+            max_listeners_total: number;
+            /**
+             * Token Ttl S
+             * @default 3600
+             */
+            token_ttl_s: number;
         };
         /** MqttTarget */
         MqttTarget: {
@@ -672,6 +749,11 @@ export interface components {
             gain?: number | null;
             /** Id */
             id: string;
+            /**
+             * Live Stream Enabled
+             * @default true
+             */
+            live_stream_enabled: boolean;
             /** Name */
             name: string;
             /**
@@ -748,6 +830,11 @@ export interface components {
             enabled: boolean;
             /** Id */
             id: string;
+            /**
+             * Live Stream Enabled
+             * @default true
+             */
+            live_stream_enabled: boolean;
             /** Name */
             name: string;
             /**
@@ -775,6 +862,11 @@ export interface components {
             enabled: boolean;
             /** Id */
             id: string;
+            /**
+             * Live Stream Enabled
+             * @default true
+             */
+            live_stream_enabled: boolean;
             /** Name */
             name: string;
             /**
@@ -1749,6 +1841,107 @@ export interface operations {
             header?: never;
             path: {
                 item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    issue_live_url_api_sources__source_id__live_url_post: {
+        parameters: {
+            query?: {
+                external?: boolean;
+            };
+            header?: never;
+            path: {
+                source_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    live_mp3_api_sources__source_id__live_mp3_get: {
+        parameters: {
+            query?: {
+                t?: string | null;
+            };
+            header?: never;
+            path: {
+                source_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    live_mp3_api_sources__source_id__live_mp3_head: {
+        parameters: {
+            query?: {
+                t?: string | null;
+            };
+            header?: never;
+            path: {
+                source_id: string;
             };
             cookie?: never;
         };

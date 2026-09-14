@@ -24,13 +24,14 @@ from tonewatch.api.routes.calls import router as calls_router
 from tonewatch.api.routes.config import router as config_router
 from tonewatch.api.routes.discovered_tones import router as discovered_tones_router
 from tonewatch.api.routes.import_tones_cfg import router as import_tones_cfg_router
+from tonewatch.api.routes.live import router as live_router
 from tonewatch.api.routes.recordings import router as recordings_router
 from tonewatch.api.routes.system import router as system_router
 from tonewatch.api.routes.ws import router as ws_router
 from tonewatch.api.spa import SPA_CSP, register_spa, serve_spa
 from tonewatch.config.models import AppConfig
 from tonewatch.config.store import ConfigStore
-from tonewatch.events import EventBus
+from tonewatch.events import EventBus, LiveListenersChanged
 from tonewatch.integrations.supervisor import (
     ensure_addon_mqtt_target,
     register_supervisor_discovery,
@@ -41,6 +42,7 @@ from tonewatch.pipeline.supervisor import Supervisor
 from tonewatch.recording.retention import RetentionService
 from tonewatch.sources.soundcard import input_devices as _input_devices
 from tonewatch.storage.db import create_database, upgrade_database
+from tonewatch.streaming.live import LiveHub
 
 MAX_ANALYZE_BYTES = 20 * 1024 * 1024 + 64 * 1024
 MAX_TONES_CFG_IMPORT_BYTES = 256 * 1024
@@ -198,6 +200,7 @@ def create_app(
         audit_router,
         system_router,
         ws_router,
+        live_router,
     ):
         app.include_router(router)
     register_spa(app, settings.web_root)
@@ -212,6 +215,11 @@ def create_app(
     app.state.engine = engine
     app.state.ws_hub = None
     app.state.ws_pump = None
+    app.state.live_hub = LiveHub(
+        listener_changed=lambda source, count, total: bus.publish(
+            LiveListenersChanged(source, count, total)
+        )
+    )
     advertiser = ZeroconfAdvertiser(
         settings.data_dir,
         settings.bind_port,
@@ -302,6 +310,12 @@ def create_app(
                 await upgrade_database(app.state.engine)
             app.state.config = config_store.load()
             app.state.config = ensure_addon_mqtt_target(app.state.config, settings, config_store)
+            live = app.state.config.live_stream
+            app.state.live_hub.configure(
+                bitrate_kbps=live.bitrate_kbps,
+                queue_seconds=2.0,
+                max_lag_s=live.max_lag_s,
+            )
             if app.state.supervisor is None:
                 app.state.supervisor = Supervisor(
                     app.state.config,
@@ -322,6 +336,7 @@ def create_app(
                     encoder_factory=encoder_factory,
                     settings=settings,
                     instance_id=str(settings.instance_id or instance_id(settings.data_dir)),
+                    live_hub=app.state.live_hub,
                 )
             await app.state.supervisor.start()
             await advertiser.start()

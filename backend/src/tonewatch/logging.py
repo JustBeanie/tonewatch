@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import sys
 from collections.abc import MutableMapping
 from contextvars import ContextVar
@@ -16,11 +17,20 @@ if TYPE_CHECKING:
 request_id: ContextVar[str] = ContextVar("tonewatch_request_id", default="")
 _token: ContextVar[str] = ContextVar("tonewatch_api_token", default="")
 _SENSITIVE = ("authorization", "cookie", "set-cookie", "password", "token", "csrf")
+_QUERY = re.compile(r"(\S+?)\?[^\s\"]*")
+_TOKEN_QUERY = re.compile(r"([?&]t=)[^\s\"&]*")
+
+
+def _redact_query(value: str) -> str:
+    """Remove query strings from request lines and structured log values."""
+    return _TOKEN_QUERY.sub(r"\1REDACTED", _QUERY.sub(r"\1", value))
 
 
 def _redact_value(value: Any, api_token: str) -> Any:
     if isinstance(value, str) and api_token and api_token in value:
         return "[REDACTED]"
+    if isinstance(value, str):
+        return _redact_query(value)
     if isinstance(value, MutableMapping):
         return {key: _redact_value(item, api_token) for key, item in value.items()}
     if isinstance(value, list):
@@ -38,6 +48,17 @@ def _redact(
         else:
             event_dict[key] = _redact_value(event_dict[key], api_token)
     return event_dict
+
+
+class UvicornAccessQueryFilter(logging.Filter):
+    """Strip query strings from uvicorn access records before formatting."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        """Redact query strings in every string argument used by uvicorn."""
+        rendered = record.getMessage()
+        record.msg = _redact_query(rendered)
+        record.args = ()
+        return True
 
 
 def configure_logging(
@@ -66,6 +87,8 @@ def configure_logging(
     root = logging.getLogger()
     root.handlers[:] = [handler]
     root.setLevel(getattr(logging, level.upper(), logging.INFO))
+    access_logger = logging.getLogger("uvicorn.access")
+    access_logger.addFilter(UvicornAccessQueryFilter())
     structlog.configure(
         processors=[
             structlog.contextvars.merge_contextvars,

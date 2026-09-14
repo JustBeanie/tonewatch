@@ -46,6 +46,14 @@ async def save_config(request: Request, config: AppConfig, *, audit: bool = True
     except ConfigConflictError as exc:
         raise HTTPException(412, str(exc)) from None
     request.app.state.config = config
+    live = config.live_stream
+    live_hub = getattr(request.app.state, "live_hub", None)
+    if live_hub is not None:
+        live_hub.configure(
+            bitrate_kbps=live.bitrate_kbps,
+            queue_seconds=2.0,
+            max_lag_s=live.max_lag_s,
+        )
     await request.app.state.supervisor.reload(config)
     if audit:
         await record_audit(
@@ -70,6 +78,7 @@ async def put(request: Request, kind: str, item: Any) -> AppConfig:
             if kind == "alert_targets"
             else request.app.state.config.alert_targets,
             discovery=request.app.state.config.discovery,
+            live_stream=request.app.state.config.live_stream,
         )
     except ValidationError as exc:
         raise HTTPException(422, str(exc)) from None

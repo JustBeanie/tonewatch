@@ -53,9 +53,11 @@ class Supervisor:
         encoder_factory: EncoderFactory | None = None,
         shutdown_finalize_timeout_s: float | None = None,
         shutdown_drain_timeout_s: float | None = None,
+        live_hub: Any = None,
     ) -> None:
         self.config, self.bus, self.session_factory = config, bus, session_factory
         self.settings = settings
+        self.live_hub = live_hub
         self.clock, self.sleep = clock, sleep
         self.jitter = jitter or (
             lambda delay: secrets.SystemRandom().uniform(delay * 0.9, delay * 1.1)
@@ -237,6 +239,7 @@ class Supervisor:
                     watchdog=watchdog,
                     source_settings=self.settings,
                     discovery_settings=self.config.discovery,
+                    live_hub=self.live_hub,
                 )
                 await channel.run()
             except asyncio.CancelledError:

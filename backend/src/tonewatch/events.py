@@ -103,6 +103,13 @@ class ToneDiscovered:
     clip_path: str | None = None
 
 
+@dataclass(frozen=True)
+class LiveListenersChanged:
+    source_id: str
+    source_listeners: int
+    total_listeners: int
+
+
 Event = (
     ToneDetected
     | RecordingReady
@@ -114,6 +121,7 @@ Event = (
     | SpectrumUpdate
     | ToneDiscovered
     | ToneCandidateObserved
+    | LiveListenersChanged
 )
 
 

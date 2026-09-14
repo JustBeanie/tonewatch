@@ -91,6 +91,17 @@ class DiscoveryConfig(FrozenModel):
         return self
 
 
+class LiveStreamConfig(FrozenModel):
+    """Global live MP3 restream policy."""
+
+    enabled: bool = False
+    bitrate_kbps: int = Field(default=48, ge=32, le=128)
+    max_listeners_per_source: int = Field(default=4, ge=1, le=64)
+    max_listeners_total: int = Field(default=12, ge=1, le=256)
+    token_ttl_s: int = Field(default=3600, ge=60, le=86400)
+    max_lag_s: float = Field(default=10, gt=0, le=120)
+
+
 class SourceBase(FrozenModel):
     """Common source settings."""
 
@@ -99,6 +110,7 @@ class SourceBase(FrozenModel):
     enabled: bool = True
     tonesets: list[Slug] | Literal["all"] = "all"
     discovery_enabled: bool = True
+    live_stream_enabled: bool = True
 
 
 class SoundcardSource(SourceBase):
@@ -224,6 +236,7 @@ class AppConfig(FrozenModel):
     sources: list[Source] = Field(default_factory=list, max_length=16)
     alert_targets: list[AlertTarget] = Field(default_factory=list, max_length=128)
     discovery: DiscoveryConfig = Field(default_factory=DiscoveryConfig)
+    live_stream: LiveStreamConfig = Field(default_factory=LiveStreamConfig)
 
     @model_validator(mode="after")
     def references_and_unique_ids(self) -> "AppConfig":

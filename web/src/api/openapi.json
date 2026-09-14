@@ -34,6 +34,9 @@
           "discovery": {
             "$ref": "#/components/schemas/DiscoveryConfig"
           },
+          "live_stream": {
+            "$ref": "#/components/schemas/LiveStreamConfig"
+          },
           "sources": {
             "items": {
               "discriminator": {
@@ -155,6 +158,11 @@
             "title": "Id",
             "type": "string"
           },
+          "live_stream_enabled": {
+            "default": true,
+            "title": "Live Stream Enabled",
+            "type": "boolean"
+          },
           "loop": {
             "default": false,
             "title": "Loop",
@@ -219,6 +227,54 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "LiveStreamConfig": {
+        "additionalProperties": false,
+        "description": "Global live MP3 restream policy.",
+        "properties": {
+          "bitrate_kbps": {
+            "default": 48,
+            "maximum": 128.0,
+            "minimum": 32.0,
+            "title": "Bitrate Kbps",
+            "type": "integer"
+          },
+          "enabled": {
+            "default": false,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "max_lag_s": {
+            "default": 10,
+            "exclusiveMinimum": 0.0,
+            "maximum": 120.0,
+            "title": "Max Lag S",
+            "type": "number"
+          },
+          "max_listeners_per_source": {
+            "default": 4,
+            "maximum": 64.0,
+            "minimum": 1.0,
+            "title": "Max Listeners Per Source",
+            "type": "integer"
+          },
+          "max_listeners_total": {
+            "default": 12,
+            "maximum": 256.0,
+            "minimum": 1.0,
+            "title": "Max Listeners Total",
+            "type": "integer"
+          },
+          "token_ttl_s": {
+            "default": 3600,
+            "maximum": 86400.0,
+            "minimum": 60.0,
+            "title": "Token Ttl S",
+            "type": "integer"
+          }
+        },
+        "title": "LiveStreamConfig",
         "type": "object"
       },
       "MqttTarget": {
@@ -417,6 +473,11 @@
             "title": "Id",
             "type": "string"
           },
+          "live_stream_enabled": {
+            "default": true,
+            "title": "Live Stream Enabled",
+            "type": "boolean"
+          },
           "name": {
             "minLength": 1,
             "title": "Name",
@@ -571,6 +632,11 @@
             "title": "Id",
             "type": "string"
           },
+          "live_stream_enabled": {
+            "default": true,
+            "title": "Live Stream Enabled",
+            "type": "boolean"
+          },
           "name": {
             "minLength": 1,
             "title": "Name",
@@ -627,6 +693,11 @@
             "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
             "title": "Id",
             "type": "string"
+          },
+          "live_stream_enabled": {
+            "default": true,
+            "title": "Live Stream Enabled",
+            "type": "boolean"
           },
           "name": {
             "minLength": 1,
@@ -2149,6 +2220,170 @@
         "summary": "Update Item",
         "tags": [
           "configuration"
+        ]
+      }
+    },
+    "/api/sources/{source_id}/live-url": {
+      "post": {
+        "operationId": "issue_live_url_api_sources__source_id__live_url_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "title": "Source Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "external",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "External",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Issue Live Url Api Sources  Source Id  Live Url Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Issue Live Url",
+        "tags": [
+          "live"
+        ]
+      }
+    },
+    "/api/sources/{source_id}/live.mp3": {
+      "get": {
+        "operationId": "live_mp3_api_sources__source_id__live_mp3_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "title": "Source Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "t",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "T"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Live Mp3",
+        "tags": [
+          "live"
+        ]
+      },
+      "head": {
+        "operationId": "live_mp3_api_sources__source_id__live_mp3_head",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "title": "Source Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "t",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "T"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Live Mp3",
+        "tags": [
+          "live"
         ]
       }
     },

@@ -360,6 +360,8 @@ def apply_tones_cfg(
             tone_sets=tone_sets,
             sources=config.sources,
             alert_targets=config.alert_targets,
+            discovery=config.discovery,
+            live_stream=config.live_stream,
         )
     except ValidationError as exc:
         raise TonesCfgApplyError.invalid_config(exc.errors()[0]["msg"]) from exc

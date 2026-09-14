@@ -206,6 +206,7 @@ def _serve(_args: argparse.Namespace) -> None:
         create_app(settings),
         host=settings.bind_host,
         port=settings.bind_port,
+        log_config=None,
         **cast("Any", UVICORN_SECURITY_OPTIONS),
     )
 

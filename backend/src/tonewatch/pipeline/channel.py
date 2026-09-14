@@ -71,6 +71,19 @@ class DetectionEngineLike(Protocol):
         ...
 
 
+class LiveHubLike(Protocol):
+    """Minimal non-blocking interface used by a channel."""
+
+    def feed(
+        self,
+        source_id: str,
+        samples: NDArray[np.float32],
+        *,
+        gate_open: bool = True,
+    ) -> None:
+        """Accept one normalized frame without awaiting."""
+
+
 EngineFactory = Callable[[list["ToneSet"]], DetectionEngineLike]
 
 
@@ -99,6 +112,7 @@ class Channel:
         watchdog: Watchdog | None = None,
         source_settings: object | None = None,
         discovery_settings: object | None = None,
+        live_hub: LiveHubLike | None = None,
     ) -> None:
         """Create a channel with its source, filtered tone sets, and event bus."""
         self.source_config = source_config
@@ -135,6 +149,7 @@ class Channel:
         self._anchor_wall: datetime | None = None
         self._anchor_stream_s = 0.0
         self._source: AudioSource | None = None
+        self.live_hub = live_hub
 
     @property
     def source_id(self) -> str:
@@ -152,6 +167,7 @@ class Channel:
             engine = self._engine_factory(list(self.tonesets))
             async for frame in source:
                 self._observe_frame(frame)
+                self._feed_live(frame)
                 await self._close_expired(frame.stream_time_s)
                 self.ringbuffer.extend(frame.samples, stream_time_s=frame.stream_time_s)
                 output = engine.feed(frame.samples)
@@ -205,6 +221,10 @@ class Channel:
         finally:
             await source.close()
             self._source = None
+
+    def _feed_live(self, frame: AudioFrame) -> None:
+        if self.live_hub is not None:
+            self.live_hub.feed(self.source_id, frame.samples, gate_open=True)
 
     def _publish_level(self, frame: AudioFrame) -> None:
         """Publish at most five level samples per source second."""

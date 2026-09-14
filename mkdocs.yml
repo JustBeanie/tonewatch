@@ -21,4 +21,5 @@ nav:
       - Tune detection: guide/tuning.md
       - Troubleshoot missed pages: guide/troubleshooting.md
       - Import tones.cfg: guide/importing-tones-cfg.md
+      - Listen live: guide/listen-live.md
   - Home Assistant: guide/home-assistant.md

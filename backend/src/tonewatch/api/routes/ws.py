@@ -18,6 +18,7 @@ from tonewatch.events import (
     ChannelLevel,
     Event,
     EventBus,
+    LiveListenersChanged,
     SpectrumUpdate,
     ToneCandidateObserved,
     ToneDiscovered,
@@ -45,7 +46,12 @@ def _json_value(value: Any) -> Any:
 
 def serialize_event(event: Event) -> dict[str, Any]:
     """Serialize a domain event with explicit event type and JSON-safe fields."""
-    event_type = "tone_discovered" if isinstance(event, ToneDiscovered) else type(event).__name__
+    if isinstance(event, ToneDiscovered):
+        event_type = "tone_discovered"
+    elif isinstance(event, LiveListenersChanged):
+        event_type = "live_listeners_changed"
+    else:
+        event_type = type(event).__name__
     return {"type": event_type, "data": _json_value(event)}
 
 
