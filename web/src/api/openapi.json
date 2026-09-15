@@ -234,6 +234,7 @@
             "items": {
               "discriminator": {
                 "mapping": {
+                  "meshtastic": "#/components/schemas/MeshtasticTarget",
                   "mqtt": "#/components/schemas/MqttTarget",
                   "script": "#/components/schemas/ScriptTarget",
                   "webhook": "#/components/schemas/WebhookTarget"
@@ -243,6 +244,9 @@
               "oneOf": [
                 {
                   "$ref": "#/components/schemas/MqttTarget"
+                },
+                {
+                  "$ref": "#/components/schemas/MeshtasticTarget"
                 },
                 {
                   "$ref": "#/components/schemas/WebhookTarget"
@@ -541,6 +545,197 @@
           }
         },
         "title": "MapConfig",
+        "type": "object"
+      },
+      "MeshtasticTarget": {
+        "additionalProperties": false,
+        "description": "MQTT JSON downlink target for a Meshtastic gateway node.",
+        "properties": {
+          "acknowledge_public_channel": {
+            "default": false,
+            "title": "Acknowledge Public Channel",
+            "type": "boolean"
+          },
+          "channel_index": {
+            "default": 0,
+            "maximum": 7.0,
+            "minimum": 0.0,
+            "title": "Channel Index",
+            "type": "integer"
+          },
+          "coalesce_s": {
+            "default": 3.0,
+            "maximum": 15.0,
+            "minimum": 0.0,
+            "title": "Coalesce S",
+            "type": "number"
+          },
+          "destination": {
+            "default": "broadcast",
+            "pattern": "^(broadcast|![0-9a-fA-F]{8})$",
+            "title": "Destination",
+            "type": "string"
+          },
+          "enabled": {
+            "default": true,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "gateway_node_id": {
+            "pattern": "^![0-9a-fA-F]{8}$",
+            "title": "Gateway Node Id",
+            "type": "string"
+          },
+          "host": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Host"
+          },
+          "id": {
+            "minLength": 1,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "title": "Id",
+            "type": "string"
+          },
+          "max_bytes": {
+            "default": 200,
+            "maximum": 200.0,
+            "minimum": 1.0,
+            "title": "Max Bytes",
+            "type": "integer"
+          },
+          "max_per_hour": {
+            "default": 20,
+            "minimum": 1.0,
+            "title": "Max Per Hour",
+            "type": "integer"
+          },
+          "min_interval_s": {
+            "default": 30,
+            "minimum": 0.0,
+            "title": "Min Interval S",
+            "type": "number"
+          },
+          "mqtt_target_id": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mqtt Target Id"
+          },
+          "name": {
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "password": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Password"
+          },
+          "phases": {
+            "default": [
+              "pre_alert"
+            ],
+            "items": {
+              "enum": [
+                "pre_alert",
+                "recording_ready",
+                "closed"
+              ],
+              "type": "string"
+            },
+            "title": "Phases",
+            "type": "array"
+          },
+          "port": {
+            "default": 1883,
+            "maximum": 65535.0,
+            "minimum": 1.0,
+            "title": "Port",
+            "type": "integer"
+          },
+          "root_topic": {
+            "default": "msh/US",
+            "minLength": 1,
+            "title": "Root Topic",
+            "type": "string"
+          },
+          "template": {
+            "default": "TONE {agency_short} {toneset} {time}",
+            "title": "Template",
+            "type": "string"
+          },
+          "timeout_s": {
+            "default": 30,
+            "exclusiveMinimum": 0.0,
+            "title": "Timeout S",
+            "type": "number"
+          },
+          "timezone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timezone"
+          },
+          "tls": {
+            "default": false,
+            "title": "Tls",
+            "type": "boolean"
+          },
+          "transport": {
+            "const": "mqtt",
+            "default": "mqtt",
+            "title": "Transport",
+            "type": "string"
+          },
+          "type": {
+            "const": "meshtastic",
+            "default": "meshtastic",
+            "title": "Type",
+            "type": "string"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "gateway_node_id"
+        ],
+        "title": "MeshtasticTarget",
         "type": "object"
       },
       "MqttTarget": {
@@ -1771,6 +1966,51 @@
           }
         },
         "summary": "Update Item",
+        "tags": [
+          "configuration"
+        ]
+      }
+    },
+    "/api/alert-targets/{item_id}/test": {
+      "post": {
+        "description": "Send one synthetic TEST message through the selected alert target.",
+        "operationId": "test_alert_target_api_alert_targets__item_id__test_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "title": "Item Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Test Alert Target Api Alert Targets  Item Id  Test Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Test Alert Target",
         "tags": [
           "configuration"
         ]

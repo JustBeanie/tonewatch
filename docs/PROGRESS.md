@@ -154,9 +154,9 @@ Tick a task with `[x]`, then append ` — <PR link> — <one-line note>`. Blocke
 - [ ] **M17.6** Threat model, ASVS rows, privacy (addresses follow retention, never logged).
 
 ## M18: Meshtastic notification target (added 2026-09-12 at user request)
-- [ ] **M18.1** ADR 0012: transport (MQTT JSON downlink vs TCP vs serial), firmware requirements, GPL-3.0 licensing check.
-- [ ] **M18.2** `MeshtasticTarget`: template, UTF-8-safe truncation, no URLs, coalescing, rate limits.
-- [ ] **M18.3** Public-channel acknowledgement and amateur-radio/legal docs.
+- [x] **M18.1** ADR 0012 records MQTT JSON downlink requirements, firmware compatibility, TCP/serial comparison, and GPL-3.0 licensing rationale.
+- [x] **M18.2** MeshtasticTarget and aiomqtt sender add validation, URL-free UTF-8-safe messages, dispatcher wiring, and rate limits.
+- [x] **M18.3** Public-channel acknowledgement, amateur-radio guidance, and RF threat-model documentation added.
 - [ ] **M18.4** API + UI: alert target form, byte-count preview, send test.
 - [ ] **M18.5** Document the HA Meshtastic integration path (after M11.7).
 

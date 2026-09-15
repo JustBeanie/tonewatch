@@ -5,6 +5,7 @@ import math
 from string import Formatter
 from typing import Annotated, Literal
 from urllib.parse import urlsplit
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import (
     AnyUrl,
@@ -367,6 +368,80 @@ class MqttTarget(FrozenModel):
         return self.host or self.broker
 
 
+_NODE_ID = r"^![0-9a-fA-F]{8}$"
+_MESHTASTIC_FIELDS = {
+    "agency_short",
+    "agency",
+    "toneset",
+    "tonesets",
+    "time",
+    "source",
+    "call_id_short",
+}
+
+
+class MeshtasticTarget(FrozenModel):
+    """MQTT JSON downlink target for a Meshtastic gateway node."""
+
+    type: Literal["meshtastic"] = "meshtastic"
+    id: Slug
+    name: str = Field(min_length=1)
+    transport: Literal["mqtt"] = "mqtt"
+    host: str | None = None
+    port: int = Field(default=1883, ge=1, le=65535)
+    tls: bool = False
+    username: str | None = None
+    password: str | None = None
+    mqtt_target_id: Slug | None = None
+    root_topic: str = Field(default="msh/US", min_length=1)
+    gateway_node_id: str = Field(pattern=_NODE_ID)
+    channel_index: int = Field(default=0, ge=0, le=7)
+    destination: str = Field(default="broadcast", pattern=r"^(broadcast|![0-9a-fA-F]{8})$")
+    template: str = "TONE {agency_short} {toneset} {time}"
+    max_bytes: int = Field(default=200, ge=1, le=200)
+    phases: list[Literal["pre_alert", "recording_ready", "closed"]] = ["pre_alert"]
+    min_interval_s: float = Field(default=30, ge=0)
+    max_per_hour: int = Field(default=20, ge=1)
+    timeout_s: Positive = 30
+    coalesce_s: float = Field(default=3.0, ge=0, le=15)
+    timezone: str | None = None
+    acknowledge_public_channel: bool = False
+    enabled: bool = True
+
+    @model_validator(mode="after")
+    def validate_target(self) -> "MeshtasticTarget":
+        if (self.host is None) == (self.mqtt_target_id is None):
+            raise ValueError("exactly one of inline MQTT broker host or mqtt_target_id is required")
+        if self.channel_index == 0 and not self.acknowledge_public_channel:
+            raise ValueError(
+                "channel 0 is the default public channel readable by anyone nearby; "
+                "set acknowledge_public_channel=true to use it"
+            )
+        if "http" in self.template.lower():
+            raise ValueError("Meshtastic templates may not contain http URLs")
+        try:
+            fields = Formatter().parse(self.template)
+            for _literal, field_name, _format_spec, _conversion in fields:
+                if field_name is not None and field_name not in _MESHTASTIC_FIELDS:
+                    raise ValueError(f"unsupported Meshtastic placeholder: {{{field_name}}}")
+        except ValueError as exc:
+            raise ValueError(f"invalid Meshtastic template: {exc}") from exc
+        if self.timezone is not None:
+            try:
+                ZoneInfo(self.timezone)
+            except ZoneInfoNotFoundError as exc:
+                raise ValueError("timezone must be a valid IANA zone name") from exc
+        return self
+
+    @property
+    def gateway_number(self) -> int:
+        return int(self.gateway_node_id[1:], 16)
+
+    @property
+    def destination_number(self) -> int:
+        return 0xFFFFFFFF if self.destination == "broadcast" else int(self.destination[1:], 16)
+
+
 class WebhookTarget(FrozenModel):
     type: Literal["webhook"] = "webhook"
     id: Slug
@@ -415,7 +490,22 @@ class ScriptTarget(FrozenModel):
         return value
 
 
-AlertTarget = Annotated[MqttTarget | WebhookTarget | ScriptTarget, Field(discriminator="type")]
+AlertTarget = Annotated[
+    MqttTarget | MeshtasticTarget | WebhookTarget | ScriptTarget, Field(discriminator="type")
+]
+
+
+def _validate_meshtastic_references(targets: list[AlertTarget]) -> None:
+    mqtt_ids = {item.id for item in targets if isinstance(item, MqttTarget)}
+    for target in targets:
+        if (
+            isinstance(target, MeshtasticTarget)
+            and target.mqtt_target_id is not None
+            and target.mqtt_target_id not in mqtt_ids
+        ):
+            raise ValueError(
+                f"Meshtastic target {target.id} references missing MQTT target {target.mqtt_target_id}"
+            )
 
 
 class AppConfig(FrozenModel):
@@ -444,16 +534,17 @@ class AppConfig(FrozenModel):
                 seen.add(item.id)
         tone_ids = {item.id for item in self.tone_sets}
         target_ids = {item.id for item in self.alert_targets}
+        _validate_meshtastic_references(self.alert_targets)
         agency_ids = {item.id for item in self.agencies}
         for toneset in self.tone_sets:
             if toneset.agency_id is not None and toneset.agency_id not in agency_ids:
                 raise ValueError(
                     f"tone set {toneset.id} references missing agency {toneset.agency_id}"
                 )
-            for target in toneset.alert_targets:
-                if target not in target_ids:
+            for ref_id in toneset.alert_targets:
+                if ref_id not in target_ids:
                     raise ValueError(
-                        f"tone set {toneset.id} references missing alert target {target}"
+                        f"tone set {toneset.id} references missing alert target {ref_id}"
                     )
         for source in self.sources:
             if source.tonesets != "all":

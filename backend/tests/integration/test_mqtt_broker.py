@@ -16,7 +16,14 @@ import aiomqtt
 import pytest
 
 from tonewatch.alerts.dispatcher import AlertDispatcher
-from tonewatch.config.models import AppConfig, FileSource, MqttTarget, ToneSet, ToneSpec
+from tonewatch.config.models import (
+    AppConfig,
+    FileSource,
+    MeshtasticTarget,
+    MqttTarget,
+    ToneSet,
+    ToneSpec,
+)
 from tonewatch.events import EventBus, FeedHealthChanged, ToneDetected
 from tonewatch.settings import Settings
 
@@ -130,11 +137,52 @@ async def _run_real_broker_test() -> None:
             await publisher._connected.wait()
         await subscriber.subscribe("tonewatch/#")
         await subscriber.subscribe("homeassistant/#")
+        await subscriber.subscribe("msh/US/2/json/mqtt/", qos=1)
         call_id = uuid4()
         await dispatcher.handle(ToneDetected(call_id, "page", datetime.now(UTC), "radio"))
         await dispatcher._health(FeedHealthChanged("radio", True))
         received = await _messages(subscriber)
         old_event_topic = _assert_received(received, call_id)
+        mesh_target = MeshtasticTarget(
+            id="mesh",
+            name="Mesh",
+            host="127.0.0.1",
+            port=port,
+            gateway_node_id="!9abc1234",
+            channel_index=1,
+            coalesce_s=0,
+            template="{toneset}",
+        )
+        mesh_config = AppConfig(
+            tone_sets=[
+                ToneSet(
+                    id="county-fire",
+                    name="County Fire",
+                    sequence=[ToneSpec(freq_hz=1000, min_s=1)],
+                    alert_targets=[mesh_target.id],
+                )
+            ],
+            sources=[FileSource(id="radio", name="Radio", path="sample.wav")],
+            alert_targets=[mesh_target],
+        )
+        mesh_dispatcher = AlertDispatcher(mesh_config, EventBus(), settings=Settings())
+        await mesh_dispatcher.start()
+        mesh_call_id = uuid4()
+        await mesh_dispatcher.handle(
+            ToneDetected(mesh_call_id, "county-fire", datetime.now(UTC), "radio")
+        )
+        mesh_message = await asyncio.wait_for(subscriber.messages.__anext__(), 3)
+        assert str(mesh_message.topic) == "msh/US/2/json/mqtt/"
+        assert int(mesh_message.qos) == 1
+        assert bool(mesh_message.retain) is False
+        assert json.loads(bytes(mesh_message.payload)) == {
+            "from": 0x9ABC1234,
+            "to": 0xFFFFFFFF,
+            "channel": 1,
+            "type": "sendtext",
+            "payload": "county-fire",
+        }
+        await mesh_dispatcher.stop()
         await dispatcher.reload(AppConfig(alert_targets=[target]))
         await _assert_deleted_discovery(subscriber, broker, old_event_topic)
 

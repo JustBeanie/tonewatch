@@ -286,6 +286,27 @@ async def get_map_config(request: Request) -> dict[str, Any]:
     return {"map": _dump(request.app.state.config.map), "osm_preset": _dump(OSM_MAP_PRESET)}
 
 
+@router.post("/alert-targets/{item_id}/test", dependencies=[Depends(write_auth)])
+async def test_alert_target(request: Request, item_id: str) -> dict[str, object]:
+    """Send one synthetic TEST message through the selected alert target."""
+    if not any(value.id == item_id for value in request.app.state.config.alert_targets):
+        raise HTTPException(404, "not found")
+    try:
+        result = await request.app.state.supervisor.alerts.test_target(item_id)
+    except ValueError as exc:
+        raise HTTPException(404, str(exc)) from None
+    from tonewatch.api.audit import record_audit
+
+    await record_audit(
+        getattr(request.app.state, "session_factory", None),
+        actor=getattr(getattr(request, "state", None), "auth", "unknown"),
+        event_type="alert_target_test",
+        resource=item_id,
+        details={"ok": bool(result.get("ok"))},
+    )
+    return result
+
+
 @router.post("/tonesets/{item_id}/test", dependencies=[Depends(write_auth)])
 async def test_toneset(request: Request, item_id: str) -> dict[str, bool]:
     if not any(value.id == item_id for value in request.app.state.config.tone_sets):

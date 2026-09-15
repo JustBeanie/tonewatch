@@ -53,7 +53,8 @@ class HADiscovery:
                 "device": device,
             }
         if any(
-            target.enabled and "tone_discovered" in target.events for target in config.alert_targets
+            target.enabled and "tone_discovered" in getattr(target, "events", ())
+            for target in config.alert_targets
         ):
             key = "event_tone_discovered"
             topics[self._topic("event", key)] = {

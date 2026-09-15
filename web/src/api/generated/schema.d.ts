@@ -95,6 +95,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/alert-targets/{item_id}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Test Alert Target
+         * @description Send one synthetic TEST message through the selected alert target.
+         */
+        post: operations["test_alert_target_api_alert_targets__item_id__test_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/analyze": {
         parameters: {
             query?: never;
@@ -708,7 +728,7 @@ export interface components {
             /** Agencies */
             agencies?: components["schemas"]["Agency"][];
             /** Alert Targets */
-            alert_targets?: (components["schemas"]["MqttTarget"] | components["schemas"]["WebhookTarget"] | components["schemas"]["ScriptTarget"])[];
+            alert_targets?: (components["schemas"]["MqttTarget"] | components["schemas"]["MeshtasticTarget"] | components["schemas"]["WebhookTarget"] | components["schemas"]["ScriptTarget"])[];
             discovery?: components["schemas"]["DiscoveryConfig"];
             live_stream?: components["schemas"]["LiveStreamConfig"];
             map?: components["schemas"]["MapConfig"];
@@ -864,6 +884,111 @@ export interface components {
              * @default
              */
             tile_url: string;
+        };
+        /**
+         * MeshtasticTarget
+         * @description MQTT JSON downlink target for a Meshtastic gateway node.
+         */
+        MeshtasticTarget: {
+            /**
+             * Acknowledge Public Channel
+             * @default false
+             */
+            acknowledge_public_channel: boolean;
+            /**
+             * Channel Index
+             * @default 0
+             */
+            channel_index: number;
+            /**
+             * Coalesce S
+             * @default 3
+             */
+            coalesce_s: number;
+            /**
+             * Destination
+             * @default broadcast
+             */
+            destination: string;
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+            /** Gateway Node Id */
+            gateway_node_id: string;
+            /** Host */
+            host?: string | null;
+            /** Id */
+            id: string;
+            /**
+             * Max Bytes
+             * @default 200
+             */
+            max_bytes: number;
+            /**
+             * Max Per Hour
+             * @default 20
+             */
+            max_per_hour: number;
+            /**
+             * Min Interval S
+             * @default 30
+             */
+            min_interval_s: number;
+            /** Mqtt Target Id */
+            mqtt_target_id?: string | null;
+            /** Name */
+            name: string;
+            /** Password */
+            password?: string | null;
+            /**
+             * Phases
+             * @default [
+             *       "pre_alert"
+             *     ]
+             */
+            phases: ("pre_alert" | "recording_ready" | "closed")[];
+            /**
+             * Port
+             * @default 1883
+             */
+            port: number;
+            /**
+             * Root Topic
+             * @default msh/US
+             */
+            root_topic: string;
+            /**
+             * Template
+             * @default TONE {agency_short} {toneset} {time}
+             */
+            template: string;
+            /**
+             * Timeout S
+             * @default 30
+             */
+            timeout_s: number;
+            /** Timezone */
+            timezone?: string | null;
+            /**
+             * Tls
+             * @default false
+             */
+            tls: boolean;
+            /**
+             * Transport
+             * @default mqtt
+             * @constant
+             */
+            transport: "mqtt";
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "meshtastic";
+            /** Username */
+            username?: string | null;
         };
         /** MqttTarget */
         MqttTarget: {
@@ -1616,6 +1741,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    test_alert_target_api_alert_targets__item_id__test_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
             /** @description Validation Error */

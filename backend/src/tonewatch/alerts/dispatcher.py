@@ -8,13 +8,22 @@ import secrets
 from collections import defaultdict
 from collections.abc import Awaitable, Callable
 from datetime import datetime
-from typing import TYPE_CHECKING, Any
+from typing import Any
+from uuid import UUID
 
 from tonewatch.alerts.ha_discovery import HADiscovery
+from tonewatch.alerts.meshtastic import MeshtasticSender
 from tonewatch.alerts.mqtt import MqttPublisher
 from tonewatch.alerts.script import run_script
 from tonewatch.alerts.webhook import WebhookResult, send_webhook
-from tonewatch.config.models import AlertTarget, AppConfig, MqttTarget, ScriptTarget, WebhookTarget
+from tonewatch.config.models import (
+    AlertTarget,
+    AppConfig,
+    MeshtasticTarget,
+    MqttTarget,
+    ScriptTarget,
+    WebhookTarget,
+)
 from tonewatch.events import (
     CallClosed,
     EventBus,
@@ -27,9 +36,6 @@ from tonewatch.events import (
     ToneDiscovered,
 )
 from tonewatch.storage.models import AlertAttempt
-
-if TYPE_CHECKING:
-    from uuid import UUID
 
 Sleep = Callable[[float], Awaitable[None]]
 Jitter = Callable[[float], float]
@@ -59,11 +65,14 @@ class AlertDispatcher:
         self.task: asyncio.Task[None] | None = None
         self._deliveries: set[asyncio.Task[None]] = set()
         self._event_chains: dict[UUID, asyncio.Task[None]] = {}
+        self._coalescing: dict[tuple[UUID, str], asyncio.Task[None]] = {}
+        self._mesh_sent: set[tuple[UUID, str]] = set()
         self._seen: set[tuple[UUID, str, str]] = set()
         self._calls: dict[UUID, dict[str, Any]] = defaultdict(
             lambda: {"tone_sets": [], "test": False, "source_id": "", "recording_path": None}
         )
         self._mqtt: dict[str, MqttPublisher] = {}
+        self._meshtastic: dict[str, MeshtasticSender] = {}
         self._discovery: dict[str, HADiscovery] = {}
 
     @staticmethod
@@ -91,16 +100,27 @@ class AlertDispatcher:
         deliveries = tuple(self._deliveries)
         if deliveries:
             await asyncio.gather(*deliveries, return_exceptions=True)
+        await self._cancel_coalescing()
         for publisher in tuple(self._mqtt.values()):
             await publisher.stop()
         self._mqtt.clear()
+        self._meshtastic.clear()
         self._discovery.clear()
 
     async def reload(self, config: AppConfig) -> None:
         """Apply target changes without discarding the call dedupe state."""
+        await self._cancel_coalescing()
         self.config = config
         if self.task is not None:
             await self._configure_targets(config)
+
+    async def _cancel_coalescing(self) -> None:
+        pending = tuple(self._coalescing.values())
+        self._coalescing.clear()
+        for task in pending:
+            task.cancel()
+        if pending:
+            await asyncio.gather(*pending, return_exceptions=True)
 
     async def _configure_targets(self, config: AppConfig) -> None:
         mqtt_enabled = getattr(self.settings, "mqtt_mode", "supervisor") != "off"
@@ -108,6 +128,22 @@ class AlertDispatcher:
             target.id: target
             for target in config.alert_targets
             if target.enabled and (mqtt_enabled or not isinstance(target, MqttTarget))
+        }
+        self._meshtastic = {
+            target.id: MeshtasticSender(
+                target,
+                next(
+                    (
+                        candidate
+                        for candidate in config.alert_targets
+                        if isinstance(candidate, MqttTarget)
+                        and candidate.id == target.mqtt_target_id
+                    ),
+                    None,
+                ),
+            )
+            for target in targets.values()
+            if isinstance(target, MeshtasticTarget)
         }
         for target_id in set(self._mqtt) - set(targets):
             await self._mqtt.pop(target_id).stop()
@@ -201,7 +237,7 @@ class AlertDispatcher:
             *(
                 self._dispatch_discovered(target, payload)
                 for target in self.config.alert_targets
-                if target.enabled and "tone_discovered" in target.events
+                if target.enabled and "tone_discovered" in getattr(target, "events", ())
             ),
             return_exceptions=True,
         )
@@ -234,23 +270,11 @@ class AlertDispatcher:
             state = self._calls[call_id]
             if event.toneset_id not in state["tone_sets"]:
                 state["tone_sets"].append(event.toneset_id)
-            state.update(source_id=event.source_id, test=state["test"] or test)
-            state["agency"] = next(
-                (
-                    {
-                        "id": agency.id,
-                        "name": agency.name,
-                        "short_name": agency.short_name,
-                        "kind": agency.kind,
-                        "lat": agency.location.lat,
-                        "lon": agency.location.lon,
-                    }
-                    for tone in self.config.tone_sets
-                    if tone.id == event.toneset_id and tone.agency_id is not None
-                    for agency in self.config.agencies
-                    if agency.id == tone.agency_id
-                ),
-                None,
+            state.update(
+                source_id=event.source_id,
+                test=state["test"] or test,
+                detected_at=state.get("detected_at") or event.detected_at,
+                agency=self._agency_for_tone_sets(state["tone_sets"]),
             )
             detected_at = event.detected_at
         elif isinstance(event, RecordingReady):
@@ -279,24 +303,113 @@ class AlertDispatcher:
             recording_url=recording_url,
             recording_id=event.recording_id if isinstance(event, RecordingStored) else None,
             public_base_url=getattr(self.settings, "public_base_url", None),
+            tone_set_names=self._tone_set_names(state["tone_sets"]),
         )
-        await asyncio.gather(
-            *(
-                self._dispatch(
-                    target_id,
-                    phase,
-                    call_id,
-                    payload,
-                    local_audio_path=(
-                        state.get("recording_path")
-                        if isinstance(state.get("recording_path"), str)
-                        else None
-                    ),
+        await self._fan_out(call_id, phase, target_ids, payload, state)
+        if isinstance(event, CallClosed):
+            self._mesh_sent = {key for key in self._mesh_sent if key[0] != call_id}
+            if state.get("recording_path") is None:
+                self._calls.pop(call_id, None)
+            else:
+                state["closed"] = True
+        elif isinstance(event, RecordingStored) and state.get("closed"):
+            self._calls.pop(call_id, None)
+
+    async def _fan_out(
+        self,
+        call_id: UUID,
+        phase: str,
+        target_ids: set[str],
+        payload: dict[str, object],
+        state: dict[str, Any],
+    ) -> None:
+        local_audio_path = (
+            state.get("recording_path") if isinstance(state.get("recording_path"), str) else None
+        )
+        immediate: list[Awaitable[None]] = []
+        for target_id in target_ids:
+            target = next(
+                (item for item in self.config.alert_targets if item.id == target_id), None
+            )
+            if (
+                isinstance(target, MeshtasticTarget)
+                and phase == "pre_alert"
+                and phase in target.phases
+            ):
+                key = (call_id, target_id)
+                if key not in self._mesh_sent and key not in self._coalescing:
+                    task = asyncio.create_task(
+                        self._coalesce_and_dispatch(call_id, target_id),
+                        name="tonewatch-meshtastic-coalesce",
+                    )
+                    self._coalescing[key] = task
+
+                    def finished_coalescing(
+                        _done: asyncio.Task[None], key: tuple[UUID, str] = key
+                    ) -> None:
+                        self._coalescing.pop(key, None)
+
+                    task.add_done_callback(finished_coalescing)
+                elif key in self._mesh_sent:
+                    immediate.append(self._dispatch(target_id, phase, call_id, payload, force=True))
+            else:
+                immediate.append(
+                    self._dispatch(
+                        target_id, phase, call_id, payload, local_audio_path=local_audio_path
+                    )
                 )
-                for target_id in target_ids
-            ),
-            return_exceptions=True,
+        await asyncio.gather(*immediate, return_exceptions=True)
+
+    async def _coalesce_and_dispatch(self, call_id: UUID, target_id: str) -> None:
+        target = next((item for item in self.config.alert_targets if item.id == target_id), None)
+        if not isinstance(target, MeshtasticTarget):
+            return
+        await self.sleep(target.coalesce_s)
+        target = next((item for item in self.config.alert_targets if item.id == target_id), None)
+        if not isinstance(target, MeshtasticTarget) or not target.enabled:
+            return
+        state = self._calls[call_id]
+        state["agency"] = self._agency_for_tone_sets(state["tone_sets"])
+        payload = self._payload(
+            call_id,
+            "pre_alert",
+            state,
+            bool(state.get("test")),
+            state.get("detected_at"),
+            public_base_url=getattr(self.settings, "public_base_url", None),
+            tone_set_names=self._tone_set_names(state["tone_sets"]),
         )
+        self._mesh_sent.add((call_id, target_id))
+        await self._dispatch(target_id, "pre_alert", call_id, payload, force=True)
+
+    def _tone_set_names(self, tone_set_ids: list[str]) -> list[str]:
+        names = {item.id: item.name for item in self.config.tone_sets}
+        return [names.get(item, item) for item in tone_set_ids]
+
+    def _agency_for_tone_sets(self, tone_set_ids: list[str]) -> dict[str, object] | None:
+        agencies = {item.id: item for item in self.config.agencies}
+        found = []
+        for tone_set_id in tone_set_ids:
+            tone_set = next(
+                (item for item in self.config.tone_sets if item.id == tone_set_id), None
+            )
+            agency = (
+                agencies.get(tone_set.agency_id)
+                if tone_set is not None and tone_set.agency_id is not None
+                else None
+            )
+            if agency is not None and agency not in found:
+                found.append(agency)
+        if not found:
+            return None
+        return {
+            "id": "/".join(item.id for item in found),
+            "name": "/".join(item.name for item in found),
+            "short_name": "/".join(item.short_name for item in found),
+            "kind": "/".join(item.kind for item in found),
+            "lat": found[0].location.lat,
+            "lon": found[0].location.lon,
+        }
 
     def _target_ids(self, tonesets: list[str]) -> set[str]:
         return {
@@ -317,6 +430,7 @@ class AlertDispatcher:
         recording_url: str | None = None,
         recording_id: int | None = None,
         public_base_url: str | None = None,
+        tone_set_names: list[str] | None = None,
     ) -> dict[str, object]:
         if recording_id is not None:
             relative_url = f"/api/recordings/{recording_id}"
@@ -336,6 +450,8 @@ class AlertDispatcher:
         if public_base_url is None:
             payload["recording_path_relative"] = True
         payload["toneset"] = state["tone_sets"][0] if state["tone_sets"] else ""
+        payload["tone_set_names"] = tone_set_names or list(state["tone_sets"])
+        payload["agency"] = state.get("agency")
         return payload
 
     async def _dispatch(
@@ -346,15 +462,18 @@ class AlertDispatcher:
         payload: dict[str, object],
         *,
         local_audio_path: str | None = None,
+        force: bool = False,
     ) -> None:
         key = (call_id, target_id, phase)
-        if key in self._seen:
+        if key in self._seen and not force:
             return
-        self._seen.add(key)
+        if not force:
+            self._seen.add(key)
         target = next((item for item in self.config.alert_targets if item.id == target_id), None)
         if target is None or not target.enabled:
             return
-        if phase not in target.events:
+        phases = target.phases if isinstance(target, MeshtasticTarget) else target.events
+        if phase not in phases:
             return
         for attempt_no in range(1, 6):
             try:
@@ -370,6 +489,8 @@ class AlertDispatcher:
             await self._record(call_id, target_id, phase, attempt_no, ok, outcome)
             if ok:
                 return
+            if getattr(outcome, "error", None) == "rate_limited":
+                return
             if attempt_no < 5:
                 await self.sleep(self.jitter(float(2 ** (attempt_no - 1))))
 
@@ -383,6 +504,8 @@ class AlertDispatcher:
         if isinstance(target, MqttTarget):
             await self._mqtt[target.id].publish_call(payload)
             return WebhookResult(True, status_code=0)
+        if isinstance(target, MeshtasticTarget):
+            return await self._meshtastic[target.id].send(payload)
         if isinstance(target, WebhookTarget):
             return await send_webhook(
                 target,
@@ -401,6 +524,31 @@ class AlertDispatcher:
                 allowlist_dirs=list(getattr(self.settings, "script_allowlist_dirs", [])),
             )
         return WebhookResult(False, error="unsupported target")
+
+    async def test_target(self, target_id: str) -> dict[str, object]:
+        """Send exactly one synthetic TEST attempt without creating a call or attempt row."""
+        target = next((item for item in self.config.alert_targets if item.id == target_id), None)
+        if target is None:
+            raise ValueError("alert target not found")
+        payload: dict[str, object] = {
+            "call_id": "test",
+            "tone_sets": ["TEST"],
+            "toneset": "TEST",
+            "phase": "pre_alert",
+            "detected_at": datetime.now().astimezone().isoformat(),
+            "recording_url": None,
+            "source_id": "test",
+            "test": True,
+        }
+        try:
+            outcome = await asyncio.wait_for(
+                self._send(target, payload), getattr(target, "timeout_s", self.timeout_s)
+            )
+        except TimeoutError:
+            return {"ok": False, "error": "target timeout"}
+        except Exception as exc:
+            return {"ok": False, "error": str(exc)[:500]}
+        return {"ok": bool(getattr(outcome, "ok", False)), "error": getattr(outcome, "error", None)}
 
     async def _record(
         self,
