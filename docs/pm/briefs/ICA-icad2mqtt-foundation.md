@@ -19,6 +19,16 @@
   - The charset is ISO-8859-1.
 - **In parallel,** another engineer (IC-B) adds new packages `internal/parse`, `internal/normalize`, `internal/model` and `internal/diff`. **Don't create or touch those.** A later task (IC-C) wires everything into publishing. Keep `main.go` edits focused on config and fetch.
 
+## Updates since this brief was written (PM, 2026-09-14)
+- **IC-B is done and reviewed.** It is committed locally on branch `ic-b` (`505c183`), not on `master`, so your worktree doesn't contain it.
+  - It adds `internal/{parse,normalize,model,diff}`, and `internal/normalize` already blank-imports `time/tzdata`.
+  - Still do item 3 in the **main** package (harmless duplication; the main binary must not depend on which packages are linked).
+  - Don't recreate IC-B's packages.
+- **Git:** your sandbox can't write git metadata in this worktree. Never run fetch, stash, merge, add or commit. Read-only `git diff`/`status`/`show origin/master:<path>` is fine.
+- **gofmt on Windows:** `gofmt -l .` walks `.gocache/` and flags CRLF working-copy files. Run `gofmt -l $(git ls-files '*.go')` plus your new files, and never report tracked files as "pre-existing gofmt failures" without checking `git show origin/master:<file> | gofmt -l`.
+- **Honesty rule:** never call a failure "existing" or "flaky" without running the same check on `origin/master` code and pasting that result.
+- **Evidence:** for each numbered item, give the first failing test line (test-first), the passing line and a diff excerpt with file:line.
+
 ## User decisions (binding)
 - Raw HTML publishing stays **on** by default (`PUBLISH_RAW=true`).
 - HA MQTT discovery is **opt-in** (`HA_DISCOVERY=false` by default). IC-A only adds the config flag.
