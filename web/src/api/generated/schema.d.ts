@@ -4,6 +4,57 @@
  */
 
 export interface paths {
+    "/api/admin/alert-attempts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Alert Attempts */
+        get: operations["alert_attempts_api_admin_alert_attempts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/alert-attempts/{attempt_id}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Retry Alert Attempt */
+        post: operations["retry_alert_attempt_api_admin_alert_attempts__attempt_id__retry_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Health */
+        get: operations["health_api_admin_health_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/agencies": {
         parameters: {
             query?: never;
@@ -720,6 +771,42 @@ export interface components {
             /** Name */
             name: string;
         };
+        /** AlertAttemptResponse */
+        AlertAttemptResponse: {
+            /** Attempt No */
+            attempt_no: number;
+            /**
+             * Call Id
+             * Format: uuid
+             */
+            call_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Error */
+            error: string | null;
+            /** Id */
+            id: number;
+            /** Ok */
+            ok: boolean;
+            /** Phase */
+            phase: string;
+            /** Retry */
+            retry: boolean;
+            /** Status Code */
+            status_code: number | null;
+            /** Target Id */
+            target_id: string;
+        };
+        /** AlertAttemptsResponse */
+        AlertAttemptsResponse: {
+            /** Items */
+            items: components["schemas"]["AlertAttemptResponse"][];
+            /** Next Cursor */
+            next_cursor: string | null;
+        };
         /**
          * AppConfig
          * @description Complete configuration with reference integrity checks.
@@ -832,6 +919,32 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /** HealthResponse */
+        HealthResponse: {
+            /** Build */
+            build: {
+                [key: string]: unknown;
+            };
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /** Outputs */
+            outputs: {
+                [key: string]: unknown;
+            }[];
+            /** Service */
+            service: {
+                [key: string]: unknown;
+            };
+            /** Sources */
+            sources: components["schemas"]["SourceHealthResponse"][];
+            /** Storage */
+            storage: {
+                [key: string]: unknown;
+            };
         };
         /**
          * LiveStreamConfig
@@ -1203,6 +1316,37 @@ export interface components {
              */
             type: "soundcard";
         };
+        /** SourceHealthResponse */
+        SourceHealthResponse: {
+            /** Dropped Frames */
+            dropped_frames: number | null;
+            /** Feed Health History */
+            feed_health_history: {
+                [key: string]: unknown;
+            }[];
+            /** Id */
+            id: string;
+            /** Last Error */
+            last_error: string | null;
+            /** Last Restart At */
+            last_restart_at: string | null;
+            /** Late Frames */
+            late_frames: number | null;
+            /** Level */
+            level: {
+                [key: string]: unknown;
+            } | null;
+            /** Name */
+            name: string;
+            /** Realtime Factor */
+            realtime_factor: number | null;
+            /** Restarts */
+            restarts: number | null;
+            /** Squelch Open */
+            squelch_open: boolean | null;
+            /** Type */
+            type: string;
+        };
         /**
          * SquelchConfig
          * @description Validated software squelch settings.
@@ -1426,6 +1570,97 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    alert_attempts_api_admin_alert_attempts_get: {
+        parameters: {
+            query?: {
+                call_id?: string | null;
+                target_id?: string | null;
+                phase?: string | null;
+                ok?: boolean | null;
+                since?: string | null;
+                until?: string | null;
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlertAttemptsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    retry_alert_attempt_api_admin_alert_attempts__attempt_id__retry_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attempt_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    health_api_admin_health_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HealthResponse"];
+                };
+            };
+        };
+    };
     list_agencies_api_agencies_get: {
         parameters: {
             query?: never;

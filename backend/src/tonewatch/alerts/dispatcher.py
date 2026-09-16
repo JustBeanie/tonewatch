@@ -11,6 +11,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
+from tonewatch.admin.health import OutputHealth, bounded_error
 from tonewatch.alerts.ha_discovery import HADiscovery
 from tonewatch.alerts.meshtastic import MeshtasticSender
 from tonewatch.alerts.mqtt import MqttPublisher
@@ -35,7 +36,7 @@ from tonewatch.events import (
     ToneDetected,
     ToneDiscovered,
 )
-from tonewatch.storage.models import AlertAttempt
+from tonewatch.storage.models import AlertAttempt, Call
 
 Sleep = Callable[[float], Awaitable[None]]
 Jitter = Callable[[float], float]
@@ -74,6 +75,8 @@ class AlertDispatcher:
         self._mqtt: dict[str, MqttPublisher] = {}
         self._meshtastic: dict[str, MeshtasticSender] = {}
         self._discovery: dict[str, HADiscovery] = {}
+        self.output_health: dict[str, OutputHealth] = defaultdict(OutputHealth)
+        self._retrying: set[int] = set()
 
     @staticmethod
     def _jitter(delay: float) -> float:
@@ -486,6 +489,9 @@ class AlertDispatcher:
             except Exception as exc:
                 outcome = WebhookResult(False, error=str(exc)[:500])
             ok = bool(getattr(outcome, "ok", False))
+            self.output_health[target_id].record(
+                ok, datetime.now().astimezone(), getattr(outcome, "error", None)
+            )
             await self._record(call_id, target_id, phase, attempt_no, ok, outcome)
             if ok:
                 return
@@ -558,6 +564,8 @@ class AlertDispatcher:
         attempt_no: int,
         ok: bool,
         result: Any,
+        *,
+        retry: bool = False,
     ) -> None:
         if self.session_factory is None:
             return
@@ -576,6 +584,7 @@ class AlertDispatcher:
                         status_code=getattr(result, "status_code", None),
                         error=error,
                         created_at=datetime.now().astimezone(),
+                        retry=retry,
                     )
                 )
                 await session.commit()
@@ -583,3 +592,66 @@ class AlertDispatcher:
             self.logger.exception(
                 "alert attempt persistence failed", extra={"call_id": str(call_id)}
             )
+
+    async def retry_attempt(self, attempt_id: int) -> tuple[int, dict[str, object]]:
+        """Retry one failed delivery exactly once through its configured sender."""
+        if attempt_id in self._retrying:
+            return 429, {"ok": False, "error": "retry_in_flight"}
+        self._retrying.add(attempt_id)
+        try:
+            if self.session_factory is None:
+                return 404, {"ok": False, "error": "attempt not found"}
+            async with self.session_factory() as session:
+                attempt = await session.get(AlertAttempt, attempt_id)
+                if attempt is None:
+                    return 404, {"ok": False, "error": "attempt not found"}
+                if attempt.ok:
+                    return 409, {"ok": False, "error": "attempt already succeeded"}
+                target = next(
+                    (item for item in self.config.alert_targets if item.id == attempt.target_id),
+                    None,
+                )
+                if target is None or not target.enabled:
+                    return 409, {"ok": False, "error": "target unavailable"}
+                call = await session.get(Call, attempt.call_id)
+                if call is None:
+                    return 409, {"ok": False, "error": "call unavailable"}
+                payload = self._calls.get(attempt.call_id, {}).copy()
+                payload.update(
+                    {
+                        "call_id": str(attempt.call_id),
+                        "phase": attempt.phase,
+                        "retry": True,
+                        "source_id": call.source_id,
+                        "test": False,
+                    }
+                )
+            try:
+                outcome = await asyncio.wait_for(
+                    self._send(target, payload), getattr(target, "timeout_s", self.timeout_s)
+                )
+            except TimeoutError:
+                outcome = WebhookResult(False, error="target timeout")
+            except Exception as exc:
+                outcome = WebhookResult(False, error=bounded_error(exc))
+            ok = bool(getattr(outcome, "ok", False))
+            self.output_health[target.id].record(
+                ok, datetime.now().astimezone(), getattr(outcome, "error", None)
+            )
+            result = WebhookResult(
+                ok,
+                status_code=getattr(outcome, "status_code", None),
+                error=getattr(outcome, "error", None),
+            )
+            await self._record(
+                attempt.call_id,
+                target.id,
+                attempt.phase,
+                attempt.attempt_no + 1,
+                ok,
+                result,
+                retry=True,
+            )
+            return 200, {"ok": ok, "error": getattr(outcome, "error", None), "target_id": target.id}
+        finally:
+            self._retrying.discard(attempt_id)

@@ -23,5 +23,6 @@ nav:
       - Import tones.cfg: guide/importing-tones-cfg.md
       - Listen live: guide/listen-live.md
       - Agencies: guide/agencies.md
+      - Administration: guide/admin.md
       - Meshtastic: guide/meshtastic.md
   - Home Assistant: guide/home-assistant.md

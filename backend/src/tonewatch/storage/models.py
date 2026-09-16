@@ -63,6 +63,7 @@ class AlertAttempt(Base):
     status_code: Mapped[int | None] = mapped_column(Integer)
     error: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    retry: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
 
 
 class AuditEvent(Base):

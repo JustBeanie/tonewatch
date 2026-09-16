@@ -4,10 +4,50 @@ from dataclasses import dataclass
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from tonewatch.storage.models import Call, CallToneSet, DiscoveredTone
+from tonewatch.storage.models import AlertAttempt, Call, CallToneSet, DiscoveredTone
+
+
+async def list_alert_attempts(  # noqa: PLR0913 -- filters mirror the delivery-log API contract.
+    session: AsyncSession,
+    *,
+    call_id: UUID | None = None,
+    target_id: str | None = None,
+    phase: str | None = None,
+    ok: bool | None = None,
+    since: datetime | None = None,
+    until: datetime | None = None,
+    cursor: tuple[datetime, int] | None = None,
+    limit: int = 50,
+) -> list[AlertAttempt]:
+    """List attempts in stable cursor order without counting the table."""
+    filters = []
+    if call_id is not None:
+        filters.append(AlertAttempt.call_id == call_id)
+    if target_id is not None:
+        filters.append(AlertAttempt.target_id == target_id)
+    if phase is not None:
+        filters.append(AlertAttempt.phase == phase)
+    if ok is not None:
+        filters.append(AlertAttempt.ok == ok)
+    if since is not None:
+        filters.append(AlertAttempt.created_at >= since)
+    if until is not None:
+        filters.append(AlertAttempt.created_at <= until)
+    if cursor is not None:
+        filters.append(
+            (AlertAttempt.created_at < cursor[0])
+            | and_(AlertAttempt.created_at == cursor[0], AlertAttempt.id < cursor[1])
+        )
+    result = await session.scalars(
+        select(AlertAttempt)
+        .where(*filters)
+        .order_by(AlertAttempt.created_at.desc(), AlertAttempt.id.desc())
+        .limit(limit + 1)
+    )
+    return list(result.all())
 
 
 @dataclass(frozen=True)

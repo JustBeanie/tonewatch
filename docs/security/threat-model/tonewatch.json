@@ -92,7 +92,9 @@
         {"id": "TM-034", "category": "Information disclosure", "element": "live_stream_secret", "status": "mitigated"},
         {"id": "TM-035", "category": "Information disclosure", "element": "Map tile provider", "status": "mitigated"},
         {"id": "TM-036", "category": "Denial of service", "element": "Agency GeoJSON input", "status": "mitigated"},
-        {"id": "TM-037", "category": "Denial of service / Tampering", "element": "Squelch calibration endpoint", "status": "partial"}
+        {"id": "TM-037", "category": "Denial of service / Tampering", "element": "Squelch calibration endpoint", "status": "partial"},
+        {"id": "TM-038", "category": "Information disclosure", "element": "Admin health and delivery log", "status": "mitigated"},
+        {"id": "TM-039", "category": "Tampering / Repudiation", "element": "Admin alert retry", "status": "mitigated"}
       ]
     }
   ]

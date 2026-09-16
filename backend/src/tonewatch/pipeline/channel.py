@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import inspect
 import math
+import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
@@ -14,6 +15,7 @@ from uuid import UUID, uuid4
 import numpy as np
 import structlog
 
+from tonewatch.admin.health import ChannelHealth
 from tonewatch.dsp.discovery import DiscoveryTracker, ToneCandidate
 from tonewatch.dsp.engine import DetectionEngine
 from tonewatch.dsp.squelch import Squelch
@@ -161,6 +163,7 @@ class Channel:
         self._squelch_open: bool | None = None
         self._last_activity_at: datetime | None = None
         self._level_taps: set[Callable[[float], None]] = set()
+        self.health = ChannelHealth()
 
     @property
     def source_id(self) -> str:
@@ -203,7 +206,14 @@ class Channel:
                 self._observe_frame(frame)
                 await self._close_expired(frame.stream_time_s)
                 self.ringbuffer.extend(frame.samples, stream_time_s=frame.stream_time_s)
+                started_dsp = time.perf_counter()
                 output = engine.feed(frame.samples)
+                self.health.observe_frame(
+                    frame.samples.size / 16_000,
+                    time.perf_counter() - started_dsp,
+                    dropped=int(getattr(source, "dropped", 0)) - getattr(self, "_last_dropped", 0),
+                )
+                self._last_dropped = int(getattr(source, "dropped", 0))
                 stop_on_squelch = False
                 for spectrum in output.frames:
                     state, changed = self._squelch.feed(spectrum.level_dbfs, spectrum.t_end_s)
@@ -323,6 +333,10 @@ class Channel:
                 squelch.transitions_per_min if squelch is not None and mode != "off" else None,
             )
         )
+        health = getattr(self, "health", None)
+        if health is not None:
+            health.level = {"rms_dbfs": 20 * math.log10(max(rms, 1e-12)), "peak": peak}
+            health.squelch_open = getattr(self, "_squelch_open", None)
         if level_dbfs is not None:
             for tap in tuple(getattr(self, "_level_taps", ())):
                 tap(level_dbfs)

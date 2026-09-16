@@ -17,6 +17,7 @@ from starlette.datastructures import Headers
 from starlette.requests import ClientDisconnect
 
 from tonewatch.api.auth import AuthState
+from tonewatch.api.routes.admin import router as admin_router
 from tonewatch.api.routes.agencies import router as agencies_router
 from tonewatch.api.routes.analyze import router as analyze_router
 from tonewatch.api.routes.audit import router as audit_router
@@ -200,6 +201,7 @@ def create_app(
         recordings_router,
         analyze_router,
         audit_router,
+        admin_router,
         system_router,
         ws_router,
         live_router,

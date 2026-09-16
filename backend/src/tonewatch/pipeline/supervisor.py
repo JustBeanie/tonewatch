@@ -7,9 +7,11 @@ import secrets
 import time
 from collections.abc import Awaitable, Callable
 from contextlib import suppress
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from tonewatch.admin.health import ChannelHealth, bounded_error
 from tonewatch.alerts.dispatcher import AlertDispatcher
 from tonewatch.events import EventBus, FeedHealthChanged
 from tonewatch.pipeline.channel import Channel
@@ -80,6 +82,7 @@ class Supervisor:
         self._background_shutdown: set[asyncio.Task[None]] = set()
         self._configs: dict[str, Source] = {}
         self._channels: dict[str, Channel] = {}
+        self.health: dict[str, ChannelHealth] = {}
         self._stopping = False
         self.persistence = PersistenceSubscriber(
             bus,
@@ -263,13 +266,20 @@ class Supervisor:
                     ),
                 )
                 self._channels[source.id] = channel
+                self.health.setdefault(source.id, getattr(channel, "health", ChannelHealth()))
                 await channel.run()
             except asyncio.CancelledError:
                 raise
             except SourceConfigError as error:
+                health = self.health.setdefault(source.id, ChannelHealth())
+                health.last_error = bounded_error(error)
                 self.bus.publish(FeedHealthChanged(source.id, False, str(error)))
                 return
             except Exception as error:
+                health = self.health.setdefault(source.id, ChannelHealth())
+                health.restarts += 1
+                health.last_error = bounded_error(error)
+                health.last_restart_at = datetime.now(UTC)
                 watchdog.on_error(error)
                 self.bus.publish(FeedHealthChanged(source.id, False, str(error) or "source_error"))
                 if self.clock() - started_at >= MAX_BACKOFF_S:

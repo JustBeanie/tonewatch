@@ -209,6 +209,11 @@ class EventBus:
         """Number of active bus subscriptions."""
         return len(self._subscribers)
 
+    @property
+    def subscriptions(self) -> tuple[Subscription, ...]:
+        """Return a read-only snapshot for diagnostics."""
+        return tuple(self._subscribers)
+
     def subscribe(
         self, event_type: type[Event] | None = None, *, maxsize: int | None = None
     ) -> Subscription:

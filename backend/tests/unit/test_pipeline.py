@@ -794,6 +794,8 @@ def test_supervisor_restarts_transient_source_with_injected_sleep(monkeypatch) -
         await supervisor.wait()
         assert delays == [1, 2]
         assert attempts == 3
+        assert supervisor.health["radio"].restarts == 2
+        assert supervisor.health["radio"].last_restart_at is not None
         await supervisor.stop()
 
     asyncio.run(run())
