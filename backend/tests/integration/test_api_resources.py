@@ -16,6 +16,7 @@ from pydantic import AnyUrl
 
 from tonewatch.api.app import create_app
 from tonewatch.config.models import (
+    AdminAlertsConfig,
     Agency,
     AgencyLocation,
     AppConfig,
@@ -155,6 +156,7 @@ async def test_toneset_crud_persists_yaml_and_reloads_supervisor() -> None:
         ("agency_delete", "agencies"),
         ("tones_cfg_apply", "tone_sets"),
         ("addon_mqtt_target", "alert_targets"),
+        ("admin_alerts_update", "admin_alerts"),
     ],
 )
 async def test_all_config_mutation_paths_preserve_untouched_fields(path: str, owner: str) -> None:
@@ -182,6 +184,19 @@ async def test_all_config_mutation_paths_preserve_untouched_fields(path: str, ow
             max_listeners_total=20,
             token_ttl_s=7200,
             max_lag_s=15,
+        ),
+        admin_alerts=AdminAlertsConfig(
+            enabled=True,
+            targets=[],
+            feed_unhealthy_min=12,
+            disk_used_pct=77,
+            disk_forecast_days=11,
+            target_failures=8,
+            squelch_stuck_open=False,
+            realtime_factor_min=2.5,
+            realtime_factor_min_s=90,
+            min_interval_s=120,
+            max_per_hour=9,
         ),
     )
     values = baseline.model_dump()
@@ -296,6 +311,23 @@ async def test_all_config_mutation_paths_preserve_untouched_fields(path: str, ow
                     baseline,
                     parse_tones_cfg("[Imported]\nlongtone=1200\nlongtonelength=1\n"),
                     "merge",
+                )
+            elif path == "admin_alerts_update":
+                actual = replace_config(
+                    baseline,
+                    admin_alerts=AdminAlertsConfig(
+                        enabled=False,
+                        targets=[],
+                        feed_unhealthy_min=20,
+                        disk_used_pct=80,
+                        disk_forecast_days=14,
+                        target_failures=10,
+                        squelch_stuck_open=True,
+                        realtime_factor_min=1.8,
+                        realtime_factor_min_s=180,
+                        min_interval_s=600,
+                        max_per_hour=4,
+                    ),
                 )
             else:
 

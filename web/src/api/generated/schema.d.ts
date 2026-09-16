@@ -668,6 +668,64 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         /**
+         * AdminAlertsConfig
+         * @description Thresholds and rate limits for operational (non-page) alerts.
+         */
+        AdminAlertsConfig: {
+            /**
+             * Disk Forecast Days
+             * @default 7
+             */
+            disk_forecast_days: number;
+            /**
+             * Disk Used Pct
+             * @default 90
+             */
+            disk_used_pct: number;
+            /**
+             * Enabled
+             * @default false
+             */
+            enabled: boolean;
+            /**
+             * Feed Unhealthy Min
+             * @default 5
+             */
+            feed_unhealthy_min: number;
+            /**
+             * Max Per Hour
+             * @default 6
+             */
+            max_per_hour: number;
+            /**
+             * Min Interval S
+             * @default 300
+             */
+            min_interval_s: number;
+            /**
+             * Realtime Factor Min
+             * @default 1.5
+             */
+            realtime_factor_min: number;
+            /**
+             * Realtime Factor Min S
+             * @default 300
+             */
+            realtime_factor_min_s: number;
+            /**
+             * Squelch Stuck Open
+             * @default true
+             */
+            squelch_stuck_open: boolean;
+            /**
+             * Target Failures
+             * @default 5
+             */
+            target_failures: number;
+            /** Targets */
+            targets?: string[];
+        };
+        /**
          * Agency
          * @description A configured agency and its optional map coverage.
          */
@@ -812,6 +870,7 @@ export interface components {
          * @description Complete configuration with reference integrity checks.
          */
         AppConfig: {
+            admin_alerts?: components["schemas"]["AdminAlertsConfig"];
             /** Agencies */
             agencies?: components["schemas"]["Agency"][];
             /** Alert Targets */

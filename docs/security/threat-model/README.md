@@ -82,4 +82,6 @@ the configured TTL, and rotating `live_stream_secret` invalidates prior tokens.
 The dedicated secret is generated in the data directory with owner-only mode
 0600 on POSIX and is never the API token.
 
+| TM-040 | Information disclosure / Denial of service | Admin alert delivery | Operational notifications could be mistaken for pages, leak target credentials, or fan out without bounds. | med | med | mitigated | `backend/src/tonewatch/admin/alerts.py:1`; `backend/src/tonewatch/alerts/mqtt.py:256`; `docs/guide/admin.md`; `test_admin_alert_config_defaults_and_bounds` | M19.2 |
+
 TM-015 remains accepted under AR-002; planned future surfaces remain explicitly out of scope until their owning milestone implements and tests them.

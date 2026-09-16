@@ -495,6 +495,22 @@ AlertTarget = Annotated[
 ]
 
 
+class AdminAlertsConfig(FrozenModel):
+    """Thresholds and rate limits for operational (non-page) alerts."""
+
+    enabled: bool = False
+    targets: list[str] = Field(default_factory=list)
+    feed_unhealthy_min: float = Field(default=5, ge=1, le=1440)
+    disk_used_pct: float = Field(default=90, ge=50, le=99)
+    disk_forecast_days: float = Field(default=7, ge=1, le=365)
+    target_failures: int = Field(default=5, ge=2, le=100)
+    squelch_stuck_open: bool = True
+    realtime_factor_min: float = Field(default=1.5, ge=1.0, le=10)
+    realtime_factor_min_s: float = Field(default=300, ge=30, le=3600)
+    min_interval_s: float = Field(default=300, ge=60, le=86400)
+    max_per_hour: int = Field(default=6, ge=1, le=100)
+
+
 def _validate_meshtastic_references(targets: list[AlertTarget]) -> None:
     mqtt_ids = {item.id for item in targets if isinstance(item, MqttTarget)}
     for target in targets:
@@ -508,6 +524,14 @@ def _validate_meshtastic_references(targets: list[AlertTarget]) -> None:
             )
 
 
+def _validate_admin_alert_references(config: "AppConfig") -> None:
+    """Ensure operational alerts only name configured output targets."""
+    target_ids = {item.id for item in config.alert_targets}
+    for target_id in config.admin_alerts.targets:
+        if target_id not in target_ids:
+            raise ValueError(f"admin alerts references missing alert target {target_id}")
+
+
 class AppConfig(FrozenModel):
     """Complete configuration with reference integrity checks."""
 
@@ -518,6 +542,7 @@ class AppConfig(FrozenModel):
     map: MapConfig = Field(default_factory=MapConfig)
     discovery: DiscoveryConfig = Field(default_factory=DiscoveryConfig)
     live_stream: LiveStreamConfig = Field(default_factory=LiveStreamConfig)
+    admin_alerts: AdminAlertsConfig = Field(default_factory=AdminAlertsConfig)
 
     @model_validator(mode="after")
     def references_and_unique_ids(self) -> "AppConfig":
@@ -536,6 +561,7 @@ class AppConfig(FrozenModel):
         target_ids = {item.id for item in self.alert_targets}
         _validate_meshtastic_references(self.alert_targets)
         agency_ids = {item.id for item in self.agencies}
+        _validate_admin_alert_references(self)
         for toneset in self.tone_sets:
             if toneset.agency_id is not None and toneset.agency_id not in agency_ids:
                 raise ValueError(

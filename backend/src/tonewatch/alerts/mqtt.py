@@ -254,6 +254,10 @@ class MqttPublisher:
         """Publish a call event."""
         await self.publish(f"tonewatch/{self.instance_id}/call", payload)
 
+    async def publish_admin(self, payload: dict[str, object]) -> None:
+        """Publish an operational alert on a topic distinct from page calls."""
+        await self.publish(f"tonewatch/{self.instance_id}/admin", payload)
+
     async def publish_discovered(self, payload: dict[str, object]) -> None:
         """Publish an opt-in discovery event."""
         await self.publish(f"tonewatch/{self.instance_id}/discovered", payload)

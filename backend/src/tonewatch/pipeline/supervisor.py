@@ -9,9 +9,12 @@ from collections.abc import Awaitable, Callable
 from contextlib import suppress
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
-from tonewatch.admin.health import ChannelHealth, bounded_error
+from sqlalchemy import select
+
+from tonewatch.admin.alerts import AdminAlertEngine
+from tonewatch.admin.health import ChannelHealth, StorageScanner, bounded_error, storage_forecast
 from tonewatch.alerts.dispatcher import AlertDispatcher
 from tonewatch.events import EventBus, FeedHealthChanged
 from tonewatch.pipeline.channel import Channel
@@ -21,6 +24,7 @@ from tonewatch.recording.encoder import AudioEncoder
 from tonewatch.recording.recorder import CallRecorder
 from tonewatch.recording.retention import RetentionService, retention_loop
 from tonewatch.sources.base import SourceConfigError
+from tonewatch.storage.models import Call, Recording
 
 if TYPE_CHECKING:
     from tonewatch.config.models import AppConfig, Source
@@ -100,6 +104,13 @@ class Supervisor:
             sleep=sleep,
             jitter=self.jitter,
         )
+        self.admin_alerts = AdminAlertEngine(config.admin_alerts, self.alerts, clock=clock)
+        self._admin_task: asyncio.Task[None] | None = None
+        self._admin_scanner = (
+            StorageScanner(settings.recording_path, settings.data_dir / "tonewatch.db")
+            if settings is not None
+            else None
+        )
         self.retention_service = retention_service
         self._retention_task: asyncio.Task[None] | None = None
 
@@ -112,6 +123,11 @@ class Supervisor:
         if self.settings is not None:
             await self.persistence.reconcile_orphans(self.settings.recording_path)
         await self.alerts.start()
+        await self.admin_alerts.start()
+        if self.config.admin_alerts.enabled:
+            self._admin_task = asyncio.create_task(
+                self._admin_loop(), name="tonewatch-admin-alerts"
+            )
         if self.retention_service is not None:
             self._retention_task = asyncio.create_task(
                 retention_loop(self.retention_service, self.session_factory, sleep=self.sleep),
@@ -157,6 +173,11 @@ class Supervisor:
         else:
             await self.persistence.stop(timeout_s=drain_budget)
         await self.alerts.stop()
+        if self._admin_task is not None:
+            self._admin_task.cancel()
+            await asyncio.gather(self._admin_task, return_exceptions=True)
+            self._admin_task = None
+        await self.admin_alerts.stop()
         self._tasks.clear()
         self._configs.clear()
         self._channels.clear()
@@ -190,6 +211,15 @@ class Supervisor:
         self.persistence.discovery_clip = bool(getattr(config.discovery, "clip", True))
         self.persistence.config = config
         await self.alerts.reload(config)
+        await self.admin_alerts.reload(config.admin_alerts)
+        if not config.admin_alerts.enabled and self._admin_task is not None:
+            self._admin_task.cancel()
+            await asyncio.gather(self._admin_task, return_exceptions=True)
+            self._admin_task = None
+        elif config.admin_alerts.enabled and self._admin_task is None and not self._stopping:
+            self._admin_task = asyncio.create_task(
+                self._admin_loop(), name="tonewatch-admin-alerts"
+            )
         for source_id, source in desired.items():
             if (
                 source_id not in current
@@ -325,3 +355,35 @@ class Supervisor:
     def channel_for(self, source_id: str) -> Channel | None:
         """Return a currently running channel."""
         return self._channels.get(source_id)
+
+    async def _admin_loop(self) -> None:
+        """Poll cached health metrics without doing filesystem work on the loop."""
+        while not self._stopping:
+            if self._admin_scanner is not None:
+                disk = await self._admin_scanner.scan()
+            else:
+                disk = {}
+            forecast = None
+            if self.session_factory is not None and disk:
+                async with self.session_factory() as session:
+                    rows = list(
+                        (
+                            await session.execute(
+                                select(Call.started_at, Recording.size_bytes)
+                                .join(Recording, Recording.call_id == Call.id)
+                                .order_by(Call.started_at)
+                            )
+                        ).all()
+                    )
+                forecast = storage_forecast(
+                    cast("int", disk.get("free_bytes", 0)), [(row[0], row[1]) for row in rows]
+                )
+            await self.admin_alerts.evaluate(
+                {
+                    "sources": self.health,
+                    "outputs": self.alerts.output_health,
+                    "disk": disk,
+                    "forecast_days": forecast,
+                }
+            )
+            await self.sleep(30.0)

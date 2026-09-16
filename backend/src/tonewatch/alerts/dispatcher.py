@@ -251,6 +251,48 @@ class AlertDispatcher:
         elif isinstance(target, WebhookTarget):
             await send_webhook(target, payload, self.settings)
 
+    async def dispatch_admin(
+        self, payload: dict[str, object], target_ids: set[str] | list[str]
+    ) -> None:
+        """Send an admin alert through target senders without page dedupe or call rows."""
+        await asyncio.gather(
+            *(self._dispatch_admin_one(target_id, payload) for target_id in set(target_ids)),
+            return_exceptions=True,
+        )
+
+    async def _dispatch_admin_one(self, target_id: str, payload: dict[str, object]) -> None:
+        target = next((item for item in self.config.alert_targets if item.id == target_id), None)
+        if target is None or not target.enabled:
+            return
+        try:
+            outcome = await asyncio.wait_for(self._send_admin(target, payload), self.timeout_s)
+        except TimeoutError:
+            outcome = WebhookResult(False, error="target timeout")
+        except Exception as exc:
+            outcome = WebhookResult(False, error=bounded_error(exc))
+        self.output_health[target_id].record(
+            bool(getattr(outcome, "ok", False)),
+            datetime.now().astimezone(),
+            bounded_error(getattr(outcome, "error", None)),
+        )
+
+    async def _send_admin(self, target: AlertTarget, payload: dict[str, object]) -> Any:
+        if isinstance(target, MqttTarget):
+            await self._mqtt[target.id].publish_admin(payload)
+            return WebhookResult(True, status_code=0)
+        if isinstance(target, MeshtasticTarget):
+            return await self._meshtastic[target.id].send(payload)
+        if isinstance(target, WebhookTarget):
+            return await send_webhook(target, payload, self.settings)
+        if isinstance(target, ScriptTarget):
+            return await run_script(
+                target,
+                payload,
+                allow_script_targets=bool(getattr(self.settings, "allow_script_targets", False)),
+                allowlist_dirs=list(getattr(self.settings, "script_allowlist_dirs", [])),
+            )
+        return WebhookResult(False, error="unsupported target")
+
     async def _health(self, event: FeedHealthChanged) -> None:
         await asyncio.gather(
             *(

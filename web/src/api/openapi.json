@@ -1,6 +1,87 @@
 {
   "components": {
     "schemas": {
+      "AdminAlertsConfig": {
+        "additionalProperties": false,
+        "description": "Thresholds and rate limits for operational (non-page) alerts.",
+        "properties": {
+          "disk_forecast_days": {
+            "default": 7,
+            "maximum": 365.0,
+            "minimum": 1.0,
+            "title": "Disk Forecast Days",
+            "type": "number"
+          },
+          "disk_used_pct": {
+            "default": 90,
+            "maximum": 99.0,
+            "minimum": 50.0,
+            "title": "Disk Used Pct",
+            "type": "number"
+          },
+          "enabled": {
+            "default": false,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "feed_unhealthy_min": {
+            "default": 5,
+            "maximum": 1440.0,
+            "minimum": 1.0,
+            "title": "Feed Unhealthy Min",
+            "type": "number"
+          },
+          "max_per_hour": {
+            "default": 6,
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Max Per Hour",
+            "type": "integer"
+          },
+          "min_interval_s": {
+            "default": 300,
+            "maximum": 86400.0,
+            "minimum": 60.0,
+            "title": "Min Interval S",
+            "type": "number"
+          },
+          "realtime_factor_min": {
+            "default": 1.5,
+            "maximum": 10.0,
+            "minimum": 1.0,
+            "title": "Realtime Factor Min",
+            "type": "number"
+          },
+          "realtime_factor_min_s": {
+            "default": 300,
+            "maximum": 3600.0,
+            "minimum": 30.0,
+            "title": "Realtime Factor Min S",
+            "type": "number"
+          },
+          "squelch_stuck_open": {
+            "default": true,
+            "title": "Squelch Stuck Open",
+            "type": "boolean"
+          },
+          "target_failures": {
+            "default": 5,
+            "maximum": 100.0,
+            "minimum": 2.0,
+            "title": "Target Failures",
+            "type": "integer"
+          },
+          "targets": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Targets",
+            "type": "array"
+          }
+        },
+        "title": "AdminAlertsConfig",
+        "type": "object"
+      },
       "Agency": {
         "additionalProperties": false,
         "description": "A configured agency and its optional map coverage.",
@@ -325,6 +406,9 @@
         "additionalProperties": false,
         "description": "Complete configuration with reference integrity checks.",
         "properties": {
+          "admin_alerts": {
+            "$ref": "#/components/schemas/AdminAlertsConfig"
+          },
           "agencies": {
             "items": {
               "$ref": "#/components/schemas/Agency"

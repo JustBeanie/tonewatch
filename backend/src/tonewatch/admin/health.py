@@ -183,6 +183,8 @@ class StorageScanner:
         return {
             "recordings_bytes": recording_size,
             "free_bytes": usage.free,
+            "total_bytes": usage.total,
+            "used_bytes": usage.total - usage.free,
             "db_bytes": db_size,
             "db_wal_bytes": wal_size,
         }

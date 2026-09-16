@@ -223,7 +223,14 @@ async def health(request: Request) -> dict[str, object]:
         "generated_at": datetime.now().astimezone(),
         "sources": source_items,
         "service": {"subscribers": event_bus_health(request.app.state.bus)},
-        "storage": {**disk, "retention_forecast": {"days_until_full": forecast}},
+        "storage": {
+            **{
+                key: disk[key]
+                for key in ("recordings_bytes", "free_bytes", "db_bytes", "db_wal_bytes")
+                if key in disk
+            },
+            "retention_forecast": {"days_until_full": forecast},
+        },
         "outputs": outputs,
         "build": {"version": __version__, "build": None, "uptime_s": time.monotonic() - _STARTED},
     }

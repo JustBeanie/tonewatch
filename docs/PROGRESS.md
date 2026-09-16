@@ -162,7 +162,7 @@ Tick a task with `[x]`, then append ` — <PR link> — <one-line note>`. Blocke
 
 ## M19: Admin tooling (added 2026-09-13 at user request)
 - [x] **M19.1** System health page + `/api/admin/health` (per-source realtime factor, drops, disk forecast, DB size, target status, versions).
-- [ ] **M19.2** Admin alerts: dead feed, disk, failing target, stuck squelch, slow DSP; rate-limited, resolved follow-ups.
+- [x] **M19.2** Admin alerts: dead feed, disk, failing target, stuck squelch, slow DSP; rate-limited, resolved follow-ups. — direct to main — engine on the supervisor timer, dedicated MQTT admin topic, pages unaffected
 - [x] **M19.3** Alert delivery log with single-attempt audited retry.
 - [ ] **M19.4** End-to-end drill: inject synthetic tones into a live channel, marked test everywhere.
 - [ ] **M19.5** Config history, diff, rollback, masked export, dry-run import.

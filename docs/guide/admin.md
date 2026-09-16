@@ -6,6 +6,14 @@ Authenticated `GET /api/admin/health` reports one entry per source, including th
 
 Disk scans run in a worker and are cached for up to 60 seconds so the API event loop is not blocked.
 
+## Admin alerts
+
+Operational alerts are disabled by default. Enable `admin_alerts` and select existing alert-target IDs in `targets` to receive these notifications. The defaults are: feed unhealthy for 5 minutes, disk used at 90%, disk forecast under 7 days, 5 consecutive target failures, stuck squelch enabled, and realtime DSP below 1.5x for 300 seconds. `min_interval_s` defaults to 300 seconds per condition and `max_per_hour` defaults to 6 across all conditions.
+
+Conditions are edge-triggered: a firing notification is sent once after its threshold or hysteresis duration is met, and a single `resolved` notification follows when the condition clears. Reminders while a condition remains latched obey both rate limits; dropped reminders are counted and logged. Feed and DSP conditions have hysteresis, while disk, target, and squelch recovery is immediate.
+
+Every operational payload contains `kind: "admin"`, its condition key, state, severity, timestamp, detail, and relevant measurements. MQTT uses `tonewatch/<instance>/admin`, separate from the page-call topic. Admin messages are never sent through page coalescing or call dedupe, and Home Assistant discovery does not create page-like `event` entities for them. Webhook and script targets receive the same `kind` marker. Admin notifications do not create call-linked `AlertAttempt` rows because they do not represent a call; target delivery health remains visible in the health endpoint.
+
 ## Delivery log and retry
 
 Authenticated `GET /api/admin/alert-attempts` supports `call_id`, `target_id`, `phase`, `ok`, `since`, and `until` filters. Results use a stable `created_at DESC, id DESC` cursor and a maximum page size of 200.
