@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.4.0](https://github.com/JustBeanie/tonewatch/compare/v0.3.0...v0.4.0) (2026-09-16)
+
+
+### Features
+
+* **admin:** M19.1 and M19.3 admin health API, delivery log and audited retry ([f0c43f9](https://github.com/JustBeanie/tonewatch/commit/f0c43f9d6defb21586618025f44b6498e8a8f9bc))
+* **agencies:** M16.1-M16.3 agencies, GeoJSON API, call agency snapshot and map tiles ([8d4b5b5](https://github.com/JustBeanie/tonewatch/commit/8d4b5b5eaeaac3b7feb167551316301e28cb6843))
+* **alerts:** M18.1-M18.3 Meshtastic alert target via MQTT JSON downlink ([f2885f1](https://github.com/JustBeanie/tonewatch/commit/f2885f19891ba3d896d62888232c594408ec4994))
+* **live:** M14.1-M14.3, M14.6 live MP3 restream with signed URLs ([c0e2305](https://github.com/JustBeanie/tonewatch/commit/c0e2305e88d1bc729891aa517f465cbd4f38fcd7))
+* **squelch:** M15.1-M15.4 software squelch, activity sensor and live-stream gate ([f643f97](https://github.com/JustBeanie/tonewatch/commit/f643f97a4c47f68a445558c473869cafc3ed6bb6))
+* **squelch:** M15.6-M15.7 auto squelch, calibrate endpoint and squelch diagnostics ([ade9b0a](https://github.com/JustBeanie/tonewatch/commit/ade9b0a1b2d1dd1abfb417bb7c27676e3ee824f1))
+
 ## [0.3.0](https://github.com/JustBeanie/tonewatch/compare/v0.2.0...v0.3.0) (2026-09-12)
 
 
