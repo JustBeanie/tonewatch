@@ -2,6 +2,8 @@
 
 import json
 import re
+import subprocess
+import sys
 import tomllib
 from pathlib import Path
 from typing import cast
@@ -36,11 +38,35 @@ def test_release_please_manifest_and_lockfile_updater() -> None:
     assert backend["extra-files"] == [
         {
             "type": "toml",
-            "path": "backend/uv.lock",
-            "jsonpath": '$.package[?(@.name == "tonewatch")].version',
+            "path": "uv.lock",
+            "jsonpath": "$.package[?(@.name.value=='tonewatch')].version",
         }
     ]
 
+    project = tomllib.loads((ROOT / "backend" / "pyproject.toml").read_text(encoding="utf-8"))
     lock = tomllib.loads((ROOT / "backend" / "uv.lock").read_text(encoding="utf-8"))
     package_entries = [entry for entry in lock["package"] if entry["name"] == "tonewatch"]
     assert len(package_entries) == 1
+    assert package_entries[0]["version"] == project["project"]["version"]
+
+
+def test_lock_version_check_rejects_a_mismatched_temporary_copy(tmp_path: Path) -> None:
+    project = tmp_path / "pyproject.toml"
+    lock = tmp_path / "uv.lock"
+    project.write_text('[project]\nname = "tonewatch"\nversion = "0.4.0"\n', encoding="utf-8")
+    lock.write_text(
+        'version = 1\n\n[[package]]\nname = "tonewatch"\nversion = "0.3.0"\n',
+        encoding="utf-8",
+    )
+
+    result = subprocess.run(  # noqa: S603 -- fixed local checker and pytest temp paths
+        [
+            sys.executable,
+            str(ROOT / "backend" / "scripts" / "check_lock_version.py"),
+            project,
+            lock,
+        ],
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode == 1

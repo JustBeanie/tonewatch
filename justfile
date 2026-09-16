@@ -63,7 +63,10 @@ runtime-export-check:
 docs:
     {{uv}} run --project backend --group docs mkdocs build --strict
 
-check: lint typecheck test test-web security-scorecard docs
+check: lint typecheck test test-web security-scorecard docs release-lock-check
+
+release-lock-check:
+    {{uv}} run --project backend python backend/scripts/check_lock_version.py
 
 precommit:
     {{uvx}} --python 3.13.13 pre-commit run --all-files

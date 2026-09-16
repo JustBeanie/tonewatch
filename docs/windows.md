@@ -1,10 +1,15 @@
 # Windows installation
 
-Download the `tonewatch-windows` zip from the workflow artifact, extract it to
-a directory such as `C:\Program Files\ToneWatch`, and run
+Download `tonewatch-vX.Y.Z-windows-x64.zip` and `SHA256SUMS.txt` from the
+release's Assets section, extract the zip to a directory such as
+`C:\Program Files\ToneWatch`, and run
 `tonewatch.exe --version` from that directory. The onedir folder must stay
 intact because it contains the bundled web UI, PortAudio, FFmpeg, and Python
 runtime files.
+
+Verify the download in PowerShell with `Get-FileHash -Algorithm SHA256
+.\tonewatch-vX.Y.Z-windows-x64.zip`; compare the resulting hash with the
+matching line in `SHA256SUMS.txt`.
 
 When the frozen executable starts without `TONEWATCH_DATA_DIR`, it stores its
 configuration, API token, SQLite database, recordings, and logs in

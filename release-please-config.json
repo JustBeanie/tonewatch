@@ -6,8 +6,8 @@
       "extra-files": [
         {
           "type": "toml",
-          "path": "backend/uv.lock",
-          "jsonpath": "$.package[?(@.name == \"tonewatch\")].version"
+          "path": "uv.lock",
+          "jsonpath": "$.package[?(@.name.value=='tonewatch')].version"
         }
       ]
     }

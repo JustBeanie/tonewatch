@@ -25,9 +25,16 @@ on:
   schedule:
     - cron: "5 5 * * 1"
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      release_tag:
+        description: Release tag to build and attach
+        required: false
+        type: string
+        default: ""
 
 concurrency:
-  group: windows-${{ github.ref }}
+  group: windows-${{ github.event_name }}-${{ inputs.release_tag || github.ref }}
   cancel-in-progress: true
 
 permissions: {contents: read}
@@ -39,7 +46,9 @@ jobs:
     permissions: {contents: read}
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
-        with: {persist-credentials: false}
+        with:
+          ref: ${{ inputs.release_tag || github.ref }}
+          persist-credentials: false
       - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
       - name: Diff Linux runtime and development exports
         run: |
@@ -52,7 +61,9 @@ jobs:
     permissions: {contents: read}
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
-        with: {persist-credentials: false}
+        with:
+          ref: ${{ inputs.release_tag || github.ref }}
+          persist-credentials: false
       - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
       - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
         with: {package_json_file: web/package.json}
@@ -83,7 +94,9 @@ jobs:
     permissions: {contents: read}
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
-        with: {persist-credentials: false}
+        with:
+          ref: ${{ inputs.release_tag || github.ref }}
+          persist-credentials: false
       - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with: {name: tonewatch-windows}
@@ -119,7 +132,9 @@ jobs:
     permissions: {contents: read}
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
-        with: {persist-credentials: false}
+        with:
+          ref: ${{ inputs.release_tag || github.ref }}
+          persist-credentials: false
       - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with: {name: tonewatch-windows}
@@ -183,3 +198,30 @@ jobs:
           Expand-Archive -Path tonewatch-windows.zip -DestinationPath dist
           & "$PWD/dist/tonewatch/tonewatch.exe" selftest https https://github.com
           if ($LASTEXITCODE -ne 0) { throw "frozen HTTPS smoke failed" }
+
+  attach:
+    if: inputs.release_tag != ''
+    needs: [build, smoke, service-lifecycle, https]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions: {contents: write}
+    env:
+      TAG: ${{ inputs.release_tag }}
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+    steps:
+      - name: Require a vX.Y.Z release tag
+        run: |
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::release tag '$TAG' is not vX.Y.Z; refusing to attach assets"
+            exit 1
+          fi
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with: {name: tonewatch-windows}
+      - name: Rename and checksum the Windows build
+        run: |
+          ASSET="tonewatch-${TAG}-windows-x64.zip"
+          mv tonewatch-windows.zip "$ASSET"
+          sha256sum "$ASSET" > SHA256SUMS.txt
+      - name: Upload release assets
+        run: gh release upload "$TAG" "tonewatch-${TAG}-windows-x64.zip" SHA256SUMS.txt --clobber --repo "$REPO"

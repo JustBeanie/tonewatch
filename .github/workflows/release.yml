@@ -110,3 +110,13 @@ jobs:
           subject-name: ghcr.io/justbeanie/tonewatch
           subject-digest: ${{ steps.push.outputs.digest }}
           push-to-registry: true
+  windows:
+    needs: release-please
+    if: >-
+      ${{ !cancelled() && (github.event_name == 'workflow_dispatch'
+      || needs.release-please.outputs.releases_created == 'true') }}
+    # zizmor wants `$/` (GitHub 2026-07-30), but actionlint v1.7.12 still rejects it (rhysd/actionlint#732).
+    uses: ./.github/workflows/windows.yml # zizmor: ignore[self-repository] -- actionlint compatibility
+    with:
+      release_tag: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || needs.release-please.outputs.tag_name }}
+    permissions: {contents: write}
