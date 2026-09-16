@@ -64,6 +64,16 @@ def test_meshtastic_model_validates_nodes_public_channel_and_broker_reference() 
         AppConfig(alert_targets=[ref])
 
 
+@pytest.mark.parametrize("zone", ["America/Denver", "UTC"])
+def test_meshtastic_timezone_accepts_iana_zones(zone: str) -> None:
+    assert target(timezone=zone).timezone == zone
+
+
+def test_meshtastic_timezone_rejects_unknown_zone() -> None:
+    with pytest.raises(ValidationError, match="valid IANA"):
+        target(timezone="Mars/Olympus")
+
+
 def test_template_fields_and_urls_are_sanitized() -> None:
     item = target(template="{agency_short} {agency} {tonesets} {time} {source} {call_id_short}")
     rendered = render_message(
@@ -486,6 +496,19 @@ def test_meshtastic_timezone_precedence_and_validation(monkeypatch: pytest.Monke
     assert render_message(berlin, payload).endswith("12:00")
     with pytest.raises(ValidationError, match="valid IANA"):
         target(timezone="Invalid/Not-A-Zone")
+
+
+@pytest.mark.parametrize(
+    ("detected_at", "expected"),
+    [
+        ("2026-01-15T12:00:00+00:00", "05:00"),
+        ("2026-07-15T12:00:00+00:00", "06:00"),
+    ],
+)
+def test_meshtastic_timezone_renders_fixed_utc_timestamp(detected_at: str, expected: str) -> None:
+    item = target(timezone="America/Denver")
+    rendered = render_message(item, {"detected_at": detected_at})
+    assert rendered.endswith(expected)
 
 
 @pytest.mark.asyncio

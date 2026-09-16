@@ -243,6 +243,14 @@ def _selftest_imports(_args: argparse.Namespace) -> None:
     sys.stdout.write(f"imported {len(modules)} tonewatch modules\n")
 
 
+def _selftest_tz(_args: argparse.Namespace) -> None:
+    """Verify that the bundled IANA timezone database is available."""
+    from zoneinfo import ZoneInfo
+
+    ZoneInfo("America/Denver")
+    sys.stdout.write("timezone data: America/Denver resolved\n")
+
+
 def _selftest_https(args: argparse.Namespace) -> None:
     """Verify the product PyAV HTTPS options through the frozen executable."""
     import av
@@ -348,7 +356,7 @@ def _build_parser() -> argparse.ArgumentParser:
     service_run = subparsers.add_parser("service-run", help=argparse.SUPPRESS)
     service_run.add_argument("--data-dir", required=True, type=Path)
     selftest = subparsers.add_parser("selftest")
-    selftest.add_argument("action", choices=("imports", "https"))
+    selftest.add_argument("action", choices=("imports", "tz", "https"))
     selftest.add_argument("url", nargs="?", default="https://github.com")
     db = subparsers.add_parser("db")
     db_subparsers = db.add_subparsers(dest="db_command", required=True)
@@ -379,6 +387,8 @@ def main() -> None:
     elif args.command == "selftest":
         if args.action == "imports":
             _selftest_imports(args)
+        elif args.action == "tz":
+            _selftest_tz(args)
         else:
             _selftest_https(args)
     elif args.command == "service-run":

@@ -49,7 +49,7 @@ def _value_text(value: object, *, key: str = "") -> str:
 
 
 def _timezone(name: str) -> tzinfo:
-    return UTC if name == "UTC" else ZoneInfo(name)
+    return ZoneInfo(name)
 
 
 def truncate_utf8(text: str, max_bytes: int) -> str:

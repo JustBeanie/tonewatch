@@ -123,7 +123,9 @@ jobs:
           $result = Get-Content smoke-fixture/analyze.json -Raw | ConvertFrom-Json
           if (@($result.detections.toneset_id) -notcontains "fixture-page") { throw "fixture-page was not detected" }
           & $exe selftest imports
-          if ($LASTEXITCODE -ne 0) { throw "frozen import walk failed" }
+          if ($LASTEXITCODE -ne 0) { throw "frozen imports smoke failed" }
+          & $exe selftest tz
+          if ($LASTEXITCODE -ne 0) { throw "frozen timezone smoke failed" }
 
   service-lifecycle:
     needs: build

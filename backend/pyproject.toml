@@ -21,6 +21,7 @@ dependencies = [
   "sounddevice>=0.5",
   "sqlalchemy>=2.0.52",
   "structlog>=24.4",
+  "tzdata>=2024.1",
   "types-pyyaml>=6.0.12.20260906",
   "uvicorn[standard]>=0.34",
   "python-multipart>=0.0.20",

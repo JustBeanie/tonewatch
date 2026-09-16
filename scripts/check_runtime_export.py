@@ -33,8 +33,10 @@ def _requirements(export: str) -> list[tuple[Requirement, str]]:
 def validate_runtime_export(export: str) -> None:
     """Raise when the export contains packaging-only or incorrectly marked Windows packages."""
     violations: list[str] = []
+    names: set[str] = set()
     for requirement, original in _requirements(export):
         name = requirement.name.casefold().replace("_", "-")
+        names.add(name)
         if name in _FORBIDDEN:
             violations.append(f"{name} must be absent: {original}")
             continue
@@ -46,6 +48,8 @@ def validate_runtime_export(export: str) -> None:
                 )
         elif name.startswith("pywin32"):
             violations.append(f"unexpected Windows-only package: {original}")
+    if "tzdata" not in names:
+        violations.append("missing required runtime dependency: tzdata")
     if violations:
         raise ValueError("invalid Linux runtime export:\n" + "\n".join(violations))
 
