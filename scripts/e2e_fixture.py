@@ -40,6 +40,13 @@ sources:
     realtime: true
     loop: true
     tonesets: [fixture-page]
+live_stream:
+  enabled: true
+  bitrate_kbps: 48
+  max_listeners_per_source: 4
+  max_listeners_total: 12
+  token_ttl_s: 3600
+  max_lag_s: 10
 alert_targets: []
 """
 

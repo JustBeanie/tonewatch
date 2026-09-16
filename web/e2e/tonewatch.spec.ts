@@ -75,6 +75,21 @@ test("websocket connects", async ({ page }) => {
     await expect.poll(() => received).toBeGreaterThan(0);
 });
 
+test("live listen starts and releases a file-source listener", async ({ page }) => {
+    await login(page);
+    await page.goto("/sources");
+    const source = page.locator(".card").filter({ hasText: "fixture-radio" }).first();
+    await expect(source).toBeVisible();
+    const listen = source.getByRole("button", { name: "Listen live" });
+    await expect(listen).toBeEnabled();
+    await listen.click();
+    await expect(source.locator("audio")).toHaveAttribute("src", /live\.mp3/);
+    const listenerStatus = source.getByRole("status").filter({ hasText: /listeners?/ });
+    await expect(listenerStatus).toContainText("1 listener");
+    await source.getByRole("button", { name: "Stop live" }).click();
+    await expect(listenerStatus).toContainText("0 listeners");
+});
+
 test("deep link reload renders", async ({ page }) => {
     const notFound: string[] = [];
     page.on("response", (response) => {

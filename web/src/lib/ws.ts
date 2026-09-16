@@ -68,16 +68,17 @@ export class ToneWatchSocket {
     }
 }
 
-export function useSubscription(topic: string): WsMessage | undefined {
+export function useSubscription(topic: string | string[]): WsMessage | undefined {
     const [message, setMessage] = useState<WsMessage>();
     useEffect(() => {
         const socket = new ToneWatchSocket();
         socket.connect();
         const remove = socket.onMessage(setMessage);
-        socket.subscribe(topic);
+        const topics = Array.isArray(topic) ? topic : [topic];
+        topics.forEach((item) => socket.subscribe(item));
         return () => {
             remove();
-            socket.unsubscribe(topic);
+            topics.forEach((item) => socket.unsubscribe(item));
             socket.close();
         };
     }, [topic]);

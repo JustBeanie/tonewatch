@@ -124,7 +124,7 @@ Tick a task with `[x]`, then append ` — <PR link> — <one-line note>`. Blocke
 - [x] **M14.1** `streaming/live.py` LiveHub: per-source fan-out, encoder only while listeners exist, bounded per-listener queues, squelch gate. — PM review passed (M14a-fix-resume); host ci-local green.
 - [x] **M14.2** Signed live URL + `live.mp3` endpoint, listener caps, token never logged (access log kept, query redacted), Range ignored, HEAD supported. — PM review passed (M14a-fix-resume); host ci-local green.
 - [x] **M14.3** `live_stream` settings (off by default), per-source switch, audit. — PM review passed (M14a-fix-resume); host ci-local green.
-- [ ] **M14.4** Web UI: Listen live, listener count, copy player URL, disclaimer.
+- [x] **M14.4** Web UI: Listen live, listener count, copy player URL, disclaimer.
 - [ ] **M14.5** ha-tonewatch: media_source Live folder, `tonewatch.play_live`, blueprint (after M11.5).
 - [x] **M14.6** Threat model, ASVS rows and "Listen live" docs page. — PM review passed (M14a-fix-resume); host ci-local green.
 
@@ -133,7 +133,7 @@ Tick a task with `[x]`, then append ` — <PR link> — <one-line note>`. Blocke
 - [x] **M15.2** `SourceBase.squelch`, legacy rtlsdr integer → `rtl_fm_squelch`, watchdog expects squelched silence. — config migration, RTL argv, and squelch-aware flatline handling added.
 - [x] **M15.3** Pipeline state, `SquelchChanged`, WS `squelch_open`, optional `record.stop_on_squelch`; never gates detection. — raw detection path preserved and channel state/event wiring added.
 - [x] **M15.4** MQTT/HA activity binary_sensor and `last_activity_at`. — activity discovery/state publication and generated API artifacts updated.
-- [ ] **M15.5** Web UI squelch controls, meter lines, "Set from noise floor".
+- [x] **M15.5** Web UI squelch controls, meter lines, "Set from noise floor".
 - [x] **M15.6** Auto squelch: long-window floor/spread thresholds, calibrating fail-open, stuck-open and chatter flags (after M15a). — shared percentile helper, `SquelchHealthChanged`, hypothesis and golden busy-channel tests.
 - [x] **M15.7** Calibrate endpoint with suggested thresholds; effective-threshold diagnostics in status/WS. — running-channel tap with cleanup on cancel, ASGI auth/CSRF/429 tests, 8 diagnostic fields.
 

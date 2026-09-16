@@ -1,24 +1,19 @@
 import { FormEvent, useEffect, useState } from "react";
 import { request } from "../../api/client";
 import { useSubscription } from "../../lib/ws";
-type Source = {
-    id: string;
-    name?: string;
-    type: string;
-    device?: string;
-    channel?: number;
-    url?: string;
-    frequency_hz?: number;
-    gain?: number;
-    ppm?: number;
-    rtl_fm_squelch?: number;
-};
+import { Diagnostics, LivePlayer, Source, SquelchEditor } from "./SourceControls";
+
+const sourceTopics = ["levels", "events"];
+
 export function Sources() {
     const [items, setItems] = useState<Source[]>([]);
     const [devices, setDevices] = useState<{ name?: string; index?: number }[]>([]);
     const [type, setType] = useState("soundcard");
     const [error, setError] = useState("");
-    const level = useSubscription("levels");
+    const message = useSubscription(sourceTopics);
+    const events = message;
+    const levelMessage =
+        message?.type === "LevelUpdate" || message?.type === "ChannelLevel" ? message : undefined;
     const reload = () =>
         request<Source[]>("sources")
             .then(setItems)
@@ -29,6 +24,16 @@ export function Sources() {
             .then(setDevices)
             .catch(() => undefined);
     }, []);
+    useEffect(() => {
+        if (events?.type !== "live_listeners_changed") return;
+        const sourceId = String(events.data?.source_id ?? "");
+        const listeners = Number(events.data?.source_listeners ?? 0);
+        setItems((current) =>
+            current.map((source) =>
+                source.id === sourceId ? { ...source, live_listeners: listeners } : source,
+            ),
+        );
+    }, [events]);
     async function save(e: FormEvent<HTMLFormElement>) {
         e.preventDefault();
         setError("");
@@ -48,6 +53,7 @@ export function Sources() {
             body.channel = Number(f.get("channel") || 0);
         }
         if (type === "stream") body.url = url;
+        if (type === "file") body.path = String(f.get("path") || "");
         if (type === "rtlsdr") {
             body.frequency_hz = Number(f.get("frequency") || 0) * 1e6;
             body.gain = Number(f.get("gain") || 0);
@@ -74,15 +80,53 @@ export function Sources() {
     return (
         <>
             <h1>Sources</h1>
-            {items.map((i) => (
-                <div className="card" key={i.id}>
-                    {i.name ?? i.id} · {i.type}{" "}
-                    {i.id === String(level?.data?.source_id) && (
-                        <span role="status">{String(level?.data?.dbfs)} dBFS</span>
-                    )}
-                </div>
-            ))}
+            {items.map((source) => {
+                const live =
+                    levelMessage?.data?.source_id === source.id
+                        ? {
+                              ...source,
+                              open_dbfs_effective: levelMessage.data.open_dbfs_effective as
+                                  number | null,
+                              close_dbfs_effective: levelMessage.data.close_dbfs_effective as
+                                  number | null,
+                              noise_floor_dbfs: levelMessage.data.noise_floor_dbfs as number | null,
+                              squelch_open: levelMessage.data.squelch_open as boolean | null,
+                              transitions_per_min: levelMessage.data.transitions_per_min as
+                                  number | null,
+                              calibrating: levelMessage.data.calibrating as boolean | null,
+                              stuck_open: levelMessage.data.stuck_open as boolean | null,
+                              chatter: levelMessage.data.chatter as boolean | null,
+                              squelch_mode_effective: levelMessage.data.squelch_mode_effective as
+                                  string | null,
+                          }
+                        : source;
+                return (
+                    <section className="card" key={source.id}>
+                        <h2>{source.name ?? source.id}</h2>
+                        <p>
+                            {source.id} · {source.type}{" "}
+                            {levelMessage?.data?.source_id === source.id && (
+                                <span>{`${String(levelMessage.data.dbfs ?? levelMessage.data.rms_dbfs ?? "")} dBFS`}</span>
+                            )}
+                        </p>
+                        <LivePlayer source={source} message={message} />
+                        <Diagnostics source={live} />
+                        <SquelchEditor
+                            source={source}
+                            message={message}
+                            onSaved={(updated) =>
+                                setItems((current) =>
+                                    current.map((item) =>
+                                        item.id === updated.id ? updated : item,
+                                    ),
+                                )
+                            }
+                        />
+                    </section>
+                );
+            })}
             <form className="form" onSubmit={save}>
+                <h2>Add source</h2>
                 <label htmlFor="id">
                     ID
                     <input id="id" name="id" />
@@ -119,7 +163,13 @@ export function Sources() {
                 {type === "stream" && (
                     <label htmlFor="url">
                         Stream URL
-                        <input id="url" name="url" type="text" />
+                        <input id="url" name="url" />
+                    </label>
+                )}
+                {type === "file" && (
+                    <label htmlFor="path">
+                        File path
+                        <input id="path" name="path" />
                     </label>
                 )}
                 {type === "rtlsdr" && (
@@ -137,12 +187,12 @@ export function Sources() {
                             <input id="ppm" name="ppm" type="number" />
                         </label>
                         <label htmlFor="squelch">
-                            Squelch
+                            Hardware squelch
                             <input id="squelch" name="squelch" type="number" />
                         </label>
                     </>
                 )}
-                <button>Save source</button>
+                <button type="submit">Save source</button>
                 {error && (
                     <p role="alert" className="error">
                         {error}

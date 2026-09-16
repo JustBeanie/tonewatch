@@ -87,6 +87,58 @@ button {
 .error {
     color: #b91c1c;
 }
+.live-player {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 12px 0;
+}
+.live-player audio {
+    width: min(100%, 420px);
+}
+.squelch {
+    margin-top: 18px;
+    border-top: 1px solid #e2e8f0;
+    padding-top: 14px;
+}
+.diagnostics {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 14px;
+    font-size: 0.9rem;
+}
+.diagnostics span[title] {
+    border-bottom: 1px dotted currentColor;
+}
+.level-meter {
+    position: relative;
+    display: flex;
+    min-height: 56px;
+    align-items: center;
+    justify-content: space-between;
+    overflow: hidden;
+    padding: 8px;
+    border: 1px solid #94a3b8;
+    border-radius: 6px;
+    background: linear-gradient(90deg, #dbeafe, #dcfce7, #fee2e2);
+}
+.meter-line {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+}
+.open-line {
+    background: #166534;
+}
+.close-line {
+    background: #991b1b;
+}
+.level-meter strong {
+    z-index: 1;
+    text-transform: uppercase;
+}
 @media (prefers-color-scheme: dark) {
     :root {
         color: #e2e8f0;
