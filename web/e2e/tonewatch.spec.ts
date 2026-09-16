@@ -61,6 +61,24 @@ test("create tone set through ui", async ({ page }) => {
     expect(names).toContain(name);
 });
 
+test("create Meshtastic target from an existing MQTT target", async ({ page }) => {
+    await login(page);
+    await page.goto("/alerts");
+    await page.getByLabel("Name").fill("E2E MQTT");
+    await page.getByLabel("Type").selectOption("mqtt");
+    await page.getByRole("button", { name: "Save target" }).click();
+    await expect(page.getByText("E2E MQTT")).toBeVisible();
+
+    await page.getByLabel("Name").fill("E2E Meshtastic");
+    await page.getByLabel("Type").selectOption("meshtastic");
+    await page.getByLabel("Existing MQTT target").selectOption({ label: "E2E MQTT" });
+    await page.getByLabel("Channel index").fill("1");
+    await page.getByLabel("Template").fill("{agency_short} {toneset}");
+    await expect(page.getByText(/\d+ \/ 200 bytes/)).toBeVisible({ timeout: 10000 });
+    await page.getByRole("button", { name: "Save target" }).click();
+    await expect(page.getByText("E2E Meshtastic")).toBeVisible({ timeout: 10000 });
+});
+
 test("websocket connects", async ({ page }) => {
     let received = 0;
     page.on("websocket", (socket) => {

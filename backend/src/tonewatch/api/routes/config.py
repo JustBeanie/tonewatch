@@ -9,8 +9,10 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, TypeAdapter, ValidationError
 
+from tonewatch.alerts.meshtastic import render_message, render_untruncated
+from tonewatch.api.audit import is_secret_key
 from tonewatch.api.deps import _dump, authenticated, collection, put, save_config, write_auth
-from tonewatch.config.models import AlertTarget, AppConfig, Source, ToneSet
+from tonewatch.config.models import AlertTarget, AppConfig, MeshtasticTarget, Source, ToneSet
 from tonewatch.config.store import replace_config as rebuild_config
 from tonewatch.dsp.squelch import Squelch, SquelchConfig
 from tonewatch.events import CallClosed, ToneDetected
@@ -40,6 +42,34 @@ def _source_diagnostics(supervisor: Any, source_id: str) -> dict[str, object] | 
 
 class CalibrateRequest(BaseModel):
     seconds: float = Field(ge=5, le=120)
+
+
+class MeshtasticPreviewRequest(MeshtasticTarget):
+    sample: dict[str, object] = Field(default_factory=dict)
+
+
+@router.post("/alert-targets/meshtastic/preview", dependencies=[Depends(write_auth)])
+async def preview_meshtastic(
+    request: Request, payload: MeshtasticPreviewRequest
+) -> dict[str, object]:
+    """Render a synthetic mesh message without persistence or broker access."""
+    synthetic: dict[str, object] = {
+        "agency": {"short_name": "AFD", "name": "Preview Agency"},
+        "tone_set_names": ["Preview Tone"],
+        "detected_at": "2026-01-01T00:00:00+00:00",
+        "source_id": "preview-source",
+        "test": True,
+    }
+    synthetic.update(payload.sample)
+    target = payload.model_copy()
+    text = render_message(target, synthetic)
+    untruncated = render_untruncated(target, synthetic)
+    return {
+        "text": text,
+        "bytes": len(text.encode("utf-8")),
+        "max_bytes": target.max_bytes,
+        "truncated": text != untruncated,
+    }
 
 
 @router.post("/sources/{source_id}/squelch/calibrate", dependencies=[Depends(write_auth)])
@@ -250,6 +280,28 @@ def _crud(path: str, kind: str, model: Any) -> None:
     ) -> Any:
         if payload.get("id") != item_id:
             raise HTTPException(422, "id does not match path")
+        existing = next((value for value in collection(request, kind) if value.id == item_id), None)
+        if kind == "alert_targets" and existing is not None:
+            payload = dict(payload)
+            stored = existing.model_dump(mode="python")
+            for key, value in stored.items():
+                if is_secret_key(key) and payload.get(key) == "[REDACTED]":
+                    if value in (None, ""):
+                        raise HTTPException(
+                            422, f"redacted placeholder has no stored value for {key}"
+                        )
+                    payload[key] = value
+                elif is_secret_key(key) and key not in payload:
+                    payload[key] = value
+                elif key == "secret" and payload.get(key) is None:
+                    payload[key] = ""
+            if any(
+                is_secret_key(key)
+                and value == "[REDACTED]"
+                and (key not in stored or stored[key] in (None, ""))
+                for key, value in payload.items()
+            ):
+                raise HTTPException(422, "redacted placeholder has no stored value")
         try:
             item = TypeAdapter(model).validate_python(payload)
         except ValidationError as exc:

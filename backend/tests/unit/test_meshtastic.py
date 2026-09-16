@@ -15,6 +15,7 @@ from pydantic import AnyUrl, ValidationError
 
 from tonewatch.alerts.dispatcher import AlertDispatcher
 from tonewatch.alerts.meshtastic import MeshtasticSender, render_message, truncate_utf8
+from tonewatch.api.audit import _SECRET_WORDS, is_secret_key, mask_secrets
 from tonewatch.api.routes.config import test_alert_target as alert_target_test_route
 from tonewatch.config.models import (
     Agency,
@@ -120,6 +121,14 @@ def test_sender_rate_limiter_is_per_sender() -> None:
     sender._last_sent = time.monotonic()
     sender._sent.append(time.monotonic())
     assert sender.rate_limited()
+
+
+def test_secret_key_helper_matches_masking_word_list() -> None:
+    for word in _SECRET_WORDS:
+        key = f"prefix_{word}_suffix"
+        assert is_secret_key(key)
+        assert mask_secrets({key: "value"})[key] == "[REDACTED]"
+    assert not is_secret_key("display_name")
 
 
 @pytest.mark.asyncio
@@ -316,7 +325,27 @@ async def test_dispatcher_race_during_first_send_produces_one_follow_up() -> Non
     release = asyncio.Event()
     sent: list[dict[str, object]] = []
     target_item = target(coalesce_s=0, min_interval_s=0)
-    dispatcher = _mesh_dispatcher(target_item)
+    dispatcher = AlertDispatcher(
+        AppConfig(
+            tone_sets=[
+                ToneSet(
+                    id="county-fire",
+                    name="County Fire",
+                    sequence=[ToneSpec(freq_hz=1000, min_s=1)],
+                    alert_targets=[target_item.id],
+                ),
+                ToneSet(
+                    id="city-ems",
+                    name="City EMS",
+                    sequence=[ToneSpec(freq_hz=1100, min_s=1)],
+                    alert_targets=[target_item.id],
+                ),
+            ],
+            alert_targets=[target_item],
+        ),
+        EventBus(),
+        settings=SimpleNamespace(),
+    )
 
     class Sender:
         count = 0
@@ -336,7 +365,7 @@ async def test_dispatcher_race_during_first_send_produces_one_follow_up() -> Non
     await asyncio.sleep(0)
     await entered.wait()
     follow_up = asyncio.create_task(
-        dispatcher.handle(ToneDetected(call_id, "county-fire", datetime.now(UTC), "radio"))
+        dispatcher.handle(ToneDetected(call_id, "city-ems", datetime.now(UTC), "radio"))
     )
     release.set()
     await follow_up

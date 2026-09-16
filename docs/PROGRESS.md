@@ -157,7 +157,7 @@ Tick a task with `[x]`, then append ` — <PR link> — <one-line note>`. Blocke
 - [x] **M18.1** ADR 0012 records MQTT JSON downlink requirements, firmware compatibility, TCP/serial comparison, and GPL-3.0 licensing rationale.
 - [x] **M18.2** MeshtasticTarget and aiomqtt sender add validation, URL-free UTF-8-safe messages, dispatcher wiring, and rate limits.
 - [x] **M18.3** Public-channel acknowledgement, amateur-radio guidance, and RF threat-model documentation added.
-- [ ] **M18.4** API + UI: alert target form, byte-count preview, send test.
+- [x] **M18.4** API + UI: alert target form, byte-count preview, send test. — direct to main — server-authoritative byte preview, per-target send test, redacted-secret round-trip fix
 - [ ] **M18.5** Document the HA Meshtastic integration path (after M11.7).
 
 ## M19: Admin tooling (added 2026-09-13 at user request)

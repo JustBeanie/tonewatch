@@ -10,13 +10,16 @@ from tonewatch.storage.models import AuditEvent
 _SECRET_WORDS = ("password", "secret", "token", "authorization", "cookie", "csrf")
 
 
+def is_secret_key(key: object) -> bool:
+    """Return whether a field name identifies a value that must be redacted."""
+    return any(word in str(key).casefold() for word in _SECRET_WORDS)
+
+
 def mask_secrets(value: Any) -> Any:
     """Recursively replace values whose field names identify credentials."""
     if isinstance(value, dict):
         return {
-            key: "[REDACTED]"
-            if any(word in str(key).casefold() for word in _SECRET_WORDS)
-            else mask_secrets(item)
+            key: "[REDACTED]" if is_secret_key(key) else mask_secrets(item)
             for key, item in value.items()
         }
     if isinstance(value, list):

@@ -127,6 +127,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/alert-targets/meshtastic/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Preview Meshtastic
+         * @description Render a synthetic mesh message without persistence or broker access.
+         */
+        post: operations["preview_meshtastic_api_alert_targets_meshtastic_preview_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/alert-targets/{item_id}": {
         parameters: {
             query?: never;
@@ -1057,6 +1077,113 @@ export interface components {
              */
             tile_url: string;
         };
+        /** MeshtasticPreviewRequest */
+        MeshtasticPreviewRequest: {
+            /**
+             * Acknowledge Public Channel
+             * @default false
+             */
+            acknowledge_public_channel: boolean;
+            /**
+             * Channel Index
+             * @default 0
+             */
+            channel_index: number;
+            /**
+             * Coalesce S
+             * @default 3
+             */
+            coalesce_s: number;
+            /**
+             * Destination
+             * @default broadcast
+             */
+            destination: string;
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+            /** Gateway Node Id */
+            gateway_node_id: string;
+            /** Host */
+            host?: string | null;
+            /** Id */
+            id: string;
+            /**
+             * Max Bytes
+             * @default 200
+             */
+            max_bytes: number;
+            /**
+             * Max Per Hour
+             * @default 20
+             */
+            max_per_hour: number;
+            /**
+             * Min Interval S
+             * @default 30
+             */
+            min_interval_s: number;
+            /** Mqtt Target Id */
+            mqtt_target_id?: string | null;
+            /** Name */
+            name: string;
+            /** Password */
+            password?: string | null;
+            /**
+             * Phases
+             * @default [
+             *       "pre_alert"
+             *     ]
+             */
+            phases: ("pre_alert" | "recording_ready" | "closed")[];
+            /**
+             * Port
+             * @default 1883
+             */
+            port: number;
+            /**
+             * Root Topic
+             * @default msh/US
+             */
+            root_topic: string;
+            /** Sample */
+            sample?: {
+                [key: string]: unknown;
+            };
+            /**
+             * Template
+             * @default TONE {agency_short} {toneset} {time}
+             */
+            template: string;
+            /**
+             * Timeout S
+             * @default 30
+             */
+            timeout_s: number;
+            /** Timezone */
+            timezone?: string | null;
+            /**
+             * Tls
+             * @default false
+             */
+            tls: boolean;
+            /**
+             * Transport
+             * @default mqtt
+             * @constant
+             */
+            transport: "mqtt";
+            /**
+             * Type
+             * @default meshtastic
+             * @constant
+             */
+            type: "meshtastic";
+            /** Username */
+            username?: string | null;
+        };
         /**
          * MeshtasticTarget
          * @description MQTT JSON downlink target for a Meshtastic gateway node.
@@ -1936,6 +2063,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_meshtastic_api_alert_targets_meshtastic_preview_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MeshtasticPreviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
             /** @description Validation Error */

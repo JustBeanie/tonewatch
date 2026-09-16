@@ -31,6 +31,7 @@ class FakeZeroconf:
 
 
 @pytest.mark.asyncio
+@pytest.mark.real_zeroconf
 async def test_zeroconf_registers_txt_without_token_and_unregisters(monkeypatch) -> None:
     monkeypatch.setattr(zeroconf_module, "AsyncZeroconf", FakeZeroconf)
     with TemporaryDirectory() as directory:

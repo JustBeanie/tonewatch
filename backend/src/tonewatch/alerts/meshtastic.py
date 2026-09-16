@@ -65,8 +65,8 @@ def truncate_utf8(text: str, max_bytes: int) -> str:
     return prefix + ellipsis
 
 
-def render_message(target: MeshtasticTarget, payload: dict[str, object]) -> str:
-    """Render and sanitize the configured notification template."""
+def render_untruncated(target: MeshtasticTarget, payload: dict[str, object]) -> str:
+    """Render and sanitize the configured notification template without a byte cap."""
     tonesets = payload.get("tone_sets", [])
     names = payload.get("tone_set_names", tonesets)
     joined = _value_text(names)
@@ -100,7 +100,12 @@ def render_message(target: MeshtasticTarget, payload: dict[str, object]) -> str:
     rendered = target.template.format(**values)
     if payload.get("test"):
         rendered = f"TEST {rendered}"
-    return truncate_utf8(sanitize(rendered), target.max_bytes)
+    return sanitize(rendered)
+
+
+def render_message(target: MeshtasticTarget, payload: dict[str, object]) -> str:
+    """Render, sanitize, and truncate the configured notification template."""
+    return truncate_utf8(render_untruncated(target, payload), target.max_bytes)
 
 
 class MeshtasticSender:

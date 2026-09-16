@@ -136,6 +136,7 @@ testpaths = ["tests"]
 markers = [
   "slow: long-running false-positive and endurance tests",
   "allow_real_audio: explicitly opt into host audio hardware",
+  "real_zeroconf: explicitly opt into zeroconf integration behavior",
 ]
 
 [[tool.mypy.overrides]]
