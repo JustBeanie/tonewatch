@@ -17,6 +17,7 @@ from sqlalchemy import select
 from tonewatch.config.models import (
     AdminAlertsConfig,
     AppConfig,
+    CadFeed,
     FileSource,
     RecordingPolicy,
     RtlSdrSource,
@@ -855,6 +856,81 @@ def test_supervisor_isolates_config_failure_and_reload_keeps_unchanged(monkeypat
         await supervisor.reload(AppConfig(sources=[source_b]))
         assert created == ["a", "b"]
         await supervisor.stop()
+
+    asyncio.run(run())
+
+
+def test_supervisor_hot_applies_cad_feeds_and_wires_correlation(monkeypatch) -> None:
+    async def run() -> None:
+        feed = CadFeed(id="county", name="County", host="127.0.0.1")
+        supervisor = Supervisor(
+            AppConfig(cad_feeds=[feed]), EventBus(), None, sleep=lambda _: asyncio.sleep(0)
+        )
+        created: list[Any] = []
+
+        class Runner:
+            def __init__(self, configured: Any, **kwargs: Any) -> None:
+                self.feed = configured
+                self.health = {"feed": configured.id}
+                self.on_incident = None
+                self.started = asyncio.Event()
+                self.kwargs = kwargs
+                created.append(self)
+
+            async def run(self) -> None:
+                self.started.set()
+                await asyncio.Event().wait()
+
+        monkeypatch.setattr("tonewatch.pipeline.supervisor.CadFeedRunner", Runner)
+        supervisor._apply_cad_feeds()
+        await asyncio.wait_for(created[0].started.wait(), 1)
+        assert supervisor.cad_health["county"] == {"feed": "county"}
+        assert created[0].on_incident == supervisor.cad_correlation.on_incident
+
+        replacement = feed.model_copy(update={"base_topic": "new/topic"})
+        supervisor.config = AppConfig(cad_feeds=[replacement])
+        old_task = supervisor._cad_tasks["county"]
+        supervisor._apply_cad_feeds()
+        assert old_task.cancelled() or old_task.cancelling()
+        assert len(created) == 2
+
+        supervisor.config = AppConfig(cad_feeds=[feed.model_copy(update={"enabled": False})])
+        task = supervisor._cad_tasks["county"]
+        supervisor._apply_cad_feeds()
+        assert task.cancelled() or task.cancelling()
+        assert supervisor._cad_tasks == {} and supervisor.cad_health == {}
+        await supervisor.stop()
+
+    asyncio.run(run())
+
+
+def test_supervisor_cad_start_stop_reload(monkeypatch) -> None:
+    async def run() -> None:
+        feed = CadFeed(id="county", name="County", host="127.0.0.1")
+        supervisor = Supervisor(
+            AppConfig(cad_feeds=[feed]), EventBus(), None, sleep=lambda _: asyncio.sleep(0)
+        )
+        calls: list[str] = []
+
+        async def mark_start() -> None:
+            calls.append("start")
+
+        async def mark_stop() -> None:
+            calls.append("stop")
+
+        async def mark_reload(_config: Any) -> None:
+            calls.append("reload")
+
+        monkeypatch.setattr(supervisor.cad_correlation, "start", mark_start)
+        monkeypatch.setattr(supervisor.cad_correlation, "stop", mark_stop)
+        monkeypatch.setattr(supervisor.cad_correlation, "reload", mark_reload)
+        monkeypatch.setattr(supervisor, "_apply_cad_feeds", lambda: None)
+        await supervisor.start()
+        assert "start" in calls
+        await supervisor.reload(AppConfig())
+        assert "reload" in calls
+        await supervisor.stop()
+        assert "stop" in calls
 
     asyncio.run(run())
 

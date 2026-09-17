@@ -31,7 +31,7 @@ from tonewatch.alerts.urlsafety import (
     resolve_and_validate,
     validate_url,
 )
-from tonewatch.alerts.webhook import send_webhook, signature
+from tonewatch.alerts.webhook import WebhookResult, send_webhook, signature
 from tonewatch.config.models import (
     AppConfig,
     FileSource,
@@ -627,6 +627,123 @@ def test_script_executable_must_be_in_allowlist_and_not_symlink_escape(tmp_path:
     target = ScriptTarget(id="script", name="Script", executable=str(PYTHON), enabled=True)
     with pytest.raises(ValueError):
         resolve_executable(target, [tmp_path])
+
+
+def test_script_world_writable_check_is_platform_independent(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    target = ScriptTarget(id="script", name="Script", executable=str(PYTHON), enabled=True)
+    monkeypatch.setattr("tonewatch.alerts.script.os", type("Platform", (), {"name": "posix"})())
+
+    class FakePath:
+        def __init__(self, _value: str) -> None:
+            pass
+
+        def is_absolute(self) -> bool:
+            return True
+
+        def resolve(self, **_kwargs: object) -> "FakePath":
+            return self
+
+        def is_file(self) -> bool:
+            return True
+
+        def is_relative_to(self, _directory: "FakePath") -> bool:
+            return True
+
+        def stat(self) -> object:
+            return type("Stat", (), {"st_mode": 2})()
+
+    monkeypatch.setattr("tonewatch.alerts.script.Path", FakePath)
+    with pytest.raises(ValueError, match="not allowlisted"):
+        resolve_executable(target, [PYTHON.parent])
+    relative = ScriptTarget(id="script", name="Script", executable="relative", enabled=True)
+    with pytest.raises(ValueError, match="not allowlisted"):
+        resolve_executable(relative, [PYTHON.parent])
+    result = asyncio.run(run_script(target, {}, allow_script_targets=True, allowlist_dirs=[]))
+    assert not result.ok and result.error == "script executable is not allowlisted"
+
+
+def test_dispatcher_admin_targets_and_disabled_guard(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def run() -> None:
+        webhook = WebhookTarget(id="hook", name="Hook", url=AnyUrl("http://example.com"))
+        script = ScriptTarget(id="script", name="Script", executable=str(PYTHON))
+        mqtt = MqttTarget(id="mqtt", name="MQTT")
+        config = AppConfig(alert_targets=[webhook, script, mqtt])
+        dispatcher = AlertDispatcher(config, EventBus(), settings=type("Settings", (), {})())
+        sent: list[str] = []
+
+        class Publisher:
+            async def publish_admin(self, _payload: dict[str, object]) -> None:
+                sent.append("mqtt")
+
+        dispatcher._mqtt["mqtt"] = cast("Any", Publisher())
+
+        async def fake_webhook(*_args: object, **_kwargs: object) -> WebhookResult:
+            sent.append("webhook")
+            return WebhookResult(True)
+
+        async def fake_script(*_args: object, **_kwargs: object) -> WebhookResult:
+            sent.append("script")
+            return WebhookResult(True)
+
+        monkeypatch.setattr("tonewatch.alerts.dispatcher.send_webhook", fake_webhook)
+        monkeypatch.setattr("tonewatch.alerts.dispatcher.run_script", fake_script)
+        payload: dict[str, object] = {"event": "admin"}
+        await dispatcher.dispatch_admin(payload, {"hook", "mqtt", "missing"})
+        await dispatcher._send_admin(script, payload)
+        unsupported = await dispatcher._send_admin(cast("Any", object()), payload)
+        assert sorted(sent) == ["mqtt", "script", "webhook"]
+        assert not unsupported.ok
+        disabled = webhook.model_copy(update={"enabled": False})
+        dispatcher.config = AppConfig(alert_targets=[disabled])
+        await dispatcher.dispatch_admin(payload, {"hook"})
+
+    asyncio.run(run())
+
+
+def test_dispatcher_admin_timeout_and_exception_are_recorded(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def run() -> None:
+        target = WebhookTarget(id="hook", name="Hook", url=AnyUrl("http://example.com"))
+        dispatcher = AlertDispatcher(AppConfig(alert_targets=[target]), EventBus())
+
+        async def timeout(*_args: object, **_kwargs: object) -> None:
+            raise TimeoutError
+
+        monkeypatch.setattr(dispatcher, "_send_admin", timeout)
+        await dispatcher._dispatch_admin_one("hook", {})
+
+        async def failure(*_args: object, **_kwargs: object) -> None:
+            raise RuntimeError("failed")
+
+        monkeypatch.setattr(dispatcher, "_send_admin", failure)
+        await dispatcher._dispatch_admin_one("hook", {})
+
+    asyncio.run(run())
+
+
+def test_mqtt_activity_wait_backoff_and_close_errors() -> None:
+    async def run() -> None:
+        publisher = MqttPublisher(MqttTarget(id="mqtt", name="MQTT"), "instance")
+        await publisher._backoff(0, None)
+
+        class Client:
+            def __init__(self) -> None:
+                self.messages = self
+
+            async def __anext__(self) -> None:
+                return None
+
+            async def __aexit__(self, *_args: object) -> None:
+                raise OSError("close")
+
+        publisher.client = Client()
+        await publisher._wait_for_activity(None)
+        await publisher._close_client()
+
+    asyncio.run(run())
 
 
 def test_script_placeholders_cannot_inject_arguments(tmp_path: Path) -> None:
