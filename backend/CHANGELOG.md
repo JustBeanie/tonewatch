@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.5.0](https://github.com/JustBeanie/tonewatch/compare/v0.4.0...v0.5.0) (2026-09-17)
+
+
+### Features
+
+* **admin:** M19.2 admin alerts ([a402246](https://github.com/JustBeanie/tonewatch/commit/a4022469b0c7a798e2dc6c40440b4c9f41878646))
+* **alerts:** M18.4 Meshtastic alert-target form with byte-count preview ([3eacfd1](https://github.com/JustBeanie/tonewatch/commit/3eacfd18ef72c9a49ec15866f6f49a2d0fceddb6))
+
+
+### Bug Fixes
+
+* **deps:** bundle tzdata so IANA time zones work on Windows ([bf53af0](https://github.com/JustBeanie/tonewatch/commit/bf53af033a596af12d86062cd786c663560f2f15))
+
 ## [0.4.0](https://github.com/JustBeanie/tonewatch/compare/v0.3.0...v0.4.0) (2026-09-16)
 
 
