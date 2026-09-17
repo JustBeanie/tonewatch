@@ -16,6 +16,9 @@ import { Agencies } from "../features/agencies/Agencies";
 import { AgencyForm } from "../features/agencies/AgencyForm";
 import { MapPage } from "../features/map/MapPage";
 import { CadFeeds, UnmatchedCadAgencies } from "../features/cad/CadFeeds";
+import { Health } from "../features/admin/Health";
+import { AdminAlerts } from "../features/admin/AdminAlerts";
+import { Deliveries } from "../features/admin/Deliveries";
 function Login() {
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
@@ -84,6 +87,9 @@ export function Router() {
                     <Route path="/settings/cad-feeds" element={<CadFeeds />} />
                     <Route path="/cad/unmatched-agencies" element={<UnmatchedCadAgencies />} />
                     <Route path="/analyze" element={<Analyze />} />
+                    <Route path="/admin/health" element={<Health />} />
+                    <Route path="/admin/alerts" element={<AdminAlerts />} />
+                    <Route path="/admin/deliveries" element={<Deliveries />} />
                     <Route
                         path="*"
                         element={

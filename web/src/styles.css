@@ -222,3 +222,19 @@ button {
     white-space: nowrap;
     border: 0;
 }
+.health-definitions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+}
+.health-definitions div {
+    padding: 10px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+}
+.health-definitions dt {
+    font-weight: 600;
+}
+.health-definitions dd {
+    margin: 4px 0 0;
+}

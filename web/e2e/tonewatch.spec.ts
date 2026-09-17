@@ -236,3 +236,42 @@ test("agency editor links the fixture and map pulses without external requests",
     await expect(page.getByText("Fixture Agency")).toBeVisible();
     expect(external).toEqual([]);
 });
+
+test("admin health shows the fixture source", async ({ page }) => {
+    await login(page);
+    await page.goto("/admin/health");
+    await expect(page.getByRole("heading", { name: "System health" })).toBeVisible();
+    await expect(page.getByText("Fixture radio")).toBeVisible({ timeout: 15000 });
+});
+
+test("admin alerts can be enabled and persist after reload", async ({ page }) => {
+    await login(page);
+    await page.goto("/admin/alerts");
+    await expect(page.getByRole("heading", { name: "Admin alerts" })).toBeVisible();
+    const targetPicker = page.getByLabel("Alert targets");
+    await expect(targetPicker.locator("option")).not.toHaveCount(0);
+    await targetPicker.selectOption({ index: 0 });
+    await page.getByLabel("Enable admin alerts").check();
+    await page.getByRole("button", { name: "Save" }).click();
+    await expect(page.getByRole("status")).toHaveText("Admin alerts saved.");
+    await page.reload();
+    await expect(page.getByLabel("Enable admin alerts")).toBeChecked();
+});
+
+test("delivery log is local and renders attempts or its empty state", async ({ page }) => {
+    const external: string[] = [];
+    page.on("request", (request) => {
+        const url = new URL(request.url());
+        if (!["localhost", "127.0.0.1"].includes(url.hostname)) external.push(request.url());
+    });
+    await login(page);
+    await page.goto("/admin/deliveries");
+    await expect(page.getByRole("heading", { name: "Delivery log" })).toBeVisible();
+    const table = page.getByRole("table");
+    const empty = page.getByText("No delivery attempts.");
+    await expect(table).toBeVisible();
+    await expect
+        .poll(async () => (await table.getByRole("row").count()) > 1 || (await empty.isVisible()))
+        .toBe(true);
+    expect(external).toEqual([]);
+});

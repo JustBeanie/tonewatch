@@ -161,9 +161,9 @@ Tick a task with `[x]`, then append ` — <PR link> — <one-line note>`. Blocke
 - [ ] **M18.5** Document the HA Meshtastic integration path (after M11.7).
 
 ## M19: Admin tooling (added 2026-09-13 at user request)
-- [x] **M19.1** System health page + `/api/admin/health` (per-source realtime factor, drops, disk forecast, DB size, target status, versions).
-- [x] **M19.2** Admin alerts: dead feed, disk, failing target, stuck squelch, slow DSP; rate-limited, resolved follow-ups. — direct to main — engine on the supervisor timer, dedicated MQTT admin topic, pages unaffected
-- [x] **M19.3** Alert delivery log with single-attempt audited retry.
+- [~] **M19.1** System health page + `/api/admin/health` (per-source realtime factor, drops, disk forecast, DB size, target status, versions). — UI complete; PENDING-REVIEW
+- [~] **M19.2** Admin alerts: dead feed, disk, failing target, stuck squelch, slow DSP; rate-limited, resolved follow-ups. — direct to main — engine on the supervisor timer, dedicated MQTT admin topic, pages unaffected; UI complete; PENDING-REVIEW
+- [~] **M19.3** Alert delivery log with single-attempt audited retry. — UI complete; PENDING-REVIEW
 - [ ] **M19.4** End-to-end drill: inject synthetic tones into a live channel, marked test everywhere.
 - [ ] **M19.5** Config history, diff, rollback, masked export, dry-run import.
 - [ ] **M19.6** Backup and restore archive (config, SQLite online backup, optional recordings).

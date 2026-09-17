@@ -449,6 +449,32 @@ async def test_full_config_round_trip_preserves_secrets_and_token_ttl() -> None:
 
 
 @pytest.mark.asyncio
+async def test_full_config_round_trip_allows_targets_without_password() -> None:
+    with TemporaryDirectory() as directory:
+        root = Path(directory)
+        app = make_app(root)
+        app.state.config = AppConfig(
+            alert_targets=[MqttTarget(id="mqtt-empty", name="MQTT", host="broker")]
+        )
+        token = (root / "api_token").read_text().strip()
+        headers = {"Authorization": f"Bearer {token}"}
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            get_response = await client.get("/api/config", headers=headers)
+            assert get_response.status_code == 200
+            body = get_response.json()
+            assert body["alert_targets"][0]["password"] is None
+            put_response = await client.put(
+                "/api/config",
+                headers={**headers, "If-Match": get_response.headers["etag"]},
+                json=body,
+            )
+            assert put_response.status_code == 200, put_response.text
+        assert app.state.config.alert_targets[0].password is None
+
+
+@pytest.mark.asyncio
 async def test_request_id_propagates_to_logs_and_header(capsys: pytest.CaptureFixture[str]) -> None:
     with TemporaryDirectory() as directory:
         app = make_app(Path(directory))

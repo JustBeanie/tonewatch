@@ -30,7 +30,9 @@ def mask_secrets(value: Any) -> Any:
     """Recursively replace values whose field names identify credentials."""
     if isinstance(value, dict):
         return {
-            key: "[REDACTED]" if is_secret_key(key) else mask_secrets(item)
+            key: "[REDACTED]"
+            if is_secret_key(key) and item not in (None, "")
+            else mask_secrets(item)
             for key, item in value.items()
         }
     if isinstance(value, list):

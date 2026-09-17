@@ -44,6 +44,11 @@ def test_mask_secrets_preserves_non_secret_token_fields() -> None:
     assert mask_secrets(payload) == {"token_ttl_s": 3600, "api_token": "[REDACTED]"}
 
 
+@pytest.mark.parametrize("value", [None, ""])
+def test_mask_secrets_preserves_empty_secret_values(value: str | None) -> None:
+    assert mask_secrets({"password": value}) == {"password": value}
+
+
 def test_log_redaction_keeps_conservative_substring_matching() -> None:
     capture = LogCapture()
     sensitive_values = {

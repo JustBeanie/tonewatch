@@ -28,6 +28,9 @@ export function Shell() {
                             ["/settings/cad-feeds", "CAD feeds"],
                             ["/cad/unmatched-agencies", "Unmatched CAD agencies"],
                             ["/analyze", "Analyze"],
+                            ["/admin/health", "Admin · System health"],
+                            ["/admin/alerts", "Admin · Alerts"],
+                            ["/admin/deliveries", "Admin · Deliveries"],
                         ] as [string, string][]
                     ).map(([to, label]) => (
                         <NavLink key={to} to={to}>
