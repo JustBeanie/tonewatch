@@ -36,7 +36,11 @@ async def test_m19a_g_health_auth_schema_nulls_and_secret_free() -> None:
         root = Path(directory)
         app = create_app(
             Settings.model_validate(
-                {"data_dir": root, "ui_password": "https://user:pw@example.test"}
+                {
+                    "data_dir": root,
+                    "ui_password": "https://user:pw@example.test",
+                    "zeroconf_enabled": False,
+                }
             )
         )
         async with (
@@ -73,7 +77,7 @@ async def test_m19a_g_health_auth_schema_nulls_and_secret_free() -> None:
 async def test_m19a_h_delivery_filters_cursor_limit_and_auth() -> None:
     with TemporaryDirectory() as directory:
         root = Path(directory)
-        app = create_app(Settings(data_dir=root))
+        app = create_app(Settings(data_dir=root, zeroconf_enabled=False))
         async with (
             app.router.lifespan_context(app),
             httpx.AsyncClient(
@@ -140,7 +144,11 @@ async def test_m19a_h_delivery_filters_cursor_limit_and_auth() -> None:
 async def test_m19a_i_retry_unknown_is_authenticated_and_csrf_protected() -> None:
     with TemporaryDirectory() as directory:
         root = Path(directory)
-        app = create_app(Settings.model_validate({"data_dir": root, "ui_password": "secret"}))
+        app = create_app(
+            Settings.model_validate(
+                {"data_dir": root, "ui_password": "secret", "zeroconf_enabled": False}
+            )
+        )
         async with (
             app.router.lifespan_context(app),
             httpx.AsyncClient(
@@ -166,7 +174,7 @@ async def test_m19a_i_retry_full_matrix_and_delivery_audit(  # noqa: PLR0915 -- 
 ) -> None:
     with TemporaryDirectory() as directory:
         root = Path(directory)
-        app = create_app(Settings(data_dir=root))
+        app = create_app(Settings(data_dir=root, zeroconf_enabled=False))
         async with (
             app.router.lifespan_context(app),
             httpx.AsyncClient(
@@ -397,7 +405,7 @@ async def test_m19a_i_retry_full_matrix_and_delivery_audit(  # noqa: PLR0915 -- 
 async def test_m19a_g_health_target_output_and_bad_cursor() -> None:
     with TemporaryDirectory() as directory:
         root = Path(directory)
-        app = create_app(Settings(data_dir=root))
+        app = create_app(Settings(data_dir=root, zeroconf_enabled=False))
         async with (
             app.router.lifespan_context(app),
             httpx.AsyncClient(
@@ -420,7 +428,7 @@ async def test_m19a_g_health_target_output_and_bad_cursor() -> None:
 async def test_m19a_g_source_null_fields_and_i_audit_success() -> None:
     with TemporaryDirectory() as directory:
         root = Path(directory)
-        app = create_app(Settings(data_dir=root))
+        app = create_app(Settings(data_dir=root, zeroconf_enabled=False))
         async with (
             app.router.lifespan_context(app),
             httpx.AsyncClient(

@@ -126,7 +126,9 @@ async def test_toneset_crud_persists_yaml_and_reloads_supervisor() -> None:
         root = Path(directory)
         supervisor = FakeSupervisor()
         app = create_app(
-            Settings(data_dir=root), supervisor=supervisor, session_factory=FakeSession
+            Settings(data_dir=root, zeroconf_enabled=False),
+            supervisor=supervisor,
+            session_factory=FakeSession,
         )
         async with app.router.lifespan_context(app), await _client(app) as client:
             token = (root / "api_token").read_text().strip()
@@ -206,7 +208,9 @@ async def test_all_config_mutation_paths_preserve_untouched_fields(path: str, ow
         root = Path(directory)
         ConfigStore(root).save(baseline)
         app = create_app(
-            Settings(data_dir=root), supervisor=BaseSupervisor(), session_factory=FakeSession
+            Settings(data_dir=root, zeroconf_enabled=False),
+            supervisor=BaseSupervisor(),
+            session_factory=FakeSession,
         )
         app.state.config = baseline
         token = (root / "api_token").read_text().strip()
@@ -369,7 +373,9 @@ async def test_agencies_api_auth_csrf_and_geojson() -> None:
     with TemporaryDirectory() as directory:
         root = Path(directory)
         app = create_app(
-            Settings(data_dir=root), supervisor=BaseSupervisor(), session_factory=FakeSession
+            Settings(data_dir=root, zeroconf_enabled=False),
+            supervisor=BaseSupervisor(),
+            session_factory=FakeSession,
         )
         async with await _client(app) as client:
             assert (await client.get("/api/agencies")).status_code == 401
@@ -424,7 +430,9 @@ async def test_agencies_api_auth_csrf_and_geojson() -> None:
 @pytest.mark.asyncio
 async def test_config_crossref_error_is_422_naming_id() -> None:
     with TemporaryDirectory() as directory:
-        app = create_app(Settings(data_dir=Path(directory)), session_factory=FakeSession)
+        app = create_app(
+            Settings(data_dir=Path(directory), zeroconf_enabled=False), session_factory=FakeSession
+        )
         token = (Path(directory) / "api_token").read_text().strip()
         headers = {"Authorization": f"Bearer {token}"}
         async with await _client(app) as client:

@@ -375,7 +375,7 @@ def test_api_and_audit_never_expose_supervisor_credentials(tmp_path: Path) -> No
             )
         )
         app = create_app(
-            Settings(data_dir=tmp_path),
+            Settings(data_dir=tmp_path, zeroconf_enabled=False),
             supervisor=NoopSupervisor(),
             session_factory=lambda: None,
         )

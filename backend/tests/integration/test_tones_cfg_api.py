@@ -27,7 +27,7 @@ async def test_tones_cfg_api_validates_content_length(
     with TemporaryDirectory(ignore_cleanup_errors=True) as directory:
         root = Path(directory)
         ConfigStore(root).save(AppConfig())
-        app = create_app(Settings(data_dir=root))
+        app = create_app(Settings(data_dir=root, zeroconf_enabled=False))
         async with (
             app.router.lifespan_context(app),
             httpx.AsyncClient(
@@ -79,7 +79,7 @@ async def test_tones_cfg_api_auth_csrf_preview_apply_and_replace() -> None:
             )
         )
         credential = "password"
-        app = create_app(Settings(data_dir=root, ui_password=credential))
+        app = create_app(Settings(data_dir=root, ui_password=credential, zeroconf_enabled=False))
         async with (
             app.router.lifespan_context(app),
             httpx.AsyncClient(
@@ -154,7 +154,7 @@ async def test_tones_cfg_api_rejects_bad_utf8_and_missing_multipart_file() -> No
         store = ConfigStore(root)
         store.save(AppConfig())
         credential = "password"
-        app = create_app(Settings(data_dir=root, ui_password=credential))
+        app = create_app(Settings(data_dir=root, ui_password=credential, zeroconf_enabled=False))
         async with (
             app.router.lifespan_context(app),
             httpx.AsyncClient(
@@ -201,7 +201,7 @@ async def test_streamed_oversized_apply_does_not_persist_raw_or_multipart() -> N
         store = ConfigStore(root)
         store.save(initial)
         before_yaml = (root / "config.yaml").read_bytes()
-        app = create_app(Settings(data_dir=root))
+        app = create_app(Settings(data_dir=root, zeroconf_enabled=False))
         async with (
             app.router.lifespan_context(app),
             httpx.AsyncClient(
@@ -257,7 +257,7 @@ async def test_tones_cfg_guard_covers_trailing_slash_and_root_path() -> None:
     with TemporaryDirectory(ignore_cleanup_errors=True) as directory:
         root = Path(directory)
         ConfigStore(root).save(AppConfig())
-        app = create_app(Settings(data_dir=root))
+        app = create_app(Settings(data_dir=root, zeroconf_enabled=False))
         async with app.router.lifespan_context(app):
             token = (root / "api_token").read_text(encoding="ascii").strip()
             payload = _oversized_synthetic_config()

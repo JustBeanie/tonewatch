@@ -2,6 +2,7 @@
 
 import asyncio
 import time
+from collections import deque
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, ClassVar, cast
@@ -14,6 +15,7 @@ from hypothesis import strategies as st
 from sqlalchemy import select
 
 from tonewatch.config.models import (
+    AdminAlertsConfig,
     AppConfig,
     FileSource,
     RecordingPolicy,
@@ -35,7 +37,7 @@ from tonewatch.events import (
     ToneDetected,
 )
 from tonewatch.pipeline.channel import Channel, RecorderCall
-from tonewatch.pipeline.persistence import PersistenceSubscriber
+from tonewatch.pipeline.persistence import PersistenceSubscriber, _relative_path
 from tonewatch.pipeline.ringbuffer import RingBuffer
 from tonewatch.pipeline.supervisor import Supervisor
 from tonewatch.pipeline.watchdog import Watchdog
@@ -93,6 +95,22 @@ def test_ring_buffer_validates_empty_and_discontinuous_inputs() -> None:
         ring.snapshot(-1)
     samples, start = ring.snapshot_with_time()
     assert start == 20 and samples.size == 1
+
+
+def test_ring_buffer_defaults_missing_stream_time_and_reports_empty_timestamp() -> None:
+    ring = RingBuffer(capacity_s=1, sample_rate=10)
+    ring.extend(np.asarray([1, 2], dtype=np.float32))
+    assert ring.end_stream_time_s == 0.2
+    empty = RingBuffer(capacity_s=1, sample_rate=10)
+    samples, start = empty.snapshot_with_time()
+    assert samples.size == 0 and start is None
+
+
+def test_ring_buffer_wraps_partial_chunk_without_losing_order() -> None:
+    ring = RingBuffer(capacity_s=1, sample_rate=4)
+    ring.extend(np.asarray([1, 2, 3], dtype=np.float32))
+    ring.extend(np.asarray([4, 5, 6], dtype=np.float32))
+    np.testing.assert_array_equal(ring.snapshot(), np.asarray([3, 4, 5, 6], dtype=np.float32))
 
 
 class _Source:
@@ -915,6 +933,136 @@ def test_persistence_stop_while_busy_leaves_no_pending_tasks(tmp_path: Path) -> 
         await engine.dispose()
         assert elapsed < 0.5
         assert pending == []
+
+    asyncio.run(run())
+
+
+def test_persistence_stop_propagates_caller_cancellation_and_abandons_commit(
+    tmp_path: Path,
+) -> None:
+    async def run() -> None:
+        engine, sessions = create_database(f"sqlite+aiosqlite:///{tmp_path / 'cancel.sqlite'}")
+        await create_database_schema(engine)
+        commit_started = asyncio.Event()
+        release_commit = asyncio.Event()
+
+        class SlowSession:
+            def __init__(self) -> None:
+                self.context = sessions()
+                self.session: Any = None
+
+            async def __aenter__(self) -> "SlowSession":
+                self.session = await self.context.__aenter__()
+                return self
+
+            async def __aexit__(self, *args: object) -> object:
+                return await self.context.__aexit__(*args)
+
+            def __getattr__(self, name: str) -> Any:
+                return getattr(self.session, name)
+
+            async def commit(self) -> None:
+                commit_started.set()
+                await release_commit.wait()
+                await self.session.commit()
+
+        bus = EventBus()
+        persistence = PersistenceSubscriber(bus, SlowSession)
+        await persistence.start()
+        bus.publish(ToneDetected(uuid4(), "page", datetime.now(UTC), "radio"))
+        await asyncio.wait_for(commit_started.wait(), 1)
+
+        stopper = asyncio.create_task(persistence.stop(timeout_s=10))
+        await asyncio.sleep(0)
+        stopper.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await stopper
+        assert persistence._commit_task is None
+        release_commit.set()
+        await persistence.stop()
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+def test_supervisor_admin_loop_uses_injected_sleep_and_evaluates_each_tick(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def run() -> None:
+        config = AppConfig()
+        ticks = 0
+        evaluated: list[dict[str, object]] = []
+
+        async def fake_sleep(delay: float) -> None:
+            nonlocal ticks
+            assert delay == 30.0
+            ticks += 1
+            if ticks == 2:
+                supervisor._stopping = True
+
+        supervisor = Supervisor(config, EventBus(), None, sleep=fake_sleep)
+
+        async def evaluate(snapshot: dict[str, object]) -> None:
+            evaluated.append(snapshot)
+
+        monkeypatch.setattr(supervisor.admin_alerts, "evaluate", evaluate)
+        await supervisor._admin_loop()
+        assert len(evaluated) == 2
+
+    asyncio.run(run())
+
+
+def test_supervisor_reports_absent_channel_and_diagnostics() -> None:
+    supervisor = Supervisor(AppConfig(), EventBus(), None)
+    assert supervisor.channel_for("missing") is None
+    assert supervisor.source_status("missing") == (None, None)
+    assert supervisor.source_diagnostics("missing") is None
+
+
+def test_persistence_edge_helpers_handle_missing_database_and_unsafe_file(tmp_path: Path) -> None:
+    async def run() -> None:
+        persistence = PersistenceSubscriber(EventBus(), None)
+        await persistence._persist(object())
+        assert persistence.recordings_root is None
+        assert _relative_path(tmp_path, tmp_path.parent / "outside.mp3") == "outside.mp3"
+
+    asyncio.run(run())
+
+
+def test_channel_level_tap_and_candidate_clip_empty_window() -> None:
+    async def run() -> None:
+        channel = Channel(FileSource(id="radio", name="radio", path="x.wav"), [], EventBus())
+        channel._anchor_wall = datetime.now(UTC)
+        levels: list[float] = []
+        channel.add_level_tap(levels.append)
+        channel._publish_level(_frame("radio", 1), -20.0)
+        channel.remove_level_tap(levels.append)
+        assert levels == [-20.0]
+        candidate = cast("Any", type("Candidate", (), {"start_s": 1, "end_s": 2})())
+        assert channel._candidate_clip(candidate) is None
+
+    asyncio.run(run())
+
+
+def test_watchdog_clipping_marks_feed_unhealthy() -> None:
+    async def run() -> None:
+        now = [10.0]
+        watchdog = Watchdog("radio", EventBus(), clock=lambda: now[0], clip_ratio=0.5)
+        watchdog._clips = deque([(0.0, 1, 1)])
+        watchdog.check()
+        assert watchdog.healthy is False and watchdog._unhealthy_reason == "clipping"
+
+    asyncio.run(run())
+
+
+def test_supervisor_starts_and_stops_admin_timer_task() -> None:
+    async def run() -> None:
+        config = AppConfig(admin_alerts=AdminAlertsConfig(enabled=True))
+        supervisor = Supervisor(config, EventBus(), None, sleep=lambda _: asyncio.sleep(0))
+        await supervisor.start()
+        assert supervisor._admin_task is not None
+        await supervisor.stop()
+        assert supervisor._admin_task is None
 
     asyncio.run(run())
 

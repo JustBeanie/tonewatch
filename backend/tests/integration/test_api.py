@@ -19,7 +19,7 @@ from tonewatch.sources import soundcard as soundcard_module
 async def test_api_auth_crud_headers_and_token() -> None:
     with TemporaryDirectory(ignore_cleanup_errors=True) as directory:
         root = Path(directory)
-        app = create_app(Settings(data_dir=root))
+        app = create_app(Settings(data_dir=root, zeroconf_enabled=False))
         async with (
             app.router.lifespan_context(app),
             httpx.AsyncClient(
@@ -66,7 +66,7 @@ async def test_api_auth_crud_headers_and_token() -> None:
 async def test_wrong_token_and_missing_csrf() -> None:
     with TemporaryDirectory(ignore_cleanup_errors=True) as directory:
         app = create_app(
-            Settings(data_dir=Path(directory), ui_password="secret"),
+            Settings(data_dir=Path(directory), ui_password="secret", zeroconf_enabled=False),
             session_factory=cast("Any", lambda: None),
         )
         async with (
@@ -97,7 +97,7 @@ async def test_api_resources_and_rejections(
     monkeypatch.setattr(soundcard_module.SoundcardSource, "open", fake_open)
     with TemporaryDirectory(ignore_cleanup_errors=True) as directory:
         root = Path(directory)
-        app = create_app(Settings(data_dir=root))
+        app = create_app(Settings(data_dir=root, zeroconf_enabled=False))
         async with (
             app.router.lifespan_context(app),
             httpx.AsyncClient(
@@ -151,7 +151,7 @@ async def test_api_resources_and_rejections(
 def test_auth_and_analyze_helpers() -> None:
     with TemporaryDirectory() as directory:
         root = Path(directory)
-        settings = Settings(data_dir=root)
+        settings = Settings(data_dir=root, zeroconf_enabled=False)
         first = read_or_create_token(settings)
         assert first == read_or_create_token(settings)
         assert rotate_token(settings) != first
@@ -167,7 +167,7 @@ def test_auth_and_analyze_helpers() -> None:
 async def test_source_status_is_null_without_supervisor_and_live_when_running() -> None:
     with TemporaryDirectory() as directory:
         root = Path(directory)
-        settings = Settings(data_dir=root)
+        settings = Settings(data_dir=root, zeroconf_enabled=False)
         source = FileSource(id="radio", name="Radio", path="radio.wav")
         app = create_app(settings)
         app.state.config = AppConfig(sources=[source])

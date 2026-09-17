@@ -37,8 +37,6 @@ def forbid_unmarked_zeroconf(
     request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Prevent tests from opening a host mDNS socket accidentally."""
-    if request.node.path.name != "test_meshtastic_api.py":
-        return
     if request.node.get_closest_marker("real_zeroconf") is not None:
         return
 
