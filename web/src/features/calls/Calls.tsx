@@ -1,7 +1,15 @@
 import { useEffect, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
 import { request } from "../../api/client";
-type Call = { id: string; started_at: string; source_id: string; status: string };
+import { useWsEvents } from "../../lib/ws";
+import { IncidentCard, Incident, useCallIncidents } from "../cad/Incidents";
+type Call = {
+    id: string;
+    started_at: string;
+    source_id: string;
+    status: string;
+    has_cad?: boolean;
+};
 type Agency = { id: string; name: string };
 type Detail = Call & {
     tone_sets: {
@@ -11,6 +19,7 @@ type Detail = Call & {
     }[];
     recordings: { id: number; format: string; url: string }[];
     alert_attempts: Record<string, unknown>[];
+    cad_incidents: Incident[];
 };
 export function Calls() {
     const [p, setP] = useSearchParams();
@@ -30,6 +39,13 @@ export function Calls() {
             .then((v) => setItems(v.items))
             .catch(() => undefined);
     }, [p]);
+    useWsEvents("events", (message) => {
+        if (message.type !== "call_enriched") return;
+        const callId = String(message.data?.call_id ?? "");
+        setItems((old) =>
+            old.map((item) => (item.id === callId ? { ...item, has_cad: true } : item)),
+        );
+    });
     return (
         <>
             <h1>Calls</h1>
@@ -83,6 +99,7 @@ export function Calls() {
                         <Link to={`/calls/${c.id}`}>
                             {c.started_at} · {c.source_id} · {c.status}
                         </Link>
+                        {c.has_cad ? <span aria-label="CAD incident"> CAD</span> : null}
                     </p>
                 ))
             ) : (
@@ -101,6 +118,7 @@ export function CallDetail() {
                 .then(setD)
                 .catch(() => undefined);
     }, [id]);
+    const incidents = useCallIncidents(id, d?.cad_incidents ?? []);
     if (!d) return <p>Loading call…</p>;
     const r = d.recordings.find((x) => x.format === fmt) || d.recordings[0];
     return (
@@ -109,6 +127,18 @@ export function CallDetail() {
             <p>
                 {d.started_at} · {d.source_id}
             </p>
+            {incidents.length ? (
+                <section aria-label="CAD incidents">
+                    <h2>CAD incidents</h2>
+                    {incidents.map((incident) => (
+                        <IncidentCard
+                            key={`${incident.feed_id}-${incident.incident_id}`}
+                            incident={incident}
+                            callStart={d.started_at}
+                        />
+                    ))}
+                </section>
+            ) : null}
             <h2>Matched tone sets</h2>
             <ul>
                 {d.tone_sets.map((t) => (

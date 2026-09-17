@@ -100,6 +100,74 @@ def test_m17_g_unmatched_agency_list_and_not_found_create():
         asyncio.run(cad_routes.create_agency(_request([]), "missing"))
 
 
+class _CadSession:
+    def __init__(self, incidents, links):
+        self.incidents = incidents
+        self.links = links
+        self.calls = 0
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *_args):
+        return None
+
+    async def scalars(self, _statement):
+        result = _Result(self.incidents if self.calls == 0 else self.links)
+        self.calls += 1
+        return result
+
+
+def test_m17b_active_incidents_returns_minimal_projection_and_call_link():
+    now = datetime(2026, 1, 1, tzinfo=UTC)
+    incident = CadIncident(
+        feed_id="county",
+        incident_id="inc-1",
+        agency_name="North Unit",
+        agency_key="north unit",
+        agency_category="fire",
+        type_raw="Medical assist",
+        type_key="medical-assist",
+        type_code="31A",
+        address_clean="Fictional Avenue",
+        cross_streets=["Imaginary Road"],
+        municipality_raw="Fictional City",
+        municipality_name="Fictional City",
+        received_at=now,
+        status="active",
+        first_seen_at=now,
+        last_seen_at=now,
+    )
+    call_id = uuid4()
+    session = _CadSession(
+        [incident], [CallCadIncident(call_id=call_id, feed_id="county", incident_id="inc-1")]
+    )
+    request = _request([])
+    request.app.state.config = AppConfig(
+        agencies=[
+            Agency(
+                id="north",
+                name="North",
+                short_name="N",
+                kind="fire",
+                color="#000000",
+                location=AgencyLocation(lat=0, lon=0),
+                cad_names=["North Unit"],
+            )
+        ],
+        cad_feeds=[CadFeed(id="county", name="County", host="127.0.0.1")],
+    )
+    request.app.state.session_factory = lambda: session
+    result = asyncio.run(cad_routes.incidents(request, limit=10))
+    assert result[0]["address_clean"] == "Fictional Avenue"
+    assert result[0]["call_id"] == str(call_id)
+    assert result[0]["type"] == {"raw": "Medical assist", "code": "31A"}
+
+
+def test_m17b_active_incidents_empty_when_no_configured_agencies():
+    assert asyncio.run(cad_routes.incidents(_request([]))) == []
+
+
 def awaitable_unmatched(request):
     return asyncio.run(cad_routes.unmatched(request))
 

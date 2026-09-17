@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { request } from "../../api/client";
 import { useConnectionStatus, useSubscription, useWsEvents, WsMessage } from "../../lib/ws";
 import { LivePlayer, Source } from "../sources/SourceControls";
+import { ActiveIncidents } from "../cad/Incidents";
 type Call = { id: string; started_at: string; source_id: string; status: string };
 export function Dashboard() {
     const [event, setEvent] = useState<WsMessage>();
@@ -51,6 +52,7 @@ export function Dashboard() {
                 <p role="status">Feed health: {String(event.data?.reason ?? "")}</p>
             )}
             <section className="grid">
+                <ActiveIncidents />
                 {sources.map((source) => (
                     <div className="card" key={source.id}>
                         <h2>{source.name ?? source.id}</h2>

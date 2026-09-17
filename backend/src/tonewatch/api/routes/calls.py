@@ -173,6 +173,26 @@ async def call_detail(request: Request, call_id: UUID) -> dict[str, Any]:
                 "address_clean": incident_map[(row.feed_id, row.incident_id)].address_clean
                 if (row.feed_id, row.incident_id) in incident_map
                 else None,
+                "cross_streets": incident_map[(row.feed_id, row.incident_id)].cross_streets
+                if (row.feed_id, row.incident_id) in incident_map
+                else [],
+                "municipality": (
+                    incident_map[(row.feed_id, row.incident_id)].municipality_name
+                    or incident_map[(row.feed_id, row.incident_id)].municipality_raw
+                )
+                if (row.feed_id, row.incident_id) in incident_map
+                else None,
+                "received_at": incident_map[(row.feed_id, row.incident_id)].received_at.isoformat()
+                if (row.feed_id, row.incident_id) in incident_map
+                else None,
+                "feed_name": next(
+                    (
+                        feed.name
+                        for feed in request.app.state.config.cad_feeds
+                        if feed.id == row.feed_id
+                    ),
+                    row.feed_id,
+                ),
             }
             for row in links
         ],

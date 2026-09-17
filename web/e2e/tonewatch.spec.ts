@@ -120,6 +120,33 @@ test("deep link reload renders", async ({ page }) => {
     expect(notFound).toEqual([]);
 });
 
+test("CAD feed settings and unmatched agencies stay local", async ({ page }) => {
+    const external: string[] = [];
+    page.on("request", (request) => {
+        const url = new URL(request.url());
+        if (!["localhost", "127.0.0.1"].includes(url.hostname)) external.push(request.url());
+    });
+    await login(page);
+    await page.goto("/settings/cad-feeds");
+    await page.getByRole("button", { name: "Add feed" }).click();
+    await page.locator("#cad-name").fill("E2E CAD Feed");
+    await page.locator("#cad-host").fill("127.0.0.1");
+    await page.locator("#cad-port").fill("6550");
+    await page.getByRole("button", { name: "Save" }).click();
+    const feed = page.locator("section.card").filter({ hasText: "E2E CAD Feed" });
+    await expect(feed).toContainText("Disconnected");
+    await feed.getByRole("button", { name: "Edit" }).click();
+    await expect(page.locator("#cad-password")).toHaveValue("");
+    await page.getByRole("button", { name: "Save" }).click();
+    await expect(feed).toContainText("Disconnected");
+    await page.goto("/cad/unmatched-agencies");
+    await expect(page.getByRole("heading", { name: "Unmatched CAD agencies" })).toBeVisible();
+    await page.goto("/settings/cad-feeds");
+    await feed.getByRole("button", { name: "Delete" }).click();
+    await expect(page.getByText("E2E CAD Feed")).not.toBeVisible();
+    expect(external).toEqual([]);
+});
+
 test("agency editor links the fixture and map pulses without external requests", async ({
     page,
 }) => {

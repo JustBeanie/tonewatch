@@ -1,16 +1,71 @@
 """CAD unmatched agency helpers."""
 
-from typing import Any
+from typing import Any, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Request
-from sqlalchemy import func, select
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from sqlalchemy import and_, func, or_, select
 
 from tonewatch.api.audit import record_audit
 from tonewatch.api.deps import authenticated, save_config, write_auth
 from tonewatch.config.models import Agency, AgencyLocation
-from tonewatch.storage.models import CadIncident
+from tonewatch.storage.models import CadIncident, CallCadIncident
 
 router = APIRouter(prefix="/cad", tags=["cad"])
+
+
+@router.get("/incidents", dependencies=[Depends(authenticated)])
+async def incidents(
+    request: Request,
+    status: Literal["active", "closed"] = "active",
+    configured_only: bool = True,
+    limit: int = Query(default=10, ge=1, le=100),
+) -> list[dict[str, Any]]:
+    """Return the small, authenticated incident projection used by the web UI."""
+    configured = {
+        name.casefold() for agency in request.app.state.config.agencies for name in agency.cad_names
+    }
+    async with request.app.state.session_factory() as session:
+        query = select(CadIncident).where(CadIncident.status == status)
+        if configured_only:
+            if not configured:
+                return []
+            query = query.where(CadIncident.agency_key.in_(configured))
+        rows = list(
+            (
+                await session.scalars(query.order_by(CadIncident.received_at.desc()).limit(limit))
+            ).all()
+        )
+        link_filter = or_(
+            *[
+                and_(
+                    CallCadIncident.feed_id == row.feed_id,
+                    CallCadIncident.incident_id == row.incident_id,
+                )
+                for row in rows
+            ]
+        )
+        links = (
+            list((await session.scalars(select(CallCadIncident).where(link_filter))).all())
+            if rows
+            else []
+        )
+    call_by_incident = {(link.feed_id, link.incident_id): str(link.call_id) for link in links}
+    return [
+        {
+            "feed_id": row.feed_id,
+            "incident_id": row.incident_id,
+            "agency_name": row.agency_name,
+            "agency_key": row.agency_key,
+            "type": {"raw": row.type_raw, "code": row.type_code},
+            "address_clean": row.address_clean,
+            "cross_streets": row.cross_streets,
+            "municipality": row.municipality_name or row.municipality_raw,
+            "received_at": row.received_at.isoformat(),
+            "status": row.status,
+            "call_id": call_by_incident.get((row.feed_id, row.incident_id)),
+        }
+        for row in rows
+    ]
 
 
 @router.get("/unmatched-agencies", dependencies=[Depends(authenticated)])

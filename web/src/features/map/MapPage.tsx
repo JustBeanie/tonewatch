@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { request } from "../../api/client";
 import { useWsEvents, WsMessage } from "../../lib/ws";
 import { MapCanvas, MapFeature } from "./MapCanvas";
+import { Incident, IncidentCard } from "../cad/Incidents";
 type Config = { map?: { tile_url?: string; attribution?: string } };
 type Call = { id: string; started_at: string; status: string };
 type ToneSet = { id: string; name: string; agency_id?: string | null };
@@ -18,6 +19,7 @@ export function MapPage() {
     const activeCalls = useRef(new Map<string, ActiveCall>());
     const pulseTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
     const [reduced, setReduced] = useState(false);
+    const [incidents, setIncidents] = useState<Incident[]>([]);
     const processEvent = (event: WsMessage) => {
         const scheduleExpiry = (agencyId: string) => {
             const records = [...activeCalls.current.values()].filter(
@@ -127,6 +129,22 @@ export function MapPage() {
             request<{ items: Call[] }>(`calls?agency_id=${encodeURIComponent(selected)}&limit=5`)
                 .then((v) => setCalls(v.items))
                 .catch(() => undefined);
+        if (selected)
+            request<Incident[]>("cad/incidents?status=active&configured_only=false&limit=100")
+                .then((value) => {
+                    const rawNames = (agency as { cad_names?: unknown } | undefined)?.cad_names;
+                    const names = Array.isArray(rawNames)
+                        ? rawNames.filter((name): name is string => typeof name === "string")
+                        : [];
+                    setIncidents(
+                        value.filter((item) =>
+                            names.some(
+                                (name) => name.toLowerCase() === item.agency_key?.toLowerCase(),
+                            ),
+                        ),
+                    );
+                })
+                .catch(() => undefined);
     }, [selected]);
     return (
         <>
@@ -175,6 +193,10 @@ export function MapPage() {
                                 {call.started_at} · {call.status}
                             </Link>
                         </p>
+                    ))}
+                    <h3>Recent CAD incidents</h3>
+                    {incidents.slice(0, 5).map((item) => (
+                        <IncidentCard key={`${item.feed_id}-${item.incident_id}`} incident={item} />
                     ))}
                 </section>
             )}

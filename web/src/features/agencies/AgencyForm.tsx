@@ -2,6 +2,7 @@ import { ChangeEvent, FormEvent, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { request } from "../../api/client";
 import { MapCanvas } from "../map/MapCanvas";
+import { Incident, IncidentCard } from "../cad/Incidents";
 
 type Agency = {
     id: string;
@@ -66,6 +67,7 @@ export function AgencyForm() {
         { id: string; name: string; agency_id?: string | null }[]
     >([]);
     const [linked, setLinked] = useState<Set<string>>(new Set());
+    const [incidents, setIncidents] = useState<Incident[]>([]);
     useEffect(() => {
         request<{ id: string; name: string; agency_id?: string | null }[]>("tonesets")
             .then((value) => {
@@ -77,7 +79,23 @@ export function AgencyForm() {
             .catch(() => undefined);
         if (id)
             request<Agency>(`agencies/${id}`)
-                .then(setAgency)
+                .then((value) => {
+                    setAgency(value);
+                    return request<Incident[]>(
+                        "cad/incidents?status=active&configured_only=false&limit=100",
+                    ).then((items) =>
+                        setIncidents(
+                            items.filter(
+                                (item) =>
+                                    item.agency_key &&
+                                    value.cad_names.some(
+                                        (name) =>
+                                            name.toLowerCase() === item.agency_key?.toLowerCase(),
+                                    ),
+                            ),
+                        ),
+                    );
+                })
                 .catch(() => undefined);
     }, [id]);
     const update = (field: keyof Agency, value: unknown) =>
@@ -341,6 +359,14 @@ export function AgencyForm() {
                     {error}
                 </p>
             )}
+            {id && incidents.length ? (
+                <section aria-label="Recent CAD incidents">
+                    <h2>Recent CAD incidents</h2>
+                    {incidents.slice(0, 5).map((item) => (
+                        <IncidentCard key={`${item.feed_id}-${item.incident_id}`} incident={item} />
+                    ))}
+                </section>
+            ) : null}
             <button type="submit">Save agency</button>
         </form>
     );

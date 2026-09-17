@@ -3371,6 +3371,82 @@
         ]
       }
     },
+    "/api/cad/incidents": {
+      "get": {
+        "description": "Return the small, authenticated incident projection used by the web UI.",
+        "operationId": "incidents_api_cad_incidents_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "default": "active",
+              "enum": [
+                "active",
+                "closed"
+              ],
+              "title": "Status",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "configured_only",
+            "required": false,
+            "schema": {
+              "default": true,
+              "title": "Configured Only",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Incidents Api Cad Incidents Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Incidents",
+        "tags": [
+          "configuration",
+          "cad"
+        ]
+      }
+    },
     "/api/cad/unmatched-agencies": {
       "get": {
         "operationId": "unmatched_api_cad_unmatched_agencies_get",

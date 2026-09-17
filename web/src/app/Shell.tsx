@@ -25,6 +25,8 @@ export function Shell() {
                             ["/sources", "Sources"],
                             ["/alerts", "Alerts"],
                             ["/settings", "Settings"],
+                            ["/settings/cad-feeds", "CAD feeds"],
+                            ["/cad/unmatched-agencies", "Unmatched CAD agencies"],
                             ["/analyze", "Analyze"],
                         ] as [string, string][]
                     ).map(([to, label]) => (
