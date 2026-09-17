@@ -2,17 +2,28 @@
 
 from __future__ import annotations
 
+import re
 from datetime import UTC, datetime
 from typing import Any
 
 from tonewatch.storage.models import AuditEvent
 
 _SECRET_WORDS = ("password", "secret", "token", "authorization", "cookie", "csrf")
+_SECRET_PLURAL_WORDS = frozenset(f"{word}s" for word in _SECRET_WORDS)
+_EXPLICIT_SECRET_KEYS = frozenset({"api_key", "private_key", "passphrase", "x-api-key"})
+
+
+class SecretRestoreError(ValueError):
+    """A masked credential could not be matched to a stored credential."""
 
 
 def is_secret_key(key: object) -> bool:
     """Return whether a field name identifies a value that must be redacted."""
-    return any(word in str(key).casefold() for word in _SECRET_WORDS)
+    normalized = str(key).casefold()
+    if normalized in _EXPLICIT_SECRET_KEYS:
+        return True
+    segments = [segment for segment in re.split(r"[_-]+", normalized) if segment]
+    return bool(segments) and segments[-1] in {*_SECRET_WORDS, *_SECRET_PLURAL_WORDS}
 
 
 def mask_secrets(value: Any) -> Any:
@@ -25,6 +36,56 @@ def mask_secrets(value: Any) -> Any:
     if isinstance(value, list):
         return [mask_secrets(item) for item in value]
     return value
+
+
+def restore_secrets(stored: Any, submitted: Any) -> Any:
+    """Restore real stored credentials where a masked response was submitted back."""
+    if isinstance(submitted, dict):
+        if not isinstance(stored, dict):
+            for key, value in submitted.items():
+                if is_secret_key(key) and value == "[REDACTED]":
+                    raise SecretRestoreError(f"redacted placeholder has no stored value for {key}")
+                restore_secrets(None, value)
+            return submitted
+        restored: dict[Any, Any] = {}
+        for key, value in submitted.items():
+            if is_secret_key(key) and value == "[REDACTED]":
+                stored_value = stored.get(key)
+                if stored_value in (None, ""):
+                    raise SecretRestoreError(f"redacted placeholder has no stored value for {key}")
+                restored[key] = stored_value
+            else:
+                restored[key] = restore_secrets(stored.get(key), value)
+        return restored
+    if isinstance(submitted, list):
+        if not isinstance(stored, list):
+            for item in submitted:
+                restore_secrets(None, item)
+            return submitted
+        stored_by_id = {
+            item.get("id"): item
+            for item in stored
+            if isinstance(item, dict) and isinstance(item.get("id"), str)
+        }
+        stored_has_ids = bool(stored_by_id)
+        submitted_has_ids = any(
+            isinstance(item, dict) and isinstance(item.get("id"), str) for item in submitted
+        )
+        positional_matching = not stored_has_ids and not submitted_has_ids
+        return [
+            restore_secrets(
+                (
+                    stored_by_id.get(item.get("id"))
+                    if isinstance(item, dict) and isinstance(item.get("id"), str)
+                    else stored[index]
+                    if positional_matching and index < len(stored)
+                    else None
+                ),
+                item,
+            )
+            for index, item in enumerate(submitted)
+        ]
+    return submitted
 
 
 async def record_audit(

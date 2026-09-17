@@ -9,9 +9,17 @@ import httpx
 import pytest
 import structlog
 from fastapi import Request
+from pydantic import AnyUrl, TypeAdapter
 
 from tonewatch.api.app import create_app
 from tonewatch.api.auth import AuthState
+from tonewatch.config.models import (
+    AppConfig,
+    LiveStreamConfig,
+    MeshtasticTarget,
+    MqttTarget,
+    WebhookTarget,
+)
 from tonewatch.settings import Settings
 from tonewatch.storage.db import create_database, create_database_schema
 from tonewatch.storage.models import Call, Recording
@@ -376,6 +384,68 @@ async def test_secrets_never_logged(capsys: pytest.CaptureFixture[str]) -> None:
             and "password-value" not in str(events)
             and any(event.get("event") == "request" for event in events)
         )
+
+
+@pytest.mark.asyncio
+async def test_full_config_round_trip_preserves_secrets_and_token_ttl() -> None:
+    with TemporaryDirectory() as directory:
+        root = Path(directory)
+        app = make_app(root)
+        mqtt_credential = "mqtt-" + "secret"
+        webhook_credential = "webhook-" + "secret"
+        mesh_credential = "mesh-" + "secret"
+        redacted = "[REDACTED]"
+        config = AppConfig(
+            live_stream=LiveStreamConfig(enabled=True, token_ttl_s=1234),
+            alert_targets=[
+                MqttTarget(
+                    id="mqtt-main",
+                    name="MQTT",
+                    host="broker",
+                    username="user",
+                    password=mqtt_credential,
+                ),
+                WebhookTarget(
+                    id="webhook-main",
+                    name="Webhook",
+                    url=TypeAdapter(AnyUrl).validate_python("https://example.test/hook"),
+                    secret=webhook_credential,
+                ),
+                MeshtasticTarget(
+                    id="mesh-main",
+                    name="Mesh",
+                    host="broker",
+                    password=mesh_credential,
+                    gateway_node_id="!12345678",
+                    channel_index=1,
+                ),
+            ],
+        )
+        app.state.config = config
+        token = (root / "api_token").read_text().strip()
+        headers = {"Authorization": f"Bearer {token}"}
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            get_response = await client.get("/api/config", headers=headers)
+            assert get_response.status_code == 200
+            body = get_response.json()
+            assert body["live_stream"]["token_ttl_s"] == 1234
+            assert body["alert_targets"][0]["password"] == redacted
+            assert body["alert_targets"][1]["secret"] == redacted
+            assert body["alert_targets"][2]["password"] == redacted
+
+            put_response = await client.put(
+                "/api/config",
+                headers={**headers, "If-Match": get_response.headers["etag"]},
+                json=body,
+            )
+            assert put_response.status_code == 200, put_response.text
+
+        assert app.state.config == config
+        assert app.state.config.alert_targets[0].password == mqtt_credential
+        assert app.state.config.alert_targets[1].secret == webhook_credential
+        assert app.state.config.alert_targets[2].password == mesh_credential
 
 
 @pytest.mark.asyncio

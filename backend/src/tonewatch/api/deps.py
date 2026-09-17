@@ -7,7 +7,7 @@ from typing import Any
 from fastapi import HTTPException, Request
 from pydantic import ValidationError
 
-from tonewatch.api.audit import mask_secrets, record_audit
+from tonewatch.api.audit import SecretRestoreError, mask_secrets, record_audit, restore_secrets
 from tonewatch.config.models import AppConfig
 from tonewatch.config.store import ConfigConflictError, replace_config
 
@@ -35,7 +35,12 @@ async def save_config(request: Request, config: AppConfig, *, audit: bool = True
     before = request.app.state.config
     expected_etag = request.headers.get("if-match")
     try:
-        config = AppConfig.model_validate(config)
+        raw_config = config.model_dump(mode="python") if hasattr(config, "model_dump") else config
+        config = AppConfig.model_validate(
+            restore_secrets(before.model_dump(mode="python"), raw_config)
+        )
+    except SecretRestoreError as exc:
+        raise HTTPException(422, str(exc)) from None
     except ValidationError as exc:
         raise HTTPException(422, str(exc)) from None
     try:

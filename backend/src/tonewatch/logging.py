@@ -16,7 +16,14 @@ if TYPE_CHECKING:
 
 request_id: ContextVar[str] = ContextVar("tonewatch_request_id", default="")
 _token: ContextVar[str] = ContextVar("tonewatch_api_token", default="")
-_SENSITIVE = ("authorization", "cookie", "set-cookie", "password", "token", "csrf")
+_SENSITIVE_LOG_WORDS = (
+    "authorization",
+    "cookie",
+    "set-cookie",
+    "password",
+    "token",
+    "csrf",
+)
 _QUERY = re.compile(r"(\S+?)\?[^\s\"]*")
 _TOKEN_QUERY = re.compile(r"([?&]t=)[^\s\"&]*")
 
@@ -38,12 +45,18 @@ def _redact_value(value: Any, api_token: str) -> Any:
     return value
 
 
+def is_sensitive_log_key(key: object) -> bool:
+    """Return whether a log field name should use conservative substring redaction."""
+    normalized = str(key).casefold()
+    return any(word in normalized for word in _SENSITIVE_LOG_WORDS)
+
+
 def _redact(
     _logger: Any, _method: str, event_dict: MutableMapping[str, Any]
 ) -> MutableMapping[str, Any]:
     api_token = _token.get()
     for key in tuple(event_dict):
-        if any(word in key.casefold() for word in _SENSITIVE):
+        if is_sensitive_log_key(key):
             event_dict[key] = "[REDACTED]"
         else:
             event_dict[key] = _redact_value(event_dict[key], api_token)

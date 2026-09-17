@@ -135,9 +135,14 @@ def test_sender_rate_limiter_is_per_sender() -> None:
 
 def test_secret_key_helper_matches_masking_word_list() -> None:
     for word in _SECRET_WORDS:
-        key = f"prefix_{word}_suffix"
+        key = word
         assert is_secret_key(key)
         assert mask_secrets({key: "value"})[key] == "[REDACTED]"
+        plural_key = f"prefix_{word}s"
+        assert is_secret_key(plural_key)
+        assert mask_secrets({plural_key: "value"})[plural_key] == "[REDACTED]"
+        assert not is_secret_key(f"prefix_{word}_suffix")
+    assert not is_secret_key("token_ttl_s")
     assert not is_secret_key("display_name")
 
 
