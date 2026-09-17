@@ -15,6 +15,7 @@ from starlette.requests import HTTPConnection, Request
 from starlette.websockets import WebSocketDisconnect
 
 from tonewatch.events import (
+    CallEnriched,
     ChannelLevel,
     Event,
     EventBus,
@@ -48,6 +49,8 @@ def serialize_event(event: Event) -> dict[str, Any]:
     """Serialize a domain event with explicit event type and JSON-safe fields."""
     if isinstance(event, ToneDiscovered):
         event_type = "tone_discovered"
+    elif isinstance(event, CallEnriched):
+        event_type = "call_enriched"
     elif isinstance(event, LiveListenersChanged):
         event_type = "live_listeners_changed"
     else:

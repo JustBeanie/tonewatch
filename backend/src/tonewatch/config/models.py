@@ -22,7 +22,7 @@ from tonewatch.dsp.squelch import SquelchConfig
 Slug = Annotated[str, StringConstraints(pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$", min_length=1)]
 BoundedString = Annotated[str, StringConstraints(min_length=1, max_length=500)]
 Positive = Annotated[float, Field(gt=0)]
-AlertEvent = Literal["pre_alert", "recording_ready", "closed", "tone_discovered"]
+AlertEvent = Literal["pre_alert", "recording_ready", "closed", "tone_discovered", "call_enriched"]
 DEFAULT_ALERT_EVENTS: tuple[AlertEvent, ...] = ("pre_alert", "recording_ready", "closed")
 
 
@@ -368,6 +368,30 @@ class MqttTarget(FrozenModel):
         return self.host or self.broker
 
 
+class CadFeed(FrozenModel):
+    """An icad2mqtt v2 CAD feed."""
+
+    id: Slug
+    name: str = Field(min_length=1, max_length=200)
+    type: Literal["icad2mqtt"] = "icad2mqtt"
+    mqtt_target_id: Slug | None = None
+    host: str | None = None
+    port: int = Field(default=1883, ge=1, le=65535)
+    tls: bool = False
+    username: str | None = None
+    password: str | None = None
+    base_topic: str = Field(default="911/cad", min_length=1, max_length=300)
+    enabled: bool = True
+    window_before_s: float = Field(default=180, ge=0, le=3600)
+    window_after_s: float = Field(default=300, ge=0, le=3600)
+
+    @model_validator(mode="after")
+    def exactly_one_broker(self) -> "CadFeed":
+        if (self.host is None) == (self.mqtt_target_id is None):
+            raise ValueError("exactly one of host or mqtt_target_id is required")
+        return self
+
+
 _NODE_ID = r"^![0-9a-fA-F]{8}$"
 _MESHTASTIC_FIELDS = {
     "agency_short",
@@ -377,6 +401,8 @@ _MESHTASTIC_FIELDS = {
     "time",
     "source",
     "call_id_short",
+    "cad_type",
+    "cad_address",
 }
 
 
@@ -399,7 +425,7 @@ class MeshtasticTarget(FrozenModel):
     destination: str = Field(default="broadcast", pattern=r"^(broadcast|![0-9a-fA-F]{8})$")
     template: str = "TONE {agency_short} {toneset} {time}"
     max_bytes: int = Field(default=200, ge=1, le=200)
-    phases: list[Literal["pre_alert", "recording_ready", "closed"]] = ["pre_alert"]
+    phases: list[Literal["pre_alert", "recording_ready", "closed", "call_enriched"]] = ["pre_alert"]
     min_interval_s: float = Field(default=30, ge=0)
     max_per_hour: int = Field(default=20, ge=1)
     timeout_s: Positive = 30
@@ -524,6 +550,15 @@ def _validate_meshtastic_references(targets: list[AlertTarget]) -> None:
             )
 
 
+def _validate_cad_references(config: "AppConfig") -> None:
+    mqtt_ids = {item.id for item in config.alert_targets if isinstance(item, MqttTarget)}
+    for feed in config.cad_feeds:
+        if feed.mqtt_target_id is not None and feed.mqtt_target_id not in mqtt_ids:
+            raise ValueError(
+                f"CAD feed {feed.id} references missing MQTT target {feed.mqtt_target_id}"
+            )
+
+
 def _validate_admin_alert_references(config: "AppConfig") -> None:
     """Ensure operational alerts only name configured output targets."""
     target_ids = {item.id for item in config.alert_targets}
@@ -539,6 +574,7 @@ class AppConfig(FrozenModel):
     sources: list[Source] = Field(default_factory=list, max_length=16)
     alert_targets: list[AlertTarget] = Field(default_factory=list, max_length=128)
     agencies: list[Agency] = Field(default_factory=list, max_length=500)
+    cad_feeds: list[CadFeed] = Field(default_factory=list, max_length=64)
     map: MapConfig = Field(default_factory=MapConfig)
     discovery: DiscoveryConfig = Field(default_factory=DiscoveryConfig)
     live_stream: LiveStreamConfig = Field(default_factory=LiveStreamConfig)
@@ -551,6 +587,7 @@ class AppConfig(FrozenModel):
             ("source", self.sources),
             ("alert target", self.alert_targets),
             ("agency", self.agencies),
+            ("CAD feed", self.cad_feeds),
         ):
             seen: set[str] = set()
             for item in items:
@@ -560,6 +597,7 @@ class AppConfig(FrozenModel):
         tone_ids = {item.id for item in self.tone_sets}
         target_ids = {item.id for item in self.alert_targets}
         _validate_meshtastic_references(self.alert_targets)
+        _validate_cad_references(self)
         agency_ids = {item.id for item in self.agencies}
         _validate_admin_alert_references(self)
         for toneset in self.tone_sets:

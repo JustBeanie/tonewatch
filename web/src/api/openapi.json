@@ -447,6 +447,14 @@
             "title": "Alert Targets",
             "type": "array"
           },
+          "cad_feeds": {
+            "items": {
+              "$ref": "#/components/schemas/CadFeed"
+            },
+            "maxItems": 64,
+            "title": "Cad Feeds",
+            "type": "array"
+          },
           "discovery": {
             "$ref": "#/components/schemas/DiscoveryConfig"
           },
@@ -510,6 +518,120 @@
           "file"
         ],
         "title": "Body_analyze_api_analyze_post",
+        "type": "object"
+      },
+      "CadFeed": {
+        "additionalProperties": false,
+        "description": "An icad2mqtt v2 CAD feed.",
+        "properties": {
+          "base_topic": {
+            "default": "911/cad",
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Base Topic",
+            "type": "string"
+          },
+          "enabled": {
+            "default": true,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "host": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Host"
+          },
+          "id": {
+            "minLength": 1,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "title": "Id",
+            "type": "string"
+          },
+          "mqtt_target_id": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mqtt Target Id"
+          },
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "password": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Password"
+          },
+          "port": {
+            "default": 1883,
+            "maximum": 65535.0,
+            "minimum": 1.0,
+            "title": "Port",
+            "type": "integer"
+          },
+          "tls": {
+            "default": false,
+            "title": "Tls",
+            "type": "boolean"
+          },
+          "type": {
+            "const": "icad2mqtt",
+            "default": "icad2mqtt",
+            "title": "Type",
+            "type": "string"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          },
+          "window_after_s": {
+            "default": 300,
+            "maximum": 3600.0,
+            "minimum": 0.0,
+            "title": "Window After S",
+            "type": "number"
+          },
+          "window_before_s": {
+            "default": 180,
+            "maximum": 3600.0,
+            "minimum": 0.0,
+            "title": "Window Before S",
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "CadFeed",
         "type": "object"
       },
       "CalibrateRequest": {
@@ -673,6 +795,14 @@
             "title": "Build",
             "type": "object"
           },
+          "cad_feeds": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Cad Feeds",
+            "type": "array"
+          },
           "generated_at": {
             "format": "date-time",
             "title": "Generated At",
@@ -710,6 +840,7 @@
           "service",
           "storage",
           "outputs",
+          "cad_feeds",
           "build"
         ],
         "title": "HealthResponse",
@@ -894,7 +1025,8 @@
               "enum": [
                 "pre_alert",
                 "recording_ready",
-                "closed"
+                "closed",
+                "call_enriched"
               ],
               "type": "string"
             },
@@ -1090,7 +1222,8 @@
               "enum": [
                 "pre_alert",
                 "recording_ready",
-                "closed"
+                "closed",
+                "call_enriched"
               ],
               "type": "string"
             },
@@ -1188,7 +1321,8 @@
                 "pre_alert",
                 "recording_ready",
                 "closed",
-                "tone_discovered"
+                "tone_discovered",
+                "call_enriched"
               ],
               "type": "string"
             },
@@ -1448,7 +1582,8 @@
                 "pre_alert",
                 "recording_ready",
                 "closed",
-                "tone_discovered"
+                "tone_discovered",
+                "call_enriched"
               ],
               "type": "string"
             },
@@ -2060,7 +2195,8 @@
                 "pre_alert",
                 "recording_ready",
                 "closed",
-                "tone_discovered"
+                "tone_discovered",
+                "call_enriched"
               ],
               "type": "string"
             },
@@ -3034,6 +3170,276 @@
         "summary": "Token Rotate",
         "tags": [
           "auth"
+        ]
+      }
+    },
+    "/api/cad-feeds": {
+      "get": {
+        "operationId": "list_items_api_cad_feeds_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {},
+                  "title": "Response List Items Api Cad Feeds Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Items",
+        "tags": [
+          "configuration"
+        ]
+      },
+      "post": {
+        "operationId": "create_item_api_cad_feeds_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Payload",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Create Item Api Cad Feeds Post"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Item",
+        "tags": [
+          "configuration"
+        ]
+      }
+    },
+    "/api/cad-feeds/{item_id}": {
+      "delete": {
+        "operationId": "delete_item_api_cad_feeds__item_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "title": "Item Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Delete Item Api Cad Feeds  Item Id  Delete"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Item",
+        "tags": [
+          "configuration"
+        ]
+      },
+      "get": {
+        "operationId": "get_item_api_cad_feeds__item_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "title": "Item Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Get Item Api Cad Feeds  Item Id  Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Item",
+        "tags": [
+          "configuration"
+        ]
+      },
+      "put": {
+        "operationId": "update_item_api_cad_feeds__item_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "title": "Item Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Payload",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Update Item Api Cad Feeds  Item Id  Put"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Item",
+        "tags": [
+          "configuration"
+        ]
+      }
+    },
+    "/api/cad/unmatched-agencies": {
+      "get": {
+        "operationId": "unmatched_api_cad_unmatched_agencies_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Unmatched Api Cad Unmatched Agencies Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Unmatched",
+        "tags": [
+          "configuration",
+          "cad"
+        ]
+      }
+    },
+    "/api/cad/unmatched-agencies/{key}/create-agency": {
+      "post": {
+        "operationId": "create_agency_api_cad_unmatched_agencies__key__create_agency_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "title": "Key",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Create Agency Api Cad Unmatched Agencies  Key  Create Agency Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Agency",
+        "tags": [
+          "configuration",
+          "cad"
         ]
       }
     },

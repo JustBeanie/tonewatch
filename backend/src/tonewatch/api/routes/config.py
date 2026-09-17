@@ -12,7 +12,15 @@ from pydantic import BaseModel, Field, TypeAdapter, ValidationError
 from tonewatch.alerts.meshtastic import render_message, render_untruncated
 from tonewatch.api.audit import is_secret_key
 from tonewatch.api.deps import _dump, authenticated, collection, put, save_config, write_auth
-from tonewatch.config.models import AlertTarget, AppConfig, MeshtasticTarget, Source, ToneSet
+from tonewatch.api.routes.cad import router as cad_router
+from tonewatch.config.models import (
+    AlertTarget,
+    AppConfig,
+    CadFeed,
+    MeshtasticTarget,
+    Source,
+    ToneSet,
+)
 from tonewatch.config.store import replace_config as rebuild_config
 from tonewatch.dsp.squelch import Squelch, SquelchConfig
 from tonewatch.events import CallClosed, ToneDetected
@@ -281,7 +289,7 @@ def _crud(path: str, kind: str, model: Any) -> None:
         if payload.get("id") != item_id:
             raise HTTPException(422, "id does not match path")
         existing = next((value for value in collection(request, kind) if value.id == item_id), None)
-        if kind == "alert_targets" and existing is not None:
+        if kind in {"alert_targets", "cad_feeds"} and existing is not None:
             payload = dict(payload)
             stored = existing.model_dump(mode="python")
             for key, value in stored.items():
@@ -328,6 +336,8 @@ def _crud(path: str, kind: str, model: Any) -> None:
 
 _crud("/sources", "sources", Source)
 _crud("/alert-targets", "alert_targets", AlertTarget)
+_crud("/cad-feeds", "cad_feeds", CadFeed)
+router.include_router(cad_router)
 
 
 @router.get("/map-config", dependencies=[Depends(authenticated)])

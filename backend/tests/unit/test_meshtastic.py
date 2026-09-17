@@ -90,7 +90,7 @@ def test_template_fields_and_urls_are_sanitized() -> None:
     assert "private.example" not in rendered
     assert "12345678" in rendered
     with pytest.raises(ValidationError, match="unsupported Meshtastic placeholder"):
-        target(template="{cad_type}")
+        target(template="{unsupported_field}")
     with pytest.raises(ValidationError, match="http"):
         target(template="see http://example.invalid {time}")
     assert render_message(target(), {"tone_sets": ["Fire", "EMS"]}).startswith(

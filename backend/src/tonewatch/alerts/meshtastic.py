@@ -96,6 +96,8 @@ def render_untruncated(target: MeshtasticTarget, payload: dict[str, object]) -> 
         "time": local_time,
         "source": sanitize(payload.get("source_id", payload.get("source", ""))),
         "call_id_short": sanitize(str(payload.get("call_id", ""))[:8]),
+        "cad_type": _value_text(payload.get("cad_type", payload.get("type", ""))),
+        "cad_address": _value_text(payload.get("cad_address", payload.get("address_clean", ""))),
     }
     rendered = target.template.format(**values)
     if payload.get("test"):

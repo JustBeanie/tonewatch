@@ -25,6 +25,8 @@ def test_async_sqlite_wal_and_repository(tmp_path: Path) -> None:
             assert await connection.run_sync(lambda conn: inspect(conn).get_table_names()) == [
                 "alert_attempts",
                 "audit_events",
+                "cad_incidents",
+                "call_cad_incidents",
                 "call_tone_sets",
                 "calls",
                 "discovered_tones",

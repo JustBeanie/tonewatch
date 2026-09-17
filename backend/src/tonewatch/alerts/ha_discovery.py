@@ -46,9 +46,14 @@ class HADiscovery:
             topics[self._topic("event", key)] = {
                 "name": toneset.name,
                 "unique_id": f"{self.instance_id}_{key}",
-                "event_types": ["pre_alert", "recording_ready"],
+                "event_types": ["pre_alert", "recording_ready", "call_enriched"],
                 "state_topic": f"tonewatch/{self.instance_id}/call",
                 "event_topic": f"tonewatch/{self.instance_id}/call",
+                "json_attributes_topic": f"tonewatch/{self.instance_id}/call",
+                "json_attributes_template": (
+                    "{{ {'cad_type': value_json.cad_type, "
+                    "'cad_address': value_json.cad_address} | tojson }}"
+                ),
                 "availability": availability,
                 "device": device,
             }

@@ -617,7 +617,7 @@ async def test_calls_filters_and_cursor_pagination() -> None:
         token = (Path(directory) / "api_token").read_text().strip()
         headers = {"Authorization": f"Bearer {token}"}
         async with await _client(app) as client:
-            RichSession.values = [calls, tones]
+            RichSession.values = [calls, tones, []]
             response = await client.get(
                 "/api/calls?limit=999&cursor=0&source_id=radio&toneset_id=fire"
                 f"&since={started.isoformat().replace('+00:00', 'Z')}"
@@ -626,7 +626,8 @@ async def test_calls_filters_and_cursor_pagination() -> None:
             )
             assert response.status_code == 200
             assert len(response.json()["items"]) == 2 and response.json()["next_cursor"] is None
-            RichSession.values = [calls, tones]
+            assert all(item["has_cad"] is False for item in response.json()["items"])
+            RichSession.values = [calls, tones, []]
             page = await client.get(
                 "/api/calls?limit=1&cursor=0&source_id=radio&toneset_id=fire", headers=headers
             )

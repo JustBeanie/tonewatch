@@ -8,17 +8,25 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import select
 
 from tonewatch.api.deps import _dump, authenticated, base_path
-from tonewatch.storage.models import AlertAttempt, Call, CallToneSet, Recording
+from tonewatch.storage.models import (
+    AlertAttempt,
+    CadIncident,
+    Call,
+    CallCadIncident,
+    CallToneSet,
+    Recording,
+)
 
 router = APIRouter(prefix="/api", tags=["calls"])
 
 
-def _call_dump(call: Call) -> dict[str, Any]:
+def _call_dump(call: Call, *, has_cad: bool = False) -> dict[str, Any]:
     return {
         "id": str(call.id),
         "started_at": call.started_at.isoformat(),
         "source_id": call.source_id,
         "status": call.status,
+        "has_cad": has_cad,
     }
 
 
@@ -61,8 +69,17 @@ async def list_calls(
         rows = [row for row in rows if row.id in ids]
     page = rows[cursor : cursor + limit]
     next_cursor = cursor + limit if cursor + limit < len(rows) else None
+    linked_rows = (
+        await _rows(
+            request,
+            select(CallCadIncident).where(CallCadIncident.call_id.in_([row.id for row in page])),
+        )
+        if page
+        else []
+    )
+    linked_ids = {row.call_id for row in linked_rows}
     return {
-        "items": [_call_dump(row) for row in page],
+        "items": [_call_dump(row, has_cad=row.id in linked_ids) for row in page],
         "next_cursor": str(next_cursor) if next_cursor is not None else None,
     }
 
@@ -84,9 +101,34 @@ async def call_detail(request: Request, call_id: UUID) -> dict[str, Any]:
                 await session.scalars(select(AlertAttempt).where(AlertAttempt.call_id == call_id))
             ).all()
         )
+        links = list(
+            (
+                await session.scalars(
+                    select(CallCadIncident).where(CallCadIncident.call_id == call_id)
+                )
+            ).all()
+        )
+        incident_ids = {(row.feed_id, row.incident_id) for row in links}
+        incidents = (
+            list(
+                (
+                    await session.scalars(
+                        select(CadIncident).where(
+                            CadIncident.feed_id.in_([feed_id for feed_id, _ in incident_ids]),
+                            CadIncident.incident_id.in_(
+                                [incident_id for _, incident_id in incident_ids]
+                            ),
+                        )
+                    )
+                ).all()
+            )
+            if incident_ids
+            else []
+        )
+        incident_map = {(row.feed_id, row.incident_id): row for row in incidents}
     prefix = base_path(request)
     return {
-        **_call_dump(call),
+        **_call_dump(call, has_cad=bool(links)),
         "tone_sets": [
             {
                 "toneset_id": row.toneset_id,
@@ -109,4 +151,29 @@ async def call_detail(request: Request, call_id: UUID) -> dict[str, Any]:
             for row in recordings
         ],
         "alert_attempts": [_dump(row) for row in alerts],
+        "cad_incidents": [
+            {
+                "feed_id": row.feed_id,
+                "incident_id": row.incident_id,
+                "matched_at": row.matched_at.isoformat(),
+                "delta_s": row.delta_s,
+                "agency": {
+                    "name": incident_map[(row.feed_id, row.incident_id)].agency_name,
+                    "key": incident_map[(row.feed_id, row.incident_id)].agency_key,
+                }
+                if (row.feed_id, row.incident_id) in incident_map
+                else None,
+                "type": {
+                    "raw": incident_map[(row.feed_id, row.incident_id)].type_raw,
+                    "key": incident_map[(row.feed_id, row.incident_id)].type_key,
+                    "code": incident_map[(row.feed_id, row.incident_id)].type_code,
+                }
+                if (row.feed_id, row.incident_id) in incident_map
+                else None,
+                "address_clean": incident_map[(row.feed_id, row.incident_id)].address_clean
+                if (row.feed_id, row.incident_id) in incident_map
+                else None,
+            }
+            for row in links
+        ],
     }

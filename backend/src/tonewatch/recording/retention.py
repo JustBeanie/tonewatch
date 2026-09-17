@@ -10,10 +10,10 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, exists, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from tonewatch.storage.models import DiscoveredTone, Recording
+from tonewatch.storage.models import CadIncident, CallCadIncident, DiscoveredTone, Recording
 
 
 @dataclass(frozen=True, slots=True)
@@ -75,6 +75,18 @@ class RetentionService:
             if self.policy.max_age_days is not None
             else None
         )
+        if cutoff is not None:
+            await session.execute(
+                delete(CadIncident).where(
+                    CadIncident.last_seen_at < cutoff,
+                    ~exists(
+                        select(CallCadIncident.call_id).where(
+                            CallCadIncident.feed_id == CadIncident.feed_id,
+                            CallCadIncident.incident_id == CadIncident.incident_id,
+                        )
+                    ),
+                )
+            )
         for recording in rows:
             path = Path(recording.path)
             too_old = (

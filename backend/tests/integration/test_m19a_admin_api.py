@@ -60,6 +60,7 @@ async def test_m19a_g_health_auth_schema_nulls_and_secret_free() -> None:
                 "service",
                 "storage",
                 "outputs",
+                "cad_feeds",
                 "build",
             }
             assert set(body["storage"]) == {

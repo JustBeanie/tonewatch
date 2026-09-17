@@ -15,4 +15,9 @@ export interface ToneDiscoveredMessage {
   data: Record<string, unknown>;
 }
 
-export type WebSocketMessage = SubscribeMessage | SubscriptionAck | ToneDiscoveredMessage;
+export interface CallEnrichedMessage {
+  type: string;
+  data: Record<string, unknown>;
+}
+
+export type WebSocketMessage = SubscribeMessage | SubscriptionAck | ToneDiscoveredMessage | CallEnrichedMessage;

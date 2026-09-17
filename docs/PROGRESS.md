@@ -147,11 +147,11 @@ Tick a task with `[x]`, then append ` — <PR link> — <one-line note>`. Blocke
 ## M17: CAD incident correlation via icad2mqtt (added 2026-09-12 at user request)
 - [ ] **M17.0** Codex improvement plan for icad2mqtt (audit, parsing, data cleaning, contract, packaging) → PM review → user. — brief M17-icad2mqtt-plan
 - [ ] **M17.1** icad2mqtt structured JSON contract: retained `incidents` snapshot and `incident` new/updated/closed events. — brief M17a (icad2mqtt repo)
-- [ ] **M17.2** ToneWatch CAD feed subscriber, strict schema validation, `CadIncident` table (migration 0006).
-- [ ] **M17.3** Correlate incidents to calls by `Agency.cad_names` and time window; `CallEnriched` event.
-- [ ] **M17.4** Unmatched CAD agencies list with "Create agency".
+- [x] **M17.2** ToneWatch CAD feed subscriber, strict schema validation, `CadIncident` table (migration 0006). — direct to main — cad_feeds config, hardened aiomqtt subscriber, snapshot authority, migration 0007
+- [x] **M17.3** Correlate incidents to calls by `Agency.cad_names` and time window; `CallEnriched` event. — direct to main — call-start + late-arrival correlation, CallEnriched to WS/MQTT/opt-in webhooks/Meshtastic
+- [x] **M17.4** Unmatched CAD agencies list with "Create agency". — direct to main — unmatched CAD agencies list with create-agency
 - [ ] **M17.5** Web UI: incident card, dashboard CAD panel, agency recent incidents.
-- [ ] **M17.6** Threat model, ASVS rows, privacy (addresses follow retention, never logged).
+- [x] **M17.6** Threat model, ASVS rows, privacy (addresses follow retention, never logged). — direct to main — untrusted-input caps, no incident fields in logs, retention, threat model
 
 ## M18: Meshtastic notification target (added 2026-09-12 at user request)
 - [x] **M18.1** ADR 0012 records MQTT JSON downlink requirements, firmware compatibility, TCP/serial comparison, and GPL-3.0 licensing rationale.

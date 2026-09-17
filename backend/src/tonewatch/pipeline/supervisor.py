@@ -11,11 +11,14 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
+import aiomqtt
 from sqlalchemy import select
 
 from tonewatch.admin.alerts import AdminAlertEngine
 from tonewatch.admin.health import ChannelHealth, StorageScanner, bounded_error, storage_forecast
 from tonewatch.alerts.dispatcher import AlertDispatcher
+from tonewatch.cad.correlate import CadCorrelationService
+from tonewatch.cad.feed import CadFeedRunner
 from tonewatch.events import EventBus, FeedHealthChanged
 from tonewatch.pipeline.channel import Channel
 from tonewatch.pipeline.persistence import PersistenceSubscriber
@@ -60,6 +63,7 @@ class Supervisor:
         shutdown_finalize_timeout_s: float | None = None,
         shutdown_drain_timeout_s: float | None = None,
         live_hub: Any = None,
+        cad_client_factory: Any = None,
     ) -> None:
         self.config, self.bus, self.session_factory = config, bus, session_factory
         self.settings = settings
@@ -113,6 +117,27 @@ class Supervisor:
         )
         self.retention_service = retention_service
         self._retention_task: asyncio.Task[None] | None = None
+        self._cad_tasks: dict[str, asyncio.Task[None]] = {}
+        self._cad_configs: dict[str, Any] = {}
+        self.cad_health: dict[str, Any] = {}
+        self._cad_client_factory = cad_client_factory or self._default_cad_client
+        self.cad_correlation = CadCorrelationService(
+            config, bus, session_factory, clock=lambda: datetime.now(UTC)
+        )
+
+    def _default_cad_client(self, feed: Any) -> Any:
+        """Build an aiomqtt client from a feed; tests inject this factory."""
+        target = next(
+            (item for item in self.config.alert_targets if item.id == feed.mqtt_target_id), None
+        )
+        host = feed.host or getattr(target, "hostname", "localhost")
+        return aiomqtt.Client(
+            hostname=host,
+            port=feed.port if feed.host else getattr(target, "port", feed.port),
+            username=feed.username if feed.host else getattr(target, "username", None),
+            password=feed.password if feed.host else getattr(target, "password", None),
+            tls_context=None,
+        )
 
     async def start(self) -> None:
         """Start persistence and one task per enabled source."""
@@ -120,6 +145,7 @@ class Supervisor:
             return
         self._stopping = False
         await self.persistence.start()
+        await self.cad_correlation.start()
         if self.settings is not None:
             await self.persistence.reconcile_orphans(self.settings.recording_path)
         await self.alerts.start()
@@ -136,6 +162,7 @@ class Supervisor:
         for source in self.config.sources:
             if source.enabled:
                 self._start_source(source)
+        self._apply_cad_feeds()
 
     async def stop(self) -> None:
         """Cancel all channel tasks within the bounded shutdown period."""
@@ -178,6 +205,14 @@ class Supervisor:
             await asyncio.gather(self._admin_task, return_exceptions=True)
             self._admin_task = None
         await self.admin_alerts.stop()
+        await self.cad_correlation.stop()
+        for task in tuple(self._cad_tasks.values()):
+            task.cancel()
+        if self._cad_tasks:
+            await asyncio.gather(*self._cad_tasks.values(), return_exceptions=True)
+        self._cad_tasks.clear()
+        self._cad_configs.clear()
+        self.cad_health.clear()
         self._tasks.clear()
         self._configs.clear()
         self._channels.clear()
@@ -210,6 +245,7 @@ class Supervisor:
         self.config = config
         self.persistence.discovery_clip = bool(getattr(config.discovery, "clip", True))
         self.persistence.config = config
+        await self.cad_correlation.reload(config)
         await self.alerts.reload(config)
         await self.admin_alerts.reload(config.admin_alerts)
         if not config.admin_alerts.enabled and self._admin_task is not None:
@@ -228,6 +264,37 @@ class Supervisor:
                 or discovery_changed
             ):
                 self._start_source(source)
+        self._apply_cad_feeds()
+
+    def _apply_cad_feeds(self) -> None:
+        """Hot-apply enabled CAD feed tasks without touching radio channels."""
+        desired = {feed.id: feed for feed in self.config.cad_feeds if feed.enabled}
+        for feed_id in set(self._cad_tasks) - set(desired):
+            self._cad_tasks[feed_id].cancel()
+            self._cad_tasks.pop(feed_id, None)
+            self._cad_configs.pop(feed_id, None)
+            self.cad_health.pop(feed_id, None)
+        for feed_id, feed in desired.items():
+            if feed_id in self._cad_tasks:
+                if self._cad_configs[feed_id] == feed:
+                    continue
+                self._cad_tasks[feed_id].cancel()
+                self._cad_tasks.pop(feed_id, None)
+                self._cad_configs.pop(feed_id, None)
+                self.cad_health.pop(feed_id, None)
+            runner = CadFeedRunner(
+                feed,
+                client_factory=self._cad_client_factory,
+                session_factory=self.session_factory,
+                sleep=self.sleep,
+                jitter=self.jitter,
+            )
+            self._cad_configs[feed_id] = feed
+            runner.on_incident = self.cad_correlation.on_incident
+            self.cad_health[feed_id] = runner.health
+            self._cad_tasks[feed_id] = asyncio.create_task(
+                runner.run(), name=f"tonewatch-cad-{feed_id}"
+            )
 
     def _start_source(self, source: Source) -> None:
         self._configs[source.id] = source

@@ -83,5 +83,8 @@ The dedicated secret is generated in the data directory with owner-only mode
 0600 on POSIX and is never the API token.
 
 | TM-040 | Information disclosure / Denial of service | Admin alert delivery | Operational notifications could be mistaken for pages, leak target credentials, or fan out without bounds. | med | med | mitigated | `backend/src/tonewatch/admin/alerts.py:1`; `backend/src/tonewatch/alerts/mqtt.py:256`; `docs/guide/admin.md`; `test_admin_alert_config_defaults_and_bounds` | M19.2 |
+| TM-041 | Tampering / Denial of service | Untrusted MQTT CAD input | Malformed or oversized CAD messages could crash or exhaust the subscriber. | med | high | planned | `backend/src/tonewatch/cad/feed.py:1` | M17.6 |
+| TM-042 | Information disclosure | CAD address data at rest | Incident addresses require retention and access controls. | med | high | planned | `docs/guide/cad.md:1` | M17.6 |
+| TM-043 | Information disclosure | CAD incident fields in logs | Logs must not contain addresses, types, or cross streets. | med | high | planned | `backend/src/tonewatch/cad/feed.py:1` | M17.6 |
 
 TM-015 remains accepted under AR-002; planned future surfaces remain explicitly out of scope until their owning milestone implements and tests them.

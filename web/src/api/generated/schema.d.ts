@@ -291,6 +291,77 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/cad-feeds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Items */
+        get: operations["list_items_api_cad_feeds_get"];
+        put?: never;
+        /** Create Item */
+        post: operations["create_item_api_cad_feeds_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/cad-feeds/{item_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Item */
+        get: operations["get_item_api_cad_feeds__item_id__get"];
+        /** Update Item */
+        put: operations["update_item_api_cad_feeds__item_id__put"];
+        post?: never;
+        /** Delete Item */
+        delete: operations["delete_item_api_cad_feeds__item_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/cad/unmatched-agencies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Unmatched */
+        get: operations["unmatched_api_cad_unmatched_agencies_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/cad/unmatched-agencies/{key}/create-agency": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Agency */
+        post: operations["create_agency_api_cad_unmatched_agencies__key__create_agency_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/calls": {
         parameters: {
             query?: never;
@@ -895,6 +966,8 @@ export interface components {
             agencies?: components["schemas"]["Agency"][];
             /** Alert Targets */
             alert_targets?: (components["schemas"]["MqttTarget"] | components["schemas"]["MeshtasticTarget"] | components["schemas"]["WebhookTarget"] | components["schemas"]["ScriptTarget"])[];
+            /** Cad Feeds */
+            cad_feeds?: components["schemas"]["CadFeed"][];
             discovery?: components["schemas"]["DiscoveryConfig"];
             live_stream?: components["schemas"]["LiveStreamConfig"];
             map?: components["schemas"]["MapConfig"];
@@ -907,6 +980,60 @@ export interface components {
         Body_analyze_api_analyze_post: {
             /** File */
             file: string;
+        };
+        /**
+         * CadFeed
+         * @description An icad2mqtt v2 CAD feed.
+         */
+        CadFeed: {
+            /**
+             * Base Topic
+             * @default 911/cad
+             */
+            base_topic: string;
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+            /** Host */
+            host?: string | null;
+            /** Id */
+            id: string;
+            /** Mqtt Target Id */
+            mqtt_target_id?: string | null;
+            /** Name */
+            name: string;
+            /** Password */
+            password?: string | null;
+            /**
+             * Port
+             * @default 1883
+             */
+            port: number;
+            /**
+             * Tls
+             * @default false
+             */
+            tls: boolean;
+            /**
+             * Type
+             * @default icad2mqtt
+             * @constant
+             */
+            type: "icad2mqtt";
+            /** Username */
+            username?: string | null;
+            /**
+             * Window After S
+             * @default 300
+             */
+            window_after_s: number;
+            /**
+             * Window Before S
+             * @default 180
+             */
+            window_before_s: number;
         };
         /** CalibrateRequest */
         CalibrateRequest: {
@@ -1005,6 +1132,10 @@ export interface components {
             build: {
                 [key: string]: unknown;
             };
+            /** Cad Feeds */
+            cad_feeds: {
+                [key: string]: unknown;
+            }[];
             /**
              * Generated At
              * Format: date-time
@@ -1137,7 +1268,7 @@ export interface components {
              *       "pre_alert"
              *     ]
              */
-            phases: ("pre_alert" | "recording_ready" | "closed")[];
+            phases: ("pre_alert" | "recording_ready" | "closed" | "call_enriched")[];
             /**
              * Port
              * @default 1883
@@ -1247,7 +1378,7 @@ export interface components {
              *       "pre_alert"
              *     ]
              */
-            phases: ("pre_alert" | "recording_ready" | "closed")[];
+            phases: ("pre_alert" | "recording_ready" | "closed" | "call_enriched")[];
             /**
              * Port
              * @default 1883
@@ -1302,7 +1433,7 @@ export interface components {
              */
             enabled: boolean;
             /** Events */
-            events?: ("pre_alert" | "recording_ready" | "closed" | "tone_discovered")[];
+            events?: ("pre_alert" | "recording_ready" | "closed" | "tone_discovered" | "call_enriched")[];
             /**
              * Ha Discovery
              * @default true
@@ -1443,7 +1574,7 @@ export interface components {
              */
             enabled: boolean;
             /** Events */
-            events?: ("pre_alert" | "recording_ready" | "closed" | "tone_discovered")[];
+            events?: ("pre_alert" | "recording_ready" | "closed" | "tone_discovered" | "call_enriched")[];
             /** Executable */
             executable: string;
             /** Id */
@@ -1721,7 +1852,7 @@ export interface components {
              */
             enabled: boolean;
             /** Events */
-            events?: ("pre_alert" | "recording_ready" | "closed" | "tone_discovered")[];
+            events?: ("pre_alert" | "recording_ready" | "closed" | "tone_discovered" | "call_enriched")[];
             /** Id */
             id: string;
             /**
@@ -2390,6 +2521,215 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+        };
+    };
+    list_items_api_cad_feeds_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown[];
+                };
+            };
+        };
+    };
+    create_item_api_cad_feeds_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_item_api_cad_feeds__item_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_item_api_cad_feeds__item_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_item_api_cad_feeds__item_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    unmatched_api_cad_unmatched_agencies_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    }[];
+                };
+            };
+        };
+    };
+    create_agency_api_cad_unmatched_agencies__key__create_agency_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

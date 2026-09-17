@@ -20,3 +20,10 @@ class ToneDiscoveredMessage(BaseModel):
 
     type: Literal["tone_discovered"] = "tone_discovered"
     data: dict[str, object] = Field(default_factory=dict)
+
+
+class CallEnrichedMessage(BaseModel):
+    """Wire shape for a CAD-enriched call event."""
+
+    type: Literal["call_enriched"] = "call_enriched"
+    data: dict[str, object] = Field(default_factory=dict)

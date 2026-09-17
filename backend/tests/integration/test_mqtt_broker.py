@@ -85,6 +85,7 @@ def _assert_received(received: list[tuple[str, bytes, bool]], call_id: object) -
     assert event_configs and json.loads(event_configs[-1][1])["event_types"] == [
         "pre_alert",
         "recording_ready",
+        "call_enriched",
     ]
     assert any("sensor/" in topic and b"last_call" in payload for topic, payload, _ in discovery)
     assert any(

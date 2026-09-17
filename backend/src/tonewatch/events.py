@@ -57,6 +57,16 @@ class CallClosed:
 
 
 @dataclass(frozen=True)
+class CallEnriched:
+    call_id: UUID
+    feed_id: str
+    incident_id: str
+    incident: dict[str, Any]
+    matched_at: datetime
+    test: bool = False
+
+
+@dataclass(frozen=True)
 class ConfigChanged:
     revision: int
 
@@ -148,6 +158,7 @@ Event = (
     | RecordingStored
     | FeedHealthChanged
     | CallClosed
+    | CallEnriched
     | ConfigChanged
     | ChannelLevel
     | SquelchChanged

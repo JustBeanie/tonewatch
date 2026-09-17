@@ -4,7 +4,17 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID, uuid4
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, event
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    event,
+)
 from sqlalchemy.dialects.sqlite import JSON
 from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -23,6 +33,7 @@ class Call(Base):
     tone_sets: Mapped[list["CallToneSet"]] = relationship(cascade="all, delete-orphan")
     recordings: Mapped[list["Recording"]] = relationship(cascade="all, delete-orphan")
     alerts: Mapped[list["AlertAttempt"]] = relationship(cascade="all, delete-orphan")
+    cad_incidents: Mapped[list["CallCadIncident"]] = relationship(cascade="all, delete-orphan")
 
 
 class CallToneSet(Base):
@@ -64,6 +75,40 @@ class AlertAttempt(Base):
     error: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     retry: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
+
+
+class CadIncident(Base):
+    __tablename__ = "cad_incidents"
+    __table_args__ = (UniqueConstraint("feed_id", "incident_id", name="uq_cad_incident_feed_id"),)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    feed_id: Mapped[str] = mapped_column(String(100), nullable=False)
+    incident_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    agency_name: Mapped[str] = mapped_column(String(300), nullable=False)
+    agency_key: Mapped[str] = mapped_column(String(300), nullable=False)
+    agency_category: Mapped[str] = mapped_column(String(300), nullable=False, default="")
+    type_raw: Mapped[str] = mapped_column(String(300), nullable=False)
+    type_key: Mapped[str] = mapped_column(String(300), nullable=False)
+    type_code: Mapped[str | None] = mapped_column(String(300))
+    address_clean: Mapped[str] = mapped_column(String(300), nullable=False, default="")
+    cross_streets: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    municipality_raw: Mapped[str] = mapped_column(String(300), nullable=False, default="")
+    municipality_name: Mapped[str | None] = mapped_column(String(300))
+    received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    status: Mapped[str] = mapped_column(String(300), nullable=False)
+    first_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class CallCadIncident(Base):
+    __tablename__ = "call_cad_incidents"
+    call_id: Mapped[UUID] = mapped_column(
+        ForeignKey("calls.id", ondelete="CASCADE"), primary_key=True
+    )
+    feed_id: Mapped[str] = mapped_column(String(100), primary_key=True)
+    incident_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    matched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    delta_s: Mapped[float] = mapped_column(Float, nullable=False)
 
 
 class AuditEvent(Base):

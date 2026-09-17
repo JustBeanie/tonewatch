@@ -63,6 +63,7 @@ class HealthResponse(BaseModel):
     service: dict[str, object]
     storage: dict[str, object]
     outputs: list[dict[str, object]]
+    cad_feeds: list[dict[str, object]]
     build: dict[str, object]
 
 
@@ -232,5 +233,27 @@ async def health(request: Request) -> dict[str, object]:
             "retention_forecast": {"days_until_full": forecast},
         },
         "outputs": outputs,
+        "cad_feeds": [
+            {
+                "id": feed.id,
+                "name": feed.name,
+                "connected": bool(
+                    getattr(getattr(supervisor, "cad_health", {}).get(feed.id), "connected", False)
+                ),
+                "availability": getattr(
+                    getattr(supervisor, "cad_health", {}).get(feed.id), "availability", None
+                ),
+                "last_message_at": getattr(
+                    getattr(supervisor, "cad_health", {}).get(feed.id), "last_message_at", None
+                ),
+                "invalid_total": getattr(
+                    getattr(supervisor, "cad_health", {}).get(feed.id), "invalid_total", 0
+                ),
+                "active_incidents": getattr(
+                    getattr(supervisor, "cad_health", {}).get(feed.id), "active_incidents", 0
+                ),
+            }
+            for feed in config.cad_feeds
+        ],
         "build": {"version": __version__, "build": None, "uptime_s": time.monotonic() - _STARTED},
     }

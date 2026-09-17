@@ -11,6 +11,8 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
+from sqlalchemy import select
+
 from tonewatch.admin.health import OutputHealth, bounded_error
 from tonewatch.alerts.ha_discovery import HADiscovery
 from tonewatch.alerts.meshtastic import MeshtasticSender
@@ -27,6 +29,7 @@ from tonewatch.config.models import (
 )
 from tonewatch.events import (
     CallClosed,
+    CallEnriched,
     EventBus,
     FeedHealthChanged,
     RecordingReady,
@@ -36,7 +39,7 @@ from tonewatch.events import (
     ToneDetected,
     ToneDiscovered,
 )
-from tonewatch.storage.models import AlertAttempt, Call
+from tonewatch.storage.models import AlertAttempt, Call, CallToneSet
 
 Sleep = Callable[[float], Awaitable[None]]
 Jitter = Callable[[float], float]
@@ -189,13 +192,19 @@ class AlertDispatcher:
             if isinstance(event, ToneDiscovered):
                 await self._handle_discovered(event)
                 continue
-            if not isinstance(event, (ToneDetected, RecordingReady, RecordingStored, CallClosed)):
+            if not isinstance(
+                event, (ToneDetected, RecordingReady, RecordingStored, CallClosed, CallEnriched)
+            ):
                 continue
             previous = self._event_chains.get(event.call_id)
 
             async def process(
                 previous: asyncio.Task[None] | None = previous,
-                event: ToneDetected | RecordingReady | RecordingStored | CallClosed = event,
+                event: ToneDetected
+                | RecordingReady
+                | RecordingStored
+                | CallClosed
+                | CallEnriched = event,
             ) -> None:
                 if previous is not None:
                     await asyncio.gather(previous, return_exceptions=True)
@@ -302,15 +311,30 @@ class AlertDispatcher:
             return_exceptions=True,
         )
 
-    async def handle(
-        self, event: ToneDetected | RecordingReady | RecordingStored | CallClosed
+    async def handle(  # noqa: PLR0915 -- one event transition builds and delivers one ordered payload.
+        self, event: ToneDetected | RecordingReady | RecordingStored | CallClosed | CallEnriched
     ) -> None:
         """Process one domain event, primarily useful for deterministic tests."""
         phase: str
         call_id: UUID
         test = False
         recording_url: str | None = None
-        if isinstance(event, ToneDetected):
+        if isinstance(event, CallEnriched):
+            call_id, phase, test = event.call_id, "call_enriched", event.test
+            state = self._calls[call_id]
+            if not state["tone_sets"] and self.session_factory is not None:
+                async with self.session_factory() as session:
+                    tone_rows = list(
+                        (
+                            await session.scalars(
+                                select(CallToneSet).where(CallToneSet.call_id == call_id)
+                            )
+                        ).all()
+                    )
+                state["tone_sets"] = [row.toneset_id for row in tone_rows]
+            detected_at = None
+            state["cad_incident"] = event.incident
+        elif isinstance(event, ToneDetected):
             call_id, phase, test = event.call_id, "pre_alert", event.test
             state = self._calls[call_id]
             if event.toneset_id not in state["tone_sets"]:
@@ -350,6 +374,24 @@ class AlertDispatcher:
             public_base_url=getattr(self.settings, "public_base_url", None),
             tone_set_names=self._tone_set_names(state["tone_sets"]),
         )
+        if isinstance(event, CallEnriched):
+            incident = event.incident
+            incident_type = incident.get("type")
+            payload.update(
+                {
+                    "event": "call_enriched",
+                    "feed_id": event.feed_id,
+                    "incident_id": event.incident_id,
+                    "agency": incident.get("agency"),
+                    "type": incident_type,
+                    "cad_type": incident_type,
+                    "address_clean": incident.get("address_clean", ""),
+                    "cad_address": incident.get("address_clean", ""),
+                    "cross_streets": incident.get("cross_streets", []),
+                    "municipality": incident.get("municipality"),
+                    "received_at": incident.get("received_at"),
+                }
+            )
         await self._fan_out(call_id, phase, target_ids, payload, state)
         if isinstance(event, CallClosed):
             self._mesh_sent = {key for key in self._mesh_sent if key[0] != call_id}
