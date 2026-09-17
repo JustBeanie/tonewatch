@@ -1,16 +1,31 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { request } from "../../api/client";
-import { useConnectionStatus, useSubscription } from "../../lib/ws";
+import { useConnectionStatus, useSubscription, useWsEvents, WsMessage } from "../../lib/ws";
 import { LivePlayer, Source } from "../sources/SourceControls";
 type Call = { id: string; started_at: string; source_id: string; status: string };
 export function Dashboard() {
-    const event = useSubscription("events"),
-        level = useSubscription("levels");
-    const connection = useConnectionStatus();
+    const [event, setEvent] = useState<WsMessage>();
     const [calls, setCalls] = useState<Call[]>([]);
     const [discoveredCount, setDiscoveredCount] = useState(0);
     const [sources, setSources] = useState<Source[]>([]);
+    useWsEvents("events", (message) => {
+        setEvent(message);
+        const d = message.data;
+        if (d && ["ToneDetected", "RecordingReady", "CallClosed"].includes(message.type))
+            setCalls((o) =>
+                [
+                    {
+                        ...(d as unknown as Call),
+                        id: String(d.id ?? d.call_id ?? crypto.randomUUID()),
+                    },
+                    ...o,
+                ].slice(0, 50),
+            );
+        if (message.type === "tone_discovered") setDiscoveredCount((count) => count + 1);
+    });
+    const level = useSubscription("levels");
+    const connection = useConnectionStatus();
     useEffect(() => {
         request<{ items?: Call[] }>("calls?limit=50")
             .then((v) => setCalls(v.items ?? []))
@@ -22,22 +37,6 @@ export function Dashboard() {
             .then((value) => setSources(Array.isArray(value) ? value : []))
             .catch(() => undefined);
     }, []);
-    useEffect(() => {
-        const d = event?.data;
-        if (d && ["ToneDetected", "RecordingReady", "CallClosed"].includes(event.type))
-            setCalls((o) =>
-                [
-                    {
-                        ...(d as unknown as Call),
-                        id: String(d.id ?? d.call_id ?? crypto.randomUUID()),
-                    },
-                    ...o,
-                ].slice(0, 50),
-            );
-    }, [event]);
-    useEffect(() => {
-        if (event?.type === "tone_discovered") setDiscoveredCount((count) => count + 1);
-    }, [event]);
     const db = Number(level?.data?.dbfs ?? -100);
     return (
         <>

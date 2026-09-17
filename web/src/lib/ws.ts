@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { websocketUrl } from "./urls";
 
 export type WsMessage = { type: string; data?: Record<string, unknown> };
@@ -83,6 +83,24 @@ export function useSubscription(topic: string | string[]): WsMessage | undefined
         };
     }, [topic]);
     return message;
+}
+
+export function useWsEvents(topic: string | string[], handler: (message: WsMessage) => void): void {
+    const handlerRef = useRef(handler);
+    handlerRef.current = handler;
+    const topicKey = Array.isArray(topic) ? topic.join("\u0000") : topic;
+    useEffect(() => {
+        const socket = new ToneWatchSocket();
+        const remove = socket.onMessage((message) => handlerRef.current(message));
+        socket.connect();
+        const topics = topicKey.split("\u0000");
+        topics.forEach((item) => socket.subscribe(item));
+        return () => {
+            remove();
+            topics.forEach((item) => socket.unsubscribe(item));
+            socket.close();
+        };
+    }, [topicKey]);
 }
 
 export function useConnectionStatus(): ConnectionStatus {

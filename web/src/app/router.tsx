@@ -12,6 +12,9 @@ import { Sources } from "../features/sources/Sources";
 import { Alerts } from "../features/alerts/Alerts";
 import { Settings } from "../features/settings/Settings";
 import { Analyze } from "../features/analyze/Analyze";
+import { Agencies } from "../features/agencies/Agencies";
+import { AgencyForm } from "../features/agencies/AgencyForm";
+import { MapPage } from "../features/map/MapPage";
 function Login() {
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
@@ -65,6 +68,10 @@ export function Router() {
                     <Route path="/" element={<Dashboard />} />
                     <Route path="/calls" element={<Calls />} />
                     <Route path="/calls/:id" element={<CallDetail />} />
+                    <Route path="/agencies" element={<Agencies />} />
+                    <Route path="/agencies/new" element={<AgencyForm />} />
+                    <Route path="/agencies/:id/edit" element={<AgencyForm />} />
+                    <Route path="/map" element={<MapPage />} />
                     <Route path="/tonesets" element={<ToneSets />} />
                     <Route path="/discovered-tones" element={<DiscoveredTones />} />
                     <Route path="/tonesets/new" element={<ToneSetForm />} />

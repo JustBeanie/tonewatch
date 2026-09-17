@@ -2,14 +2,27 @@ import { useEffect, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
 import { request } from "../../api/client";
 type Call = { id: string; started_at: string; source_id: string; status: string };
+type Agency = { id: string; name: string };
 type Detail = Call & {
-    tone_sets: { toneset_id: string; detected_at: string }[];
+    tone_sets: {
+        toneset_id: string;
+        detected_at: string;
+        agency?: { id: string; name: string; kind: string } | null;
+    }[];
     recordings: { id: number; format: string; url: string }[];
     alert_attempts: Record<string, unknown>[];
 };
 export function Calls() {
     const [p, setP] = useSearchParams();
     const [items, setItems] = useState<Call[]>([]);
+    const [agencies, setAgencies] = useState<Agency[]>([]);
+    useEffect(() => {
+        request<Agency[]>("agencies")
+            .then((value) => {
+                if (Array.isArray(value)) setAgencies(value);
+            })
+            .catch(() => undefined);
+    }, []);
     useEffect(() => {
         const q = new URLSearchParams(p);
         q.set("limit", "50");
@@ -27,7 +40,7 @@ export function Calls() {
                     const f = new FormData(e.currentTarget);
                     setP((o) => {
                         const n = new URLSearchParams(o);
-                        ["source", "toneset", "since", "until"].forEach((k) => {
+                        ["source", "toneset", "agency_id", "since", "until"].forEach((k) => {
                             const v = String(f.get(k) || "");
                             v ? n.set(k, v) : n.delete(k);
                         });
@@ -38,6 +51,17 @@ export function Calls() {
                 <label htmlFor="source">
                     Source
                     <input id="source" name="source" defaultValue={p.get("source") ?? ""} />
+                </label>
+                <label htmlFor="agency_id">
+                    Agency
+                    <select id="agency_id" name="agency_id" defaultValue={p.get("agency_id") ?? ""}>
+                        <option value="">All agencies</option>
+                        {agencies.map((agency) => (
+                            <option key={agency.id} value={agency.id}>
+                                {agency.name}
+                            </option>
+                        ))}
+                    </select>
                 </label>
                 <label htmlFor="toneset">
                     Tone set
@@ -90,6 +114,7 @@ export function CallDetail() {
                 {d.tone_sets.map((t) => (
                     <li key={t.toneset_id}>
                         {t.toneset_id} at {t.detected_at}
+                        {t.agency ? ` · ${t.agency.name} (${t.agency.kind})` : ""}
                     </li>
                 ))}
             </ul>

@@ -64,6 +64,17 @@ label {
     gap: 4px;
     font-weight: 600;
 }
+
+.inline-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-weight: 600;
+}
+
+.inline-label input {
+    width: auto;
+}
 input,
 select {
     padding: 8px;
@@ -138,6 +149,52 @@ button {
 .level-meter strong {
     z-index: 1;
     text-transform: uppercase;
+}
+.map-canvas {
+    min-height: 420px;
+    margin: 16px 0;
+    border: 1px solid #94a3b8;
+    border-radius: 10px;
+    background: #dbeafe;
+    position: relative;
+}
+.map-accessibility-list {
+    position: absolute;
+    z-index: 500;
+    left: 8px;
+    top: 8px;
+    display: grid;
+    gap: 4px;
+    max-width: 220px;
+}
+.map-accessibility-list button {
+    background: white;
+    color: #172033;
+    border: 1px solid #64748b;
+    padding: 4px 8px;
+}
+.map-polygon {
+    display: block;
+    background: #ffffffdd;
+    color: #172033;
+    padding: 4px;
+}
+.marker-pulse {
+    animation: agency-pulse 1s infinite;
+}
+.marker-static {
+    outline: 4px solid #f59e0b;
+}
+@keyframes agency-pulse {
+    50% {
+        outline: 8px solid #f59e0b;
+    }
+}
+.agency-editor textarea {
+    min-height: 120px;
+    padding: 8px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
 }
 @media (prefers-color-scheme: dark) {
     :root {

@@ -141,7 +141,7 @@ Tick a task with `[x]`, then append ` — <PR link> — <one-line note>`. Blocke
 - [x] **M16.1** `Agency` model (identity, address, location, stations, GeoJSON coverage, contacts), `ToneSet.agency_id`. — brief M16a
 - [x] **M16.2** Agencies CRUD + GeoJSON API, call agency snapshot (migration 0005), agency on event payloads. — brief M16a
 - [x] **M16.3** `map.tile_url` (off = no external requests), OSM preset, CSP adds only the tile origin. — brief M16a
-- [ ] **M16.4** Web UI: agencies editor, Leaflet map page, live pulse, calls filter.
+- [x] **M16.4** Web UI: agencies editor, Leaflet map page, live pulse, calls filter. — direct to main — agencies editor, Leaflet map with 8 s minimum pulse, calls agency filter; fixes dead WS pump after last disconnect
 - [ ] **M16.5** HA: agency on MQTT events; ha-tonewatch `geo_location` per active call (after M11.4).
 
 ## M17: CAD incident correlation via icad2mqtt (added 2026-09-12 at user request)

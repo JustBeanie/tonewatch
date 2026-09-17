@@ -119,3 +119,93 @@ test("deep link reload renders", async ({ page }) => {
     await expect(page.getByRole("heading", { name: "Create tone set" })).toBeVisible();
     expect(notFound).toEqual([]);
 });
+
+test("agency editor links the fixture and map pulses without external requests", async ({
+    page,
+}) => {
+    test.setTimeout(90000);
+    const external: string[] = [];
+    let mapOpen = false;
+    let resolveEventsSubscribed: (() => void) | undefined;
+    const eventsSubscribed = new Promise<void>((resolve) => {
+        resolveEventsSubscribed = resolve;
+    });
+    page.on("websocket", (socket) =>
+        socket.on("framereceived", (frame) => {
+            const payload = (frame as { payload?: unknown }).payload ?? frame;
+            try {
+                const message = JSON.parse(String(payload)) as {
+                    type?: string;
+                    data?: { topics?: unknown };
+                };
+                if (!mapOpen) return;
+                if (
+                    message.type === "subscribed" &&
+                    Array.isArray(message.data?.topics) &&
+                    message.data.topics.includes("events")
+                )
+                    resolveEventsSubscribed?.();
+            } catch {
+                // Ignore non-JSON websocket frames.
+            }
+        }),
+    );
+    page.on("request", (request) => {
+        const url = new URL(request.url());
+        if (!["localhost", "127.0.0.1"].includes(url.hostname)) external.push(request.url());
+    });
+    await login(page);
+    await page.goto("/agencies/new");
+    await page.getByLabel("ID").fill("fixture-agency");
+    await page.getByRole("textbox", { name: "Name", exact: true }).fill("Fixture Agency");
+    await page.getByLabel("Short name").fill("FA");
+    await page.getByLabel("Latitude").fill("40.1");
+    await page.getByLabel("Longitude").fill("-105.2");
+    const fixtureTone = page.getByLabel("Fixture page");
+    await expect(fixtureTone).toBeVisible();
+    await fixtureTone.check();
+    await page.getByRole("button", { name: "Save agency" }).click();
+    await expect(page).toHaveURL(/\/agencies$/);
+    await page.goto("/map");
+    mapOpen = true;
+    await expect(page.getByTestId("map-marker-fixture-agency")).toBeVisible();
+    await page
+        .getByRole("region", { name: "Agency list" })
+        .getByRole("button", { name: "Fixture Agency" })
+        .click();
+    await expect(page.getByText("Fixture page")).toBeVisible();
+    await eventsSubscribed;
+    const trigger = page.evaluate(async () => {
+        const csrf = document.cookie
+            .split("; ")
+            .find((part) => part.startsWith("tonewatch_csrf="))
+            ?.slice("tonewatch_csrf=".length);
+        const response = await fetch("/api/tonesets/fixture-page/test", {
+            method: "POST",
+            headers: csrf ? { "X-CSRF-Token": csrf } : undefined,
+        });
+        if (!response.ok) throw new Error(`test trigger failed: ${response.status}`);
+    });
+    await expect(page.getByTestId("map-marker-fixture-agency")).toHaveClass(/marker-pulse/, {
+        timeout: 5000,
+    });
+    await trigger;
+    await expect
+        .poll(
+            async () => {
+                const response = await page.request.get(
+                    "/api/calls?agency_id=fixture-agency&limit=5",
+                );
+                const body = (await response.json()) as { items?: unknown[] };
+                return body.items?.length ?? 0;
+            },
+            { timeout: 20000 },
+        )
+        .toBeGreaterThan(0);
+    await page.goto("/calls?agency_id=fixture-agency");
+    const call = page.locator('main a[href^="/calls/"]').first();
+    await expect(call).toBeVisible({ timeout: 20000 });
+    await call.click();
+    await expect(page.getByText("Fixture Agency")).toBeVisible();
+    expect(external).toEqual([]);
+});

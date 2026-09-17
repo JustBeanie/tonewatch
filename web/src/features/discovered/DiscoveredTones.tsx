@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { request } from "../../api/client";
-import { useSubscription } from "../../lib/ws";
+import { useWsEvents } from "../../lib/ws";
 
 type DiscoveredTone = {
     id: number;
@@ -31,7 +31,6 @@ export function DiscoveredTones() {
     const [status, setStatus] = useState("");
     const [source, setSource] = useState("");
     const nav = useNavigate();
-    const discovered = useSubscription("events");
     const reload = () => {
         const query = new URLSearchParams();
         if (status) query.set("status", status);
@@ -41,9 +40,9 @@ export function DiscoveredTones() {
             .catch(() => undefined);
     };
     useEffect(() => void reload(), [status, source]);
-    useEffect(() => {
-        if (discovered?.type === "tone_discovered") void reload();
-    }, [discovered]);
+    useWsEvents("events", (message) => {
+        if (message.type === "tone_discovered") void reload();
+    });
     async function dismiss(id: number) {
         if (!window.confirm("Dismiss this discovered tone?")) return;
         await request(`discovered-tones/${id}/dismiss`, { method: "POST" });

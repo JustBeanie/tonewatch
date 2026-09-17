@@ -185,6 +185,29 @@ async def test_ws_disconnect_releases_bus_subscriptions_and_tasks() -> None:
 
 
 @pytest.mark.asyncio
+async def test_ws_restarts_pump_when_a_new_socket_reuses_the_hub() -> None:
+    with TemporaryDirectory() as directory:
+        app = make_app(Path(directory))
+        headers = {"authorization": f"Bearer {app.state.auth.token}"}
+        first = Socket(app, headers)
+        await first.start()
+        await first.send_json({"type": "subscribe", "topics": ["events"]})
+        assert (await first.recv_json())["type"] == "subscribed"
+        await first.close()
+        assert app.state.ws_pump is None
+
+        second = Socket(app, headers)
+        await second.start()
+        await second.send_json({"type": "subscribe", "topics": ["events"]})
+        assert (await second.recv_json())["type"] == "subscribed"
+        event = ToneDetected(uuid4(), "fire", datetime(2026, 1, 2, tzinfo=UTC), "radio")
+        app.state.bus.publish(event)
+        payload = await asyncio.wait_for(second.recv_json(), timeout=1)
+        assert payload["type"] == "ToneDetected"
+        await second.close()
+
+
+@pytest.mark.asyncio
 async def test_ws_subscription_lifecycle_pong_and_invalid_messages() -> None:
     with TemporaryDirectory() as directory:
         app = make_app(Path(directory))

@@ -190,9 +190,11 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
     if not isinstance(state_hub, WebSocketHub):
         hub = WebSocketHub(websocket.app.state.bus)
         websocket.app.state.ws_hub = hub
-        websocket.app.state.ws_pump = asyncio.create_task(_event_pump(hub.bus, hub))
     else:
         hub = state_hub
+    pump = getattr(websocket.app.state, "ws_pump", None)
+    if pump is None or pump.done():
+        websocket.app.state.ws_pump = asyncio.create_task(_event_pump(hub.bus, hub))
     client = await hub.add(websocket)
     if client is None:
         return
