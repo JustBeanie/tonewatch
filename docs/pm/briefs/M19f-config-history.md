@@ -8,7 +8,7 @@ If `uv` reports the Python minor-version link error, set `UV_PYTHON=C:\Users\bea
 ## Read first
 - `PLAN.md` M19 intro and **M19.5** (~line 675).
 - `config/store.py` (`ConfigStore.save_async`, the etag, atomic writes and the file lock).
-- `api/routes/config.py`: **every** route that saves config (`PUT /api/config`, tone set, source, target and agency CRUD, TTD import). Find the single save/apply path they share, or the several.
+- `api/routes/config.py`: **every** route that saves config (`PUT /api/config`, tone set, source, target and agency CRUD, tones.cfg import). Find the single save/apply path they share, or the several.
 - `api/audit.py`: `record_audit`, `mask_secrets`, `restore_secrets`, `is_secret_key`, and the existing config before/after diffs.
 
 ## Required (backend and API only; the UI is a later slice)
@@ -34,7 +34,7 @@ Every mutating endpoint uses `write_auth`, writes an audit event, and never retu
    - YAML must be parsed with a safe loader. Test that a `!!python/object` payload is rejected.
 
 ## Mandatory tests (write first; show each failing line)
-- **A.** Saves through `PUT /api/config`, a tone-set create **and** a TTD import each create exactly one version. There is a pruning test at 101 versions.
+- **A.** Saves through `PUT /api/config`, a tone-set create **and** a tones.cfg import each create exactly one version. There is a pruning test at 101 versions.
 - **B.** Version files are owner-only on POSIX (skip on Windows with a reason). A version GET, a diff and a default export contain **no** fixture secret string; scan the whole serialized response.
 - **C.** Rollback:
   - restores the old content and hot-applies it (the running config changes)
