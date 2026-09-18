@@ -50,6 +50,12 @@ export function formatDuration(value: unknown): string {
     return `${hours ? `${hours}h ` : ""}${String(minutes).padStart(2, "0")}m ${String(remainder).padStart(2, "0")}s`;
 }
 
+export function formatExpiry(value: unknown, now = Date.now()): string {
+    if (typeof value !== "number" || !Number.isFinite(value)) return "—";
+    const remaining = Math.max(0, value - now / 1000);
+    return `${new Date(value * 1000).toLocaleString()} (in ${formatDuration(remaining)})`;
+}
+
 export function formatForecast(value: unknown): string {
     if (value === null || value === undefined) return "no growth";
     if (typeof value !== "number" || !Number.isFinite(value)) return "—";

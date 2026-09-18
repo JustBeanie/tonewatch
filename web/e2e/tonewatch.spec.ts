@@ -275,3 +275,38 @@ test("delivery log is local and renders attempts or its empty state", async ({ p
         .toBe(true);
     expect(external).toEqual([]);
 });
+
+test("admin maintenance previews retention locally", async ({ page }) => {
+    const external: string[] = [];
+    page.on("request", (request) => {
+        const url = new URL(request.url());
+        if (!["localhost", "127.0.0.1"].includes(url.hostname)) external.push(request.url());
+    });
+    await login(page);
+    await page.goto("/admin/maintenance");
+    await expect(page.getByRole("heading", { name: "Maintenance" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Run now" })).toBeDisabled();
+    await page.getByRole("button", { name: "Preview" }).first().click();
+    await expect(page.getByText("Files")).toBeVisible();
+    await expect(page.getByText("Calls", { exact: true }).last()).toBeVisible();
+    expect(external).toEqual([]);
+});
+
+test("admin audit log shows the maintenance preview", async ({ page }) => {
+    await login(page);
+    await page.goto("/admin/maintenance");
+    await page.getByRole("button", { name: "Preview" }).first().click();
+    await expect(page.getByText("Files")).toBeVisible();
+    await page.goto("/admin/audit");
+    await expect(page.getByRole("heading", { name: "Audit log" })).toBeVisible();
+    await expect(page.getByText("retention_preview", { exact: true }).first()).toBeVisible();
+});
+
+test("admin credentials rotates the live secret with confirmation", async ({ page }) => {
+    await login(page);
+    await page.goto("/admin/credentials");
+    await expect(page.getByRole("heading", { name: "Credentials" })).toBeVisible();
+    page.once("dialog", (dialog) => void dialog.accept());
+    await page.getByRole("button", { name: "Rotate live secret" }).click();
+    await expect(page.getByRole("status")).toContainText("listeners disconnected");
+});

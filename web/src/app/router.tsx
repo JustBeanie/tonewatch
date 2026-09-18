@@ -19,6 +19,9 @@ import { CadFeeds, UnmatchedCadAgencies } from "../features/cad/CadFeeds";
 import { Health } from "../features/admin/Health";
 import { AdminAlerts } from "../features/admin/AdminAlerts";
 import { Deliveries } from "../features/admin/Deliveries";
+import { Credentials } from "../features/admin/Credentials";
+import { Maintenance } from "../features/admin/Maintenance";
+import { Audit } from "../features/admin/Audit";
 function Login() {
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
@@ -90,6 +93,9 @@ export function Router() {
                     <Route path="/admin/health" element={<Health />} />
                     <Route path="/admin/alerts" element={<AdminAlerts />} />
                     <Route path="/admin/deliveries" element={<Deliveries />} />
+                    <Route path="/admin/credentials" element={<Credentials />} />
+                    <Route path="/admin/maintenance" element={<Maintenance />} />
+                    <Route path="/admin/audit" element={<Audit />} />
                     <Route
                         path="*"
                         element={

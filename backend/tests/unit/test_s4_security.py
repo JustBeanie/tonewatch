@@ -726,7 +726,8 @@ def test_audit_endpoint_is_authenticated_and_paginated() -> None:
             )
             assert response.status_code == 200
             assert len(response.json()["items"]) == 1
-            assert response.json()["next_cursor"] == "1"
+            # Keyset cursor (M19.11): the id of the last row on the page, passed as before_id.
+            assert response.json()["next_cursor"] == "2"
 
         asyncio.run(run())
 

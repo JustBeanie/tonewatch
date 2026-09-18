@@ -3233,7 +3233,12 @@ export interface operations {
         parameters: {
             query?: {
                 limit?: number;
-                cursor?: number;
+                before_id?: number | null;
+                actor?: string | null;
+                event_type?: string | null;
+                resource?: string | null;
+                since?: string | null;
+                until?: string | null;
             };
             header?: never;
             path?: never;

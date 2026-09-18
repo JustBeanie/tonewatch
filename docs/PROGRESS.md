@@ -168,10 +168,10 @@ Tick a task with `[x]`, then append ` — <PR link> — <one-line note>`. Blocke
 - [~] **M19.5** Config history, diff, rollback, masked export, dry-run import. — backend/API done (history in shared save path + startup baseline, masked versions/diffs, rollback/import require If-Match, secret export is a CSRF-protected POST, streaming import cap); UI pending.
 - [ ] **M19.6** Backup and restore archive (config, SQLite online backup, optional recordings).
 - [ ] **M19.7** Support bundle (redacted) and in-UI log viewer.
-- [~] **M19.8** Credential management: rotate API token and live secret, change UI password, revoke sessions. — backend/API done (persisted single-previous-token grace, constant-time matching incl. WS subprotocol, live log redaction, legacy rotate hardened, ingress refused); UI pending.
-- [~] **M19.9** Maintenance: retention dry-run/run-now, checkpoint/vacuum, orphan cleanup. — backend/API done (shared plan/apply, shared lock, orphan safety age + temp-file exclusion, invalid-row reporting); UI pending.
+- [x] **M19.8** Credential management: rotate API token and live secret, change UI password, revoke sessions. — API (persisted single-previous-token grace, constant-time matching incl. WS, live log redaction, ingress refused) + /admin/credentials page (token shown once, never persisted).
+- [x] **M19.9** Maintenance: retention dry-run/run-now, checkpoint/vacuum, orphan cleanup. — API (shared plan/apply and lock, orphan safety age, invalid-row reporting) + /admin/maintenance page (run only after preview, expected_counts).
 - [x] **M19.10** Prometheus `/metrics`, off by default, token-protected. — bearer-only, bounded labels, process-lifetime counters with HELP/TYPE, golden route test.
-- [ ] **M19.11** Audit log page with config diff view.
+- [x] **M19.11** Audit log page with config diff view. — filtered keyset audit API (tz-aware since/until) + /admin/audit page with per-path diff.
 - [ ] **M19.12** Replay recent calls or WAVs against a draft config before saving.
 
 ## M12: Docs, hardening and v1.0.0
