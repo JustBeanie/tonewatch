@@ -211,6 +211,12 @@ class LiveHub:
             del self._streams[listener.source_id]
         self._changed(listener.source_id)
 
+    def close_all(self) -> None:
+        """Disconnect every active listener, preserving clean stream teardown."""
+        for stream in tuple(self._streams.values()):
+            for listener in tuple(stream.listeners):
+                self.remove_listener(listener)
+
     def feed(self, source_id: str, samples: np.ndarray, *, gate_open: bool = True) -> None:
         """Encode and fan out one frame without awaiting any listener."""
         stream = self._streams.get(source_id)

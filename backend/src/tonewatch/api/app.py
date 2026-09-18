@@ -24,6 +24,7 @@ from tonewatch.api.routes.audit import router as audit_router
 from tonewatch.api.routes.auth import router as auth_router
 from tonewatch.api.routes.calls import router as calls_router
 from tonewatch.api.routes.config import router as config_router
+from tonewatch.api.routes.credentials import router as credentials_router
 from tonewatch.api.routes.discovered_tones import router as discovered_tones_router
 from tonewatch.api.routes.import_tones_cfg import router as import_tones_cfg_router
 from tonewatch.api.routes.live import router as live_router
@@ -181,6 +182,7 @@ def create_app(
         settings.log_level,
         json=True,
         api_token=auth.token,
+        token_holder=auth.secret_holder,
         data_dir=settings.data_dir,
     )
     config_store = store or ConfigStore(settings.data_dir)
@@ -203,6 +205,7 @@ def create_app(
         analyze_router,
         audit_router,
         admin_router,
+        credentials_router,
         system_router,
         ws_router,
         live_router,
@@ -287,6 +290,8 @@ def create_app(
         response.headers["Cross-Origin-Resource-Policy"] = "same-origin"
         response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
         response.headers["Cross-Origin-Embedder-Policy"] = "require-corp"
+        if request.url.path.startswith("/api/admin/credentials/"):
+            response.headers["Cache-Control"] = "no-store"
         if response.headers.get("content-type", "").startswith("text/html"):
             response.headers["Content-Security-Policy"] = spa_csp(app.state.config)
         else:

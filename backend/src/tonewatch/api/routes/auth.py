@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 
 from tonewatch.api.audit import record_audit
-from tonewatch.api.auth import rotate_token
+from tonewatch.api.deps import credential_write_auth
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -18,7 +18,7 @@ async def status(request: Request) -> dict[str, bool | str]:
         via = "ingress"
     elif request.app.state.auth.session_valid(request) is not None:
         via = "session"
-    elif request.headers.get("authorization", "")[7:].strip() == request.app.state.auth.token:
+    elif request.app.state.auth.bearer_valid(request):
         via = "bearer"
     return {
         "authenticated": via != "none",
@@ -90,14 +90,24 @@ async def logout(request: Request) -> JSONResponse:
     return response
 
 
-@router.post("/token/rotate", dependencies=[Depends(_write_auth)])
-async def token_rotate(request: Request) -> JSONResponse:
-    token = rotate_token(request.app.state.auth.settings)
-    request.app.state.auth.token = token
+@router.post("/token/rotate", dependencies=[Depends(credential_write_auth)])
+async def legacy_token_rotate(request: Request) -> JSONResponse:
+    """Compatibility alias for credential rotation with the hardened policy."""
+    try:
+        body = await request.json()
+    except ValueError:
+        body = None
+    grace = body.get("grace_seconds", 3600) if isinstance(body, dict) else 3600
+    if not isinstance(grace, int) or isinstance(grace, bool) or not 0 <= grace <= 86400:
+        raise HTTPException(422, "grace_seconds must be between 0 and 86400")
+    token, valid_until = request.app.state.auth.rotate_api_token(grace)
     await record_audit(
         request.app.state.session_factory,
-        actor=getattr(request.state, "auth", "unknown"),
-        event_type="token_rotation",
+        actor=request.state.auth,
+        event_type="api_token_rotated",
         resource="api_token",
+        details={"grace_seconds": grace},
     )
-    return JSONResponse({"ok": True})
+    response = JSONResponse({"token": token, "previous_valid_until": valid_until})
+    response.headers["Cache-Control"] = "no-store"
+    return response

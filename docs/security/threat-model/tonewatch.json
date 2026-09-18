@@ -99,7 +99,10 @@
         {"id": "TM-041", "category": "Tampering / Denial of service", "element": "Untrusted MQTT CAD input", "status": "planned"},
         {"id": "TM-042", "category": "Information disclosure", "element": "CAD address data at rest", "status": "planned"},
         {"id": "TM-043", "category": "Information disclosure", "element": "CAD incident fields in logs", "status": "planned"},
-        {"id": "TM-044", "category": "Information disclosure / Tampering", "element": "Maintenance and Prometheus endpoints", "status": "mitigated"}
+        {"id": "TM-044", "category": "Information disclosure / Tampering", "element": "Maintenance and Prometheus endpoints", "status": "mitigated"},
+        {"id": "TM-045", "category": "Spoofing / Information disclosure", "element": "API token rotation", "status": "mitigated"},
+        {"id": "TM-046", "category": "Denial of service / Spoofing", "element": "Live secret rotation", "status": "mitigated"},
+        {"id": "TM-047", "category": "Elevation of privilege", "element": "UI sessions", "status": "mitigated"}
       ]
     }
   ]

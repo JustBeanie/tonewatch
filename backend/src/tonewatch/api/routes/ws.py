@@ -128,11 +128,12 @@ def _authorized(websocket: WebSocket) -> tuple[bool, str | None]:
     request = cast("Request", HTTPConnection(websocket.scope))
     auth = websocket.app.state.auth
     authorization = websocket.headers.get("authorization", "")
-    if authorization.startswith("Bearer ") and auth.token == authorization[7:].strip():
+    supplied = authorization[7:].strip() if authorization.startswith("Bearer ") else ""
+    if supplied and auth.token_matches(supplied):
         return True, None
     for raw_protocol in websocket.headers.get("sec-websocket-protocol", "").split(","):
         protocol = raw_protocol.strip()
-        if protocol.startswith("tonewatch.bearer.") and auth.token == protocol[17:]:
+        if protocol.startswith("tonewatch.bearer.") and auth.token_matches(protocol[17:]):
             return True, protocol
     if auth.ingress_valid(request):
         return True, None

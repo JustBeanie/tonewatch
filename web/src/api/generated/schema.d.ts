@@ -38,6 +38,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/credentials/api-token/rotate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Rotate Api Token */
+        post: operations["rotate_api_token_api_admin_credentials_api_token_rotate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/credentials/live-secret/rotate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Rotate Live Secret */
+        post: operations["rotate_live_secret_api_admin_credentials_live_secret_rotate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/credentials/sessions/revoke-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Revoke All Sessions */
+        post: operations["revoke_all_sessions_api_admin_credentials_sessions_revoke_all_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/credentials/ui-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Change Ui Password */
+        post: operations["change_ui_password_api_admin_credentials_ui_password_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/health": {
         parameters: {
             query?: never;
@@ -385,8 +453,11 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Token Rotate */
-        post: operations["token_rotate_api_auth_token_rotate_post"];
+        /**
+         * Legacy Token Rotate
+         * @description Compatibility alias for credential rotation with the hardened policy.
+         */
+        post: operations["legacy_token_rotate_api_auth_token_rotate_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2114,6 +2185,86 @@ export interface operations {
             };
         };
     };
+    rotate_api_token_api_admin_credentials_api_token_rotate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    rotate_live_secret_api_admin_credentials_live_secret_rotate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    revoke_all_sessions_api_admin_credentials_sessions_revoke_all_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    change_ui_password_api_admin_credentials_ui_password_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
     health_api_admin_health_get: {
         parameters: {
             query?: never;
@@ -2806,7 +2957,7 @@ export interface operations {
             };
         };
     };
-    token_rotate_api_auth_token_rotate_post: {
+    legacy_token_rotate_api_auth_token_rotate_post: {
         parameters: {
             query?: never;
             header?: never;

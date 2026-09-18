@@ -7,6 +7,7 @@ import re
 import sys
 from collections.abc import MutableMapping
 from contextvars import ContextVar
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 import structlog
@@ -16,6 +17,19 @@ if TYPE_CHECKING:
 
 request_id: ContextVar[str] = ContextVar("tonewatch_request_id", default="")
 _token: ContextVar[str] = ContextVar("tonewatch_api_token", default="")
+
+
+@dataclass
+class SecretHolder:
+    """Mutable live credentials used by log redaction."""
+
+    current: str = ""
+    previous: str | None = None
+
+
+_token_holder: ContextVar[SecretHolder | None] = ContextVar(
+    "tonewatch_api_token_holder", default=None
+)
 _SENSITIVE_LOG_WORDS = (
     "authorization",
     "cookie",
@@ -33,8 +47,13 @@ def _redact_query(value: str) -> str:
     return _TOKEN_QUERY.sub(r"\1REDACTED", _QUERY.sub(r"\1", value))
 
 
-def _redact_value(value: Any, api_token: str) -> Any:
-    if isinstance(value, str) and api_token and api_token in value:
+def _redact_value(value: Any, api_token: str | SecretHolder) -> Any:
+    tokens = (
+        (api_token.current, api_token.previous)
+        if isinstance(api_token, SecretHolder)
+        else (api_token, None)
+    )
+    if isinstance(value, str) and any(token and token in value for token in tokens):
         return "[REDACTED]"
     if isinstance(value, str):
         return _redact_query(value)
@@ -54,7 +73,7 @@ def is_sensitive_log_key(key: object) -> bool:
 def _redact(
     _logger: Any, _method: str, event_dict: MutableMapping[str, Any]
 ) -> MutableMapping[str, Any]:
-    api_token = _token.get()
+    api_token = _token_holder.get() or _token.get()
     for key in tuple(event_dict):
         if is_sensitive_log_key(key):
             event_dict[key] = "[REDACTED]"
@@ -79,10 +98,12 @@ def configure_logging(
     *,
     json: bool = True,
     api_token: str = "",
+    token_holder: SecretHolder | None = None,
     data_dir: Path | None = None,
 ) -> None:
     """Route structlog through stdlib logging with UTC timestamps and redaction."""
     _token.set(api_token)
+    _token_holder.set(token_holder or SecretHolder(api_token))
     timestamper = structlog.processors.TimeStamper(fmt="iso", utc=True)
     renderer = structlog.processors.JSONRenderer() if json else structlog.dev.ConsoleRenderer()
     formatter = structlog.stdlib.ProcessorFormatter(

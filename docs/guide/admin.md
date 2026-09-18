@@ -1,5 +1,13 @@
 # Administration
 
+## Credential management
+
+Credential changes are owner operations under `/api/admin/credentials/`. Bearer-token and cookie-session callers may use them; cookie sessions must send both CSRF cookies/header values. HA add-on ingress is accepted for ordinary admin writes, but is deliberately rejected for credential changes because ingress alone is not CSRF protection.
+
+`POST /api/admin/credentials/api-token/rotate` accepts `grace_seconds` from 0 through 86400 (default 3600) and returns the new token exactly once with `previous_valid_until`. The current token works immediately; at most one previous token remains valid during the persisted grace window. A later rotation invalidates that previous token immediately. Store the one-time response securely; tokens are never included in logs or audit details.
+
+`POST /api/admin/credentials/live-secret/rotate` invalidates every issued live URL immediately and closes active listeners. `POST /api/admin/credentials/ui-password` requires the current password and a new password of at least 12 characters. If no password exists, only API-token authentication may set the first password. A successful session change keeps the caller's session and revokes other sessions; a bearer-authenticated change revokes all sessions. Failed checks are rate-limited and audited without password values. `POST /api/admin/credentials/sessions/revoke-all` invalidates every cookie session, including the caller, while bearer authentication remains valid. All credential responses are `Cache-Control: no-store`.
+
 ## Health
 
 Authenticated `GET /api/admin/health` reports one entry per source, including the recent feed-health ring (up to 50 transitions), level and squelch state, DSP realtime factor, dropped/late frames, restart count/time, and bounded last error. Service diagnostics include each event-bus subscriber's queue depth, drops, and oldest-event lag. Storage reports recording bytes, free bytes, SQLite and WAL sizes, and a retention forecast. The forecast sums completed recording sizes over their persisted call times and projects that rate into free space; it is `null` when the rate is unknown or zero and is capped at ten years. Outputs expose target identity/type and delivery timestamps/failure counters only; credentials and URLs are never returned. Build information includes version and process uptime.

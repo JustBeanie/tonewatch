@@ -27,6 +27,13 @@ def write_auth(request: Request) -> None:
     request.state.auth = request.app.state.auth.authorize(request, state_changing=True)
 
 
+def credential_write_auth(request: Request) -> None:
+    """Require write auth, and require CSRF-capable auth for credential changes."""
+    write_auth(request)
+    if request.state.auth == "ingress":
+        raise HTTPException(403, "credential changes require bearer or CSRF-protected session auth")
+
+
 def collection(request: Request, kind: str) -> list[Any]:
     return list(getattr(request.app.state.config, kind))
 

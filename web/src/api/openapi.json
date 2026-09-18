@@ -2483,6 +2483,82 @@
         ]
       }
     },
+    "/api/admin/credentials/api-token/rotate": {
+      "post": {
+        "operationId": "rotate_api_token_api_admin_credentials_api_token_rotate_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Rotate Api Token",
+        "tags": [
+          "admin-credentials"
+        ]
+      }
+    },
+    "/api/admin/credentials/live-secret/rotate": {
+      "post": {
+        "operationId": "rotate_live_secret_api_admin_credentials_live_secret_rotate_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Rotate Live Secret",
+        "tags": [
+          "admin-credentials"
+        ]
+      }
+    },
+    "/api/admin/credentials/sessions/revoke-all": {
+      "post": {
+        "operationId": "revoke_all_sessions_api_admin_credentials_sessions_revoke_all_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Revoke All Sessions",
+        "tags": [
+          "admin-credentials"
+        ]
+      }
+    },
+    "/api/admin/credentials/ui-password": {
+      "post": {
+        "operationId": "change_ui_password_api_admin_credentials_ui_password_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Change Ui Password",
+        "tags": [
+          "admin-credentials"
+        ]
+      }
+    },
     "/api/admin/health": {
       "get": {
         "operationId": "health_api_admin_health_get",
@@ -3344,7 +3420,8 @@
     },
     "/api/auth/token/rotate": {
       "post": {
-        "operationId": "token_rotate_api_auth_token_rotate_post",
+        "description": "Compatibility alias for credential rotation with the hardened policy.",
+        "operationId": "legacy_token_rotate_api_auth_token_rotate_post",
         "responses": {
           "200": {
             "content": {
@@ -3355,7 +3432,7 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Token Rotate",
+        "summary": "Legacy Token Rotate",
         "tags": [
           "auth"
         ]
