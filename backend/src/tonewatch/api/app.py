@@ -22,6 +22,7 @@ from tonewatch.api.routes.agencies import router as agencies_router
 from tonewatch.api.routes.analyze import router as analyze_router
 from tonewatch.api.routes.audit import router as audit_router
 from tonewatch.api.routes.auth import router as auth_router
+from tonewatch.api.routes.backup import router as backup_router
 from tonewatch.api.routes.calls import router as calls_router
 from tonewatch.api.routes.config import router as config_router
 from tonewatch.api.routes.credentials import router as credentials_router
@@ -206,6 +207,7 @@ def create_app(
         analyze_router,
         audit_router,
         admin_router,
+        backup_router,
         support_router,
         credentials_router,
         system_router,
@@ -320,6 +322,9 @@ def create_app(
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> Any:
+        from tonewatch.instance_lock import acquire_instance_lock, release_instance_lock
+
+        instance_lock = acquire_instance_lock(settings.data_dir)
         try:
             runtime_clock = clock or time.time
             if app.state.engine is not None:
@@ -372,6 +377,7 @@ def create_app(
                 await app.state.supervisor.stop()
             if app.state.engine is not None:
                 await app.state.engine.dispose()
+            release_instance_lock(instance_lock)
 
     app.router.lifespan_context = lifespan
     return app

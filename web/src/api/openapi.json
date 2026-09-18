@@ -509,6 +509,23 @@
         "title": "AppConfig",
         "type": "object"
       },
+      "BackupRequest": {
+        "description": "Options for an authenticated data archive.",
+        "properties": {
+          "include_credentials": {
+            "default": false,
+            "title": "Include Credentials",
+            "type": "boolean"
+          },
+          "include_recordings": {
+            "default": false,
+            "title": "Include Recordings",
+            "type": "boolean"
+          }
+        },
+        "title": "BackupRequest",
+        "type": "object"
+      },
       "Body_analyze_api_analyze_post": {
         "properties": {
           "file": {
@@ -2567,6 +2584,46 @@
           }
         },
         "summary": "Retry Alert Attempt",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/backup": {
+      "post": {
+        "description": "Create and stream a temporary archive without retaining it on disk.",
+        "operationId": "backup_api_admin_backup_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BackupRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Backup",
         "tags": [
           "admin"
         ]

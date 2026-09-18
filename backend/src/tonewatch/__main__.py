@@ -1,9 +1,12 @@
 """Command-line entry point for ToneWatch."""
 
 import argparse
+import asyncio
 import importlib
 import json
 import pkgutil
+import socket
+import tarfile
 import sys
 import wave
 from pathlib import Path
@@ -16,12 +19,18 @@ import tonewatch
 from tonewatch import __version__
 from tonewatch.config.models import AppConfig
 from tonewatch.config.store import ConfigStore
+from tonewatch.backup import create_archive, restore_archive
 from tonewatch.dsp.engine import DetectionEngine
 from tonewatch.dsp.discovery import DiscoveryTracker
 from tonewatch.importers.tones_cfg import (
     TonesCfgImportError,
     apply_tones_cfg,
     parse_tones_cfg,
+)
+from tonewatch.instance_lock import (
+    InstanceRunningError,
+    acquire_instance_lock,
+    release_instance_lock,
 )
 from tonewatch.sources.soundcard import input_devices
 
@@ -292,6 +301,69 @@ def _checkpoint(_args: argparse.Namespace) -> None:
     sys.stdout.write("database checkpoint complete\n")
 
 
+def _backup(args: argparse.Namespace) -> None:
+    """Create or restore a backup archive from an offline data directory."""
+    from tonewatch.settings import Settings
+
+    data_dir = Settings.load().data_dir.resolve()
+    if args.backup_command == "create":
+        try:
+            archive = create_archive(
+                data_dir,
+                include_recordings=args.include_recordings,
+                include_credentials=args.include_credentials,
+                recording_root=Settings.load().recording_path,
+                output=args.out.resolve(),
+            )
+        except (OSError, ValueError) as exc:
+            raise SystemExit(f"could not create backup: {exc}") from exc
+        sys.stdout.write(f"backup written to {archive}\n")
+        return
+    lock_path = data_dir / "tonewatch.pid.lock"
+    lock_existed = lock_path.exists()
+    try:
+        instance_lock = acquire_instance_lock(data_dir)
+    except InstanceRunningError as exc:
+        raise SystemExit(f"restore refused: {exc}") from exc
+    settings = Settings.load()
+    probe_hosts = (
+        ("127.0.0.1", "::1")
+        if settings.bind_host in {"0.0.0.0", "::"}  # noqa: S104 -- compare configured wildcard bind only.
+        else (settings.bind_host,)
+    )
+    for host in probe_hosts:
+        try:
+            with socket.create_connection((host, settings.bind_port), timeout=0.2):
+                raise SystemExit("restore refused: ToneWatch is listening on its configured port")
+        except OSError:
+            continue
+
+    def upgrade() -> None:
+        from tonewatch.storage.db import create_database, upgrade_database
+
+        engine, _ = create_database(f"sqlite+aiosqlite:///{data_dir / 'tonewatch.db'}")
+        try:
+            asyncio.run(upgrade_database(engine))
+        finally:
+            asyncio.run(engine.dispose())
+
+    try:
+        summary = restore_archive(
+            args.file.resolve(),
+            data_dir,
+            recording_root=settings.recording_path,
+            dry_run=args.dry_run,
+            post_apply=upgrade,
+        )
+    except (OSError, ValueError, tarfile.TarError) as exc:
+        raise SystemExit(f"could not restore backup: {exc}") from exc
+    finally:
+        release_instance_lock(instance_lock)
+        if args.dry_run and not lock_existed:
+            lock_path.unlink(missing_ok=True)
+    sys.stdout.write(json.dumps(summary, sort_keys=True) + "\n")
+
+
 def _import_tones_cfg(args: argparse.Namespace) -> None:
     """Preview or apply a legacy tones.cfg configuration."""
     import sys
@@ -361,6 +433,15 @@ def _build_parser() -> argparse.ArgumentParser:
     db = subparsers.add_parser("db")
     db_subparsers = db.add_subparsers(dest="db_command", required=True)
     db_subparsers.add_parser("checkpoint")
+    backup = subparsers.add_parser("backup")
+    backup_subparsers = backup.add_subparsers(dest="backup_command", required=True)
+    create = backup_subparsers.add_parser("create")
+    create.add_argument("--out", required=True, type=Path)
+    create.add_argument("--include-recordings", action="store_true")
+    create.add_argument("--include-credentials", action="store_true")
+    restore = backup_subparsers.add_parser("restore")
+    restore.add_argument("file", type=Path)
+    restore.add_argument("--dry-run", action="store_true")
     importer = subparsers.add_parser("import")
     tones_cfg = importer.add_subparsers(dest="importer", required=True).add_parser("tones-cfg")
     tones_cfg.add_argument("path", type=Path)
@@ -370,7 +451,7 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main() -> None:
+def main() -> None:  # noqa: PLR0912 -- existing CLI dispatch now includes one backup branch.
     """Run the ToneWatch command-line interface."""
     parser = _build_parser()
     args = parser.parse_args()
@@ -397,6 +478,8 @@ def main() -> None:
         run_service_process(args.data_dir)
     elif args.command == "db" and args.db_command == "checkpoint":
         _checkpoint(args)
+    elif args.command == "backup":
+        _backup(args)
     elif args.command == "import" and args.importer == "tones-cfg":
         _import_tones_cfg(args)
 

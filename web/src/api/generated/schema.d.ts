@@ -38,6 +38,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/backup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Backup
+         * @description Create and stream a temporary archive without retaining it on disk.
+         */
+        post: operations["backup_api_admin_backup_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/config/export": {
         parameters: {
             query?: never;
@@ -1361,6 +1381,22 @@ export interface components {
             /** Tone Sets */
             tone_sets?: components["schemas"]["ToneSet"][];
         };
+        /**
+         * BackupRequest
+         * @description Options for an authenticated data archive.
+         */
+        BackupRequest: {
+            /**
+             * Include Credentials
+             * @default false
+             */
+            include_credentials: boolean;
+            /**
+             * Include Recordings
+             * @default false
+             */
+            include_recordings: boolean;
+        };
         /** Body_analyze_api_analyze_post */
         Body_analyze_api_analyze_post: {
             /** File */
@@ -2400,6 +2436,39 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    backup_api_admin_backup_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BackupRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */
