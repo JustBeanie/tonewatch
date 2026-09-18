@@ -80,3 +80,18 @@ Every operational payload contains `kind: "admin"`, its condition key, state, se
 Authenticated `GET /api/admin/alert-attempts` supports `call_id`, `target_id`, `phase`, `ok`, `since`, and `until` filters. Results use a stable `created_at DESC, id DESC` cursor and a maximum page size of 200.
 
 `POST /api/admin/alert-attempts/{id}/retry` requires the normal write authentication and CSRF token. Only a failed attempt for an existing call and currently configured target can be retried. It performs one sender call using a rebuilt payload marked `retry: true`, bounded by the target timeout, and records exactly one retry row plus an audit event. A succeeded attempt, missing call, or removed target returns `409`; an unknown attempt returns `404`; an already-running retry returns `429`. Meshtastic rate-limit drops are recorded as `rate_limited`.
+## Support bundle and log viewer
+
+Administrators can inspect recent redacted structured logs at the
+GET /api/admin/logs endpoint. The optional level, since_seq, and limit query
+parameters support minimum-level filtering and polling; the response is
+authenticated, bounded, and never cached. The in-memory ring retains at most
+2,000 rendered records and truncates oversized records.
+
+POST /api/admin/support-bundle downloads a redacted ZIP for diagnostics. It
+includes the manifest, redacted configuration, health snapshot, recent logs,
+detection summaries, and runtime metadata. It includes no recordings,
+addresses, incident text, environment variables, credentials, or URLs with
+credentials. The endpoint accepts bearer auth, a CSRF-protected UI session, or
+trusted add-on ingress; it is audited, uses no-store, and is limited to one
+request every 30 seconds.

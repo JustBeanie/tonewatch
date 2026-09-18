@@ -66,6 +66,7 @@ Evidence uses repository-relative `path:line`; “no proving test” is intentio
 | TM-038 | Information disclosure | Admin health and delivery log | Diagnostic or delivery responses could expose credentials or unbounded remote errors. | med | low | mitigated | `backend/src/tonewatch/api/routes/admin.py:54`; `test_no_cors_headers_by_default`; bounded health/error fields | M19.1/M19.3 |
 | TM-039 | Tampering / Repudiation | Admin alert retry | An unauthorized or duplicated retry could resend an alert without traceability. | med | low | mitigated | `backend/src/tonewatch/api/routes/admin.py:84`; `test_csrf_required_for_cookie_state_changes`; write auth, CSRF, in-flight guard, audit event | M19.3 |
 
+
 ## Accepted risks
 
 | TM-031 | Information disclosure | Live signed URL | Signed URLs can leak through player or proxy logs and Home Assistant history. | med | high | mitigated | \`backend/src/tonewatch/api/routes/live.py:42\`; \`test_live_token_is_scoped_and_rotation_invalidates_it\` | M14.2 |
@@ -91,5 +92,6 @@ The dedicated secret is generated in the data directory with owner-only mode
 | TM-046 | Denial of service / Spoofing | Live secret rotation | Existing signed URLs or active listeners could remain usable after a secret rotation. | med | med | mitigated | `backend/src/tonewatch/streaming/live.py:167`; `backend/tests/integration/test_m19d_credentials.py:43`; `test_m19d_b_live_secret_rotation_invalidates_urls_and_closes_listeners` | M19.8 |
 | TM-047 | Elevation of privilege | UI sessions | A changed or revoked password could leave other cookie sessions authorized. | med | high | mitigated | `backend/src/tonewatch/api/auth.py:175`; `backend/tests/integration/test_m19d_credentials.py:72`; `test_m19d_c_password_change_and_rate_limit`; `test_m19d_d_revoke_all_keeps_bearer` | M19.8 |
 | TM-048 | Information disclosure / Tampering | Configuration history, export and import | Version snapshots contain secrets at rest; history reads, exports, rollback and imports must preserve masking, authentication, validation, concurrency and safe parsing. | high | high | mitigated | `backend/src/tonewatch/config/history.py:67`; `backend/src/tonewatch/api/routes/admin.py:49`; `backend/tests/integration/test_m19f_config_history.py:42`; `test_config_history_export_import_and_rollback`; `docs/guide/admin.md:3` | M19.5 |
+| TM-049 | Information disclosure / Denial of service | Support bundle and log ring | Diagnostic exports or log tailing could disclose credentials, CAD addresses, recordings, or unbounded data. | med | high | mitigated | backend/src/tonewatch/api/routes/admin.py:316; backend/src/tonewatch/logging.py:92; test_m19g_bundle_is_secret_free_audited_and_bounded | M19.7 |
 
 TM-015 remains accepted under AR-002; planned future surfaces remain explicitly out of scope until their owning milestone implements and tests them.

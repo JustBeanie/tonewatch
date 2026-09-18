@@ -167,7 +167,7 @@ Tick a task with `[x]`, then append ` — <PR link> — <one-line note>`. Blocke
 - [ ] **M19.4** End-to-end drill: inject synthetic tones into a live channel, marked test everywhere.
 - [~] **M19.5** Config history, diff, rollback, masked export, dry-run import. — backend/API done (history in shared save path + startup baseline, masked versions/diffs, rollback/import require If-Match, secret export is a CSRF-protected POST, streaming import cap); UI pending.
 - [ ] **M19.6** Backup and restore archive (config, SQLite online backup, optional recordings).
-- [ ] **M19.7** Support bundle (redacted) and in-UI log viewer.
+- [~] **M19.7** Support bundle (redacted) and in-UI log viewer. — backend/API done (redacted log ring + /api/admin/logs; support bundle with structured value/URL/path scrubbing, audited, rate-limited); UI pending.
 - [x] **M19.8** Credential management: rotate API token and live secret, change UI password, revoke sessions. — API (persisted single-previous-token grace, constant-time matching incl. WS, live log redaction, ingress refused) + /admin/credentials page (token shown once, never persisted).
 - [x] **M19.9** Maintenance: retention dry-run/run-now, checkpoint/vacuum, orphan cleanup. — API (shared plan/apply and lock, orphan safety age, invalid-row reporting) + /admin/maintenance page (run only after preview, expected_counts).
 - [x] **M19.10** Prometheus `/metrics`, off by default, token-protected. — bearer-only, bounded labels, process-lifetime counters with HELP/TYPE, golden route test.

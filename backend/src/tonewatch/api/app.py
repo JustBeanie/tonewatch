@@ -30,6 +30,7 @@ from tonewatch.api.routes.import_tones_cfg import router as import_tones_cfg_rou
 from tonewatch.api.routes.live import router as live_router
 from tonewatch.api.routes.maintenance import router as maintenance_router
 from tonewatch.api.routes.recordings import router as recordings_router
+from tonewatch.api.routes.support import router as support_router
 from tonewatch.api.routes.system import router as system_router
 from tonewatch.api.routes.ws import router as ws_router
 from tonewatch.api.spa import register_spa, serve_spa, spa_csp
@@ -205,6 +206,7 @@ def create_app(
         analyze_router,
         audit_router,
         admin_router,
+        support_router,
         credentials_router,
         system_router,
         ws_router,

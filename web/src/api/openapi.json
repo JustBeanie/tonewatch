@@ -2929,6 +2929,80 @@
         ]
       }
     },
+    "/api/admin/logs": {
+      "get": {
+        "operationId": "logs_api_admin_logs_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "level",
+            "required": false,
+            "schema": {
+              "default": "INFO",
+              "title": "Level",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "since_seq",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Since Seq"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 200,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Logs Api Admin Logs Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Logs",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/api/admin/maintenance/database/checkpoint": {
       "post": {
         "operationId": "checkpoint_api_admin_maintenance_database_checkpoint_post",
@@ -3088,6 +3162,25 @@
         "summary": "Retention Run",
         "tags": [
           "maintenance"
+        ]
+      }
+    },
+    "/api/admin/support-bundle": {
+      "post": {
+        "operationId": "support_bundle_api_admin_support_bundle_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Support Bundle",
+        "tags": [
+          "admin"
         ]
       }
     },
