@@ -2,25 +2,205 @@
 
 from __future__ import annotations
 
+import json
 import time
 from datetime import datetime
-from typing import Any, cast
+from typing import Any, Literal, cast
 from uuid import UUID
 
+import yaml
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.responses import Response
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 
 from tonewatch import __version__
 from tonewatch.admin.health import StorageScanner, event_bus_health, storage_forecast
-from tonewatch.api.audit import record_audit
-from tonewatch.api.deps import authenticated, write_auth
-from tonewatch.config.models import MeshtasticTarget, MqttTarget
+from tonewatch.api.audit import SecretRestoreError, mask_secrets, record_audit, restore_secrets
+from tonewatch.api.deps import authenticated, save_config, write_auth
+from tonewatch.config.history import ConfigHistory, HistoryError, structured_diff
+from tonewatch.config.models import AppConfig, MeshtasticTarget, MqttTarget
 from tonewatch.storage.models import Call, Recording
 from tonewatch.storage.repository import list_alert_attempts
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 _STARTED = time.monotonic()
+_CONFIG_IMPORT_MAX_BYTES = 256 * 1024
+
+
+class ConfigExportRequest(BaseModel):
+    """Options for an authenticated configuration export."""
+
+    format: Literal["yaml", "json"] = "yaml"
+    include_secrets: bool = False
+    confirm: str | None = None
+
+
+def _history(request: Request) -> ConfigHistory:
+    return ConfigHistory(request.app.state.settings.data_dir)
+
+
+def _history_error(exc: HistoryError) -> HTTPException:
+    return HTTPException(404, str(exc))
+
+
+def _require_if_match(request: Request) -> None:
+    if not request.headers.get("if-match"):
+        raise HTTPException(428, "If-Match is required for this configuration write")
+
+
+def _parse_config_body(raw: bytes) -> dict[str, Any]:
+    if len(raw) > _CONFIG_IMPORT_MAX_BYTES:
+        raise HTTPException(413, "configuration input exceeds the 256 KiB limit")
+    try:
+        value = yaml.safe_load(raw)
+    except yaml.YAMLError as exc:
+        raise HTTPException(422, f"invalid YAML/JSON configuration: {exc}") from None
+    if not isinstance(value, dict):
+        raise HTTPException(422, "configuration must be an object")
+    try:
+        return dict(value)
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(422, "configuration must be an object") from exc
+
+
+async def _validated_import(request: Request) -> AppConfig:
+    submitted = _parse_config_body(await request.body())
+    try:
+        restored = restore_secrets(request.app.state.config.model_dump(mode="python"), submitted)
+        return AppConfig.model_validate(restored)
+    except (SecretRestoreError, ValueError) as exc:
+        raise HTTPException(422, str(exc)) from None
+
+
+@router.get("/config/versions", dependencies=[Depends(authenticated)])
+async def config_versions(request: Request) -> list[dict[str, Any]]:
+    return _history(request).list_versions()
+
+
+@router.get("/config/versions/{version_id}", dependencies=[Depends(authenticated)])
+async def config_version(request: Request, version_id: str) -> dict[str, Any]:
+    try:
+        return _history(request).masked_content(version_id)
+    except HistoryError as exc:
+        raise _history_error(exc) from None
+
+
+@router.get("/config/versions/{version_id}/diff", dependencies=[Depends(authenticated)])
+async def config_version_diff(
+    request: Request, version_id: str, against: str = Query("current")
+) -> list[dict[str, Any]]:
+    history = _history(request)
+    try:
+        before = history.raw_config(version_id)
+        if against == "current":
+            after = request.app.state.config.model_dump(mode="json")
+            return structured_diff(before, after)
+        return history.diff(version_id, against)
+    except HistoryError as exc:
+        raise _history_error(exc) from None
+
+
+@router.post("/config/versions/{version_id}/rollback", dependencies=[Depends(write_auth)])
+async def rollback_config(request: Request, version_id: str) -> Response:
+    _require_if_match(request)
+    try:
+        config = _history(request).config(version_id)
+    except HistoryError as exc:
+        raise HTTPException(422, str(exc)) from None
+    saved = await save_config(request, config)
+    return Response(
+        content=json.dumps(mask_secrets(saved.model_dump(mode="json"))),
+        media_type="application/json",
+        headers={"ETag": request.app.state.store.etag()},
+    )
+
+
+def _export_response(
+    config: AppConfig, *, format_: Literal["yaml", "json"], include_secrets: bool
+) -> Response:
+    value = config.model_dump(mode="json")
+    if not include_secrets:
+        value = mask_secrets(value)
+    body = (
+        json.dumps(value, ensure_ascii=False, indent=2).encode("utf-8")
+        if format_ == "json"
+        else yaml.safe_dump(value, sort_keys=False).encode("utf-8")
+    )
+    headers = {
+        "Cache-Control": "no-store",
+        "Content-Disposition": f'attachment; filename="tonewatch-config.{format_}"',
+    }
+    return Response(
+        content=body,
+        media_type="application/json" if format_ == "json" else "application/yaml",
+        headers=headers,
+    )
+
+
+async def _export_config(request: Request, options: ConfigExportRequest) -> Response:
+    if options.include_secrets:
+        if getattr(request.state, "auth", "") == "ingress":
+            raise HTTPException(403, "secret export is not available through ingress")
+        if options.confirm != "include-secrets":
+            raise HTTPException(422, "confirm=include-secrets is required")
+    response = _export_response(
+        request.app.state.config,
+        format_=options.format,
+        include_secrets=options.include_secrets,
+    )
+    if options.include_secrets:
+        response.headers["Warning"] = '299 ToneWatch "configuration contains plaintext secrets"'
+        await record_audit(
+            request.app.state.session_factory,
+            actor=getattr(request.state, "auth", "unknown"),
+            event_type="config_export_secrets",
+            resource="config",
+        )
+    return response
+
+
+@router.get("/config/export", dependencies=[Depends(authenticated)])
+async def export_config(
+    request: Request,
+    format_: Literal["yaml", "json"] = Query("yaml", alias="format"),
+    include_secrets: bool = False,
+    confirm: str | None = None,
+) -> Response:
+    if include_secrets:
+        raise HTTPException(422, "secret export requires POST")
+    return await _export_config(
+        request,
+        ConfigExportRequest(format=format_, include_secrets=False, confirm=confirm),
+    )
+
+
+@router.post("/config/export", dependencies=[Depends(write_auth)])
+async def export_config_post(request: Request, options: ConfigExportRequest) -> Response:
+    return await _export_config(request, options)
+
+
+@router.post("/config/import/preview", dependencies=[Depends(write_auth)])
+async def preview_config_import(request: Request) -> dict[str, Any]:
+    config = await _validated_import(request)
+    return {
+        "applied": False,
+        "diff": structured_diff(
+            request.app.state.config.model_dump(mode="json"), config.model_dump(mode="json")
+        ),
+    }
+
+
+@router.post("/config/import/apply", dependencies=[Depends(write_auth)])
+async def apply_config_import(request: Request) -> Response:
+    _require_if_match(request)
+    config = await _validated_import(request)
+    saved = await save_config(request, config)
+    return Response(
+        content=json.dumps(mask_secrets(saved.model_dump(mode="json"))),
+        media_type="application/json",
+        headers={"ETag": request.app.state.store.etag()},
+    )
 
 
 class AlertAttemptResponse(BaseModel):

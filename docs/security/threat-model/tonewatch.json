@@ -102,7 +102,8 @@
         {"id": "TM-044", "category": "Information disclosure / Tampering", "element": "Maintenance and Prometheus endpoints", "status": "mitigated"},
         {"id": "TM-045", "category": "Spoofing / Information disclosure", "element": "API token rotation", "status": "mitigated"},
         {"id": "TM-046", "category": "Denial of service / Spoofing", "element": "Live secret rotation", "status": "mitigated"},
-        {"id": "TM-047", "category": "Elevation of privilege", "element": "UI sessions", "status": "mitigated"}
+        {"id": "TM-047", "category": "Elevation of privilege", "element": "UI sessions", "status": "mitigated"},
+        {"id": "TM-048", "category": "Information disclosure / Tampering", "element": "Configuration history, export and import", "status": "mitigated", "evidence": "backend/src/tonewatch/config/history.py; backend/src/tonewatch/api/routes/admin.py; docs/guide/admin.md"}
       ]
     }
   ]

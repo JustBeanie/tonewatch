@@ -12,6 +12,34 @@ Credential changes are owner operations under `/api/admin/credentials/`. Bearer-
 
 Authenticated `GET /api/admin/health` reports one entry per source, including the recent feed-health ring (up to 50 transitions), level and squelch state, DSP realtime factor, dropped/late frames, restart count/time, and bounded last error. Service diagnostics include each event-bus subscriber's queue depth, drops, and oldest-event lag. Storage reports recording bytes, free bytes, SQLite and WAL sizes, and a retention forecast. The forecast sums completed recording sizes over their persisted call times and projects that rate into free space; it is `null` when the rate is unknown or zero and is capped at ten years. Outputs expose target identity/type and delivery timestamps/failure counters only; credentials and URLs are never returned. Build information includes version and process uptime.
 
+## Configuration history and transfer
+
+Every successful configuration mutation creates one immutable snapshot in
+`$TONEWATCH_DATA/config-history/`; the directory is bounded to the newest 100
+versions (including the startup baseline). Snapshot files contain the complete configuration, including secrets,
+so protect the data directory and its backups like `config.yaml`. Files are
+written atomically and owner-readable on POSIX systems. The authenticated
+`GET /api/admin/config/versions` and version detail/diff endpoints expose only
+metadata or masked values. A changed secret is represented as `changed` in a
+diff and is never returned.
+
+`POST /api/admin/config/versions/{id}/rollback` requires the current `If-Match`
+ETag and uses the normal validation and hot-apply path; rollback creates a new
+history version. `GET /api/admin/config/export?format=yaml|json` returns a
+no-store attachment with secrets masked by default; secret parameters on GET
+are rejected. `POST /api/admin/config/export` accepts `format`,
+`include_secrets`, and `confirm`; plaintext export requires
+`include_secrets=true` and `confirm=include-secrets`, bearer or a CSRF-protected
+session request (Supervisor ingress is rejected), and is audited with a warning
+header.
+
+`POST /api/admin/config/import/preview` validates a YAML or JSON document and
+returns a masked structured diff without writing. The apply endpoint additionally
+requires `If-Match` and uses the normal save path. Safe YAML loading rejects
+Python object tags. The `[REDACTED]` placeholder restores the corresponding
+stored secret; it is rejected when no stored value exists. Imports are capped at
+256 KiB.
+
 Disk scans run in a worker and are cached for up to 60 seconds so the API event loop is not blocked.
 
 ## Maintenance and Prometheus metrics

@@ -8,9 +8,11 @@ from contextlib import suppress
 from pathlib import Path
 from typing import Any
 
+import structlog
 import yaml
 from pydantic import ValidationError
 
+from tonewatch.config.history import ConfigHistory, HistoryError
 from tonewatch.config.models import AppConfig
 
 _file_locker: Any = __import__("msvcrt" if os.name == "nt" else "fcntl")
@@ -64,15 +66,29 @@ class ConfigStore:
         if not self.path.exists():
             config = AppConfig()
             self.save(config)
+            self._ensure_baseline(config)
             return config
         try:
             with self.path.open(encoding="utf-8") as handle:
                 raw: Any = yaml.safe_load(handle)
-            return AppConfig.model_validate(raw or {})
+            config = AppConfig.model_validate(raw or {})
         except yaml.YAMLError as exc:
             raise ConfigError(f"invalid YAML in {self.path}: {exc}") from exc
         except ValidationError as exc:
             raise ConfigError(f"invalid configuration in {self.path}: {exc}") from exc
+        self._ensure_baseline(config)
+        return config
+
+    def _ensure_baseline(self, config: AppConfig) -> None:
+        history = ConfigHistory(self.data_dir)
+        if history.list_versions():
+            return
+        try:
+            history.record(config, actor="system", route="startup")
+        except HistoryError as exc:
+            structlog.get_logger("tonewatch.config").warning(
+                "configuration baseline unavailable", error=str(exc)
+            )
 
     def etag(self) -> str:
         """Return the strong revision for the current on-disk configuration."""

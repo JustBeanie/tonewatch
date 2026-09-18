@@ -103,7 +103,7 @@ class _TonesCfgBodyLimitMiddleware:
             and (path == root_path or path.startswith(root_path + "/"))
         ):
             path = path[len(root_path) :] or "/"
-        if scope.get("type") != "http" or path.rstrip("/") != "/api/import/tones-cfg":
+        if scope.get("type") != "http" or path.rstrip("/") not in _BODY_LIMIT_PATHS:
             await self.app(scope, receive, send)
             return
         headers = Headers(scope=scope)
@@ -373,3 +373,12 @@ def create_app(
 
     app.router.lifespan_context = lifespan
     return app
+
+
+_BODY_LIMIT_PATHS = frozenset(
+    {
+        "/api/import/tones-cfg",
+        "/api/admin/config/import/preview",
+        "/api/admin/config/import/apply",
+    }
+)

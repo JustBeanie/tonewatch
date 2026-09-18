@@ -2,14 +2,20 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
+import structlog
 from fastapi import HTTPException, Request
 from pydantic import ValidationError
 
 from tonewatch.api.audit import SecretRestoreError, mask_secrets, record_audit, restore_secrets
+from tonewatch.config.history import ConfigHistory, HistoryError
 from tonewatch.config.models import AppConfig
 from tonewatch.config.store import ConfigConflictError, replace_config
+
+_logger = structlog.get_logger("tonewatch.config")
+_python_logger = logging.getLogger("tonewatch.config")
 
 
 def _dump(value: Any) -> Any:
@@ -67,6 +73,17 @@ async def save_config(request: Request, config: AppConfig, *, audit: bool = True
             max_lag_s=live.max_lag_s,
         )
     await request.app.state.supervisor.reload(config)
+    history_recorded = True
+    try:
+        ConfigHistory(request.app.state.settings.data_dir).record(
+            config,
+            actor=getattr(request.state, "auth", "unknown"),
+            route=getattr(getattr(request, "url", None), "path", "unknown"),
+        )
+    except HistoryError as exc:
+        history_recorded = False
+        _logger.warning("configuration history unavailable", error=str(exc))
+        _python_logger.warning("configuration history unavailable: %s", exc)
     if audit:
         await record_audit(
             request.app.state.session_factory,
@@ -75,6 +92,7 @@ async def save_config(request: Request, config: AppConfig, *, audit: bool = True
             resource="config",
             before=before.model_dump(mode="json"),
             after=config.model_dump(mode="json"),
+            details={"history_recorded": history_recorded},
         )
     return config
 

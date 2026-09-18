@@ -649,6 +649,38 @@
         "title": "CalibrateRequest",
         "type": "object"
       },
+      "ConfigExportRequest": {
+        "description": "Options for an authenticated configuration export.",
+        "properties": {
+          "confirm": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirm"
+          },
+          "format": {
+            "default": "yaml",
+            "enum": [
+              "yaml",
+              "json"
+            ],
+            "title": "Format",
+            "type": "string"
+          },
+          "include_secrets": {
+            "default": false,
+            "title": "Include Secrets",
+            "type": "boolean"
+          }
+        },
+        "title": "ConfigExportRequest",
+        "type": "object"
+      },
       "DiscoveryConfig": {
         "additionalProperties": false,
         "description": "Global tone auto-discovery settings.",
@@ -2478,6 +2510,323 @@
           }
         },
         "summary": "Retry Alert Attempt",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/config/export": {
+      "get": {
+        "operationId": "export_config_api_admin_config_export_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "default": "yaml",
+              "enum": [
+                "yaml",
+                "json"
+              ],
+              "title": "Format",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "include_secrets",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include Secrets",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "confirm",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Confirm"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Export Config",
+        "tags": [
+          "admin"
+        ]
+      },
+      "post": {
+        "operationId": "export_config_post_api_admin_config_export_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfigExportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Export Config Post",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/config/import/apply": {
+      "post": {
+        "operationId": "apply_config_import_api_admin_config_import_apply_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Apply Config Import",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/config/import/preview": {
+      "post": {
+        "operationId": "preview_config_import_api_admin_config_import_preview_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Preview Config Import Api Admin Config Import Preview Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Preview Config Import",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/config/versions": {
+      "get": {
+        "operationId": "config_versions_api_admin_config_versions_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Config Versions Api Admin Config Versions Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Config Versions",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/config/versions/{version_id}": {
+      "get": {
+        "operationId": "config_version_api_admin_config_versions__version_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "version_id",
+            "required": true,
+            "schema": {
+              "title": "Version Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Config Version Api Admin Config Versions  Version Id  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Config Version",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/config/versions/{version_id}/diff": {
+      "get": {
+        "operationId": "config_version_diff_api_admin_config_versions__version_id__diff_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "version_id",
+            "required": true,
+            "schema": {
+              "title": "Version Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "against",
+            "required": false,
+            "schema": {
+              "default": "current",
+              "title": "Against",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Config Version Diff Api Admin Config Versions  Version Id  Diff Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Config Version Diff",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/config/versions/{version_id}/rollback": {
+      "post": {
+        "operationId": "rollback_config_api_admin_config_versions__version_id__rollback_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "version_id",
+            "required": true,
+            "schema": {
+              "title": "Version Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Rollback Config",
         "tags": [
           "admin"
         ]

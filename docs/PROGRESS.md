@@ -165,7 +165,7 @@ Tick a task with `[x]`, then append ` — <PR link> — <one-line note>`. Blocke
 - [~] **M19.2** Admin alerts: dead feed, disk, failing target, stuck squelch, slow DSP; rate-limited, resolved follow-ups. — direct to main — engine on the supervisor timer, dedicated MQTT admin topic, pages unaffected; UI complete; PENDING-REVIEW
 - [~] **M19.3** Alert delivery log with single-attempt audited retry. — UI complete; PENDING-REVIEW
 - [ ] **M19.4** End-to-end drill: inject synthetic tones into a live channel, marked test everywhere.
-- [ ] **M19.5** Config history, diff, rollback, masked export, dry-run import.
+- [~] **M19.5** Config history, diff, rollback, masked export, dry-run import. — backend/API done (history in shared save path + startup baseline, masked versions/diffs, rollback/import require If-Match, secret export is a CSRF-protected POST, streaming import cap); UI pending.
 - [ ] **M19.6** Backup and restore archive (config, SQLite online backup, optional recordings).
 - [ ] **M19.7** Support bundle (redacted) and in-UI log viewer.
 - [~] **M19.8** Credential management: rotate API token and live secret, change UI password, revoke sessions. — backend/API done (persisted single-previous-token grace, constant-time matching incl. WS subprotocol, live log redaction, legacy rotate hardened, ingress refused); UI pending.
