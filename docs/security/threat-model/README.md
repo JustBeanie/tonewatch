@@ -86,5 +86,6 @@ The dedicated secret is generated in the data directory with owner-only mode
 | TM-041 | Tampering / Denial of service | Untrusted MQTT CAD input | Malformed or oversized CAD messages could crash or exhaust the subscriber. | med | high | planned | `backend/src/tonewatch/cad/feed.py:1` | M17.6 |
 | TM-042 | Information disclosure | CAD address data at rest | Incident addresses require retention and access controls. | med | high | planned | `docs/guide/cad.md:1` | M17.6 |
 | TM-043 | Information disclosure | CAD incident fields in logs | Logs must not contain addresses, types, or cross streets. | med | high | planned | `backend/src/tonewatch/cad/feed.py:1` | M17.6 |
+| TM-044 | Information disclosure / Tampering | Maintenance and Prometheus endpoints | Maintenance actions and exported metrics could disclose recordings, operational details, or fixture secrets, or accept an unintended browser/ingress authentication path. | med | high | mitigated | `backend/src/tonewatch/api/routes/maintenance.py:149`; `backend/tests/integration/test_m19e_maintenance_metrics.py:386`; `test_m19e_e_metrics_auth_matrix_and_disabled` | M19.9/M19.10 |
 
 TM-015 remains accepted under AR-002; planned future surfaces remain explicitly out of scope until their owning milestone implements and tests them.

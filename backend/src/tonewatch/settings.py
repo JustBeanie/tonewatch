@@ -29,6 +29,13 @@ class SettingsValueError(ValueError):
         super().__init__("invalid add-on option")
 
 
+class MetricsSettings(BaseSettings):
+    """Prometheus endpoint policy."""
+
+    model_config = SettingsConfigDict(env_prefix="")
+    enabled: bool = False
+
+
 def _default_web_root() -> Path | None:
     package_root = Path(__file__).resolve().parent / "web_dist"
     if package_root.is_dir():
@@ -65,6 +72,7 @@ class Settings(BaseSettings):
     web_root: Path | None = Field(default_factory=_default_web_root)
     recordings_root: Path | None = None
     retention: RetentionPolicy = Field(default_factory=RetentionPolicy)
+    metrics: MetricsSettings = Field(default_factory=MetricsSettings)
 
     @field_validator("log_level")
     @classmethod

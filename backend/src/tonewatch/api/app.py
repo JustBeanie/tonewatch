@@ -27,6 +27,7 @@ from tonewatch.api.routes.config import router as config_router
 from tonewatch.api.routes.discovered_tones import router as discovered_tones_router
 from tonewatch.api.routes.import_tones_cfg import router as import_tones_cfg_router
 from tonewatch.api.routes.live import router as live_router
+from tonewatch.api.routes.maintenance import router as maintenance_router
 from tonewatch.api.routes.recordings import router as recordings_router
 from tonewatch.api.routes.system import router as system_router
 from tonewatch.api.routes.ws import router as ws_router
@@ -306,6 +307,10 @@ def create_app(
     async def safe_error(_request: Request, _exc: Exception) -> JSONResponse:
         return JSONResponse({"detail": "internal server error"}, status_code=500)
 
+    app.include_router(maintenance_router)
+    app.state.maintenance_lock = asyncio.Lock()
+    app.state.retention_service = None
+
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> Any:
         try:
@@ -314,6 +319,11 @@ def create_app(
                 await upgrade_database(app.state.engine)
             app.state.config = config_store.load()
             app.state.config = ensure_addon_mqtt_target(app.state.config, settings, config_store)
+            if app.state.retention_service is None:
+                app.state.retention_service = RetentionService(
+                    settings.recording_path, settings.retention, clock=runtime_clock
+                )
+            app.state.maintenance_lock = app.state.retention_service.lock
             live = app.state.config.live_stream
             app.state.live_hub.configure(
                 bitrate_kbps=live.bitrate_kbps,
@@ -327,11 +337,7 @@ def create_app(
                     sessions,
                     clock=runtime_clock,
                     sleep=sleep or asyncio.sleep,
-                    retention_service=RetentionService(
-                        settings.recording_path,
-                        settings.retention,
-                        clock=runtime_clock,
-                    ),
+                    retention_service=app.state.retention_service,
                     source_factory=source_factory,
                     watchdog_no_data_s=watchdog_no_data_s,
                     shutdown_timeout_s=shutdown_timeout_s,

@@ -14,6 +14,7 @@ import numpy as np
 import structlog
 from sqlalchemy import select
 
+from tonewatch.admin.counters import METRICS_COUNTERS
 from tonewatch.events import (
     CallClosed,
     EventBus,
@@ -416,6 +417,7 @@ class PersistenceSubscriber:
                 agency_name=agency.name if agency is not None else None,
                 agency_kind=agency.kind if agency is not None else None,
             )
+            METRICS_COUNTERS.record_detection(event.toneset_id)
 
 
 def _recording_facts(path: Path, *, require_metadata: bool = False) -> tuple[float, int]:

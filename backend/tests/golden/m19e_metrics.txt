@@ -1,0 +1,32 @@
+# HELP tonewatch_detections_total ToneWatch detections_total
+# TYPE tonewatch_detections_total counter
+# HELP tonewatch_alert_attempts_total ToneWatch alert_attempts_total
+# TYPE tonewatch_alert_attempts_total counter
+# HELP tonewatch_feed_healthy ToneWatch feed_healthy
+# TYPE tonewatch_feed_healthy gauge
+# HELP tonewatch_realtime_factor ToneWatch realtime_factor
+# TYPE tonewatch_realtime_factor gauge
+# HELP tonewatch_frames_dropped_total ToneWatch frames_dropped_total
+# TYPE tonewatch_frames_dropped_total counter
+# HELP tonewatch_eventbus_queue_depth ToneWatch eventbus_queue_depth
+# TYPE tonewatch_eventbus_queue_depth gauge
+# HELP tonewatch_disk_free_bytes ToneWatch disk_free_bytes
+# TYPE tonewatch_disk_free_bytes gauge
+# HELP tonewatch_db_size_bytes ToneWatch db_size_bytes
+# TYPE tonewatch_db_size_bytes gauge
+# HELP tonewatch_cad_feed_connected ToneWatch cad_feed_connected
+# TYPE tonewatch_cad_feed_connected gauge
+# HELP tonewatch_build_info ToneWatch build_info
+# TYPE tonewatch_build_info gauge
+tonewatch_detections_total{toneset_id="fixture-tone"} 0
+tonewatch_feed_healthy{source_id="fixture-source"} 0
+tonewatch_realtime_factor{source_id="fixture-source"} 0
+tonewatch_frames_dropped_total{source_id="fixture-source"} 0
+tonewatch_eventbus_queue_depth{subscriber="0"} 0
+tonewatch_eventbus_queue_depth{subscriber="1"} 0
+tonewatch_eventbus_queue_depth{subscriber="2"} 0
+tonewatch_eventbus_queue_depth{subscriber="3"} 0
+tonewatch_disk_free_bytes <D not volatile>
+tonewatch_db_size_bytes <D not volatile>
+tonewatch_cad_feed_connected{feed_id="fixture-cad"} 0
+tonewatch_build_info{version="0.5.0"} 1

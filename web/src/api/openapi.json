@@ -1418,6 +1418,32 @@
         "title": "MqttTarget",
         "type": "object"
       },
+      "OrphanApply": {
+        "properties": {
+          "delete_files": {
+            "default": false,
+            "title": "Delete Files",
+            "type": "boolean"
+          },
+          "delete_rows": {
+            "default": false,
+            "title": "Delete Rows",
+            "type": "boolean"
+          },
+          "expected_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Expected Counts",
+            "type": "object"
+          }
+        },
+        "required": [
+          "expected_counts"
+        ],
+        "title": "OrphanApply",
+        "type": "object"
+      },
       "RecordingPolicy": {
         "additionalProperties": false,
         "description": "Recording retention and output policy.",
@@ -2475,6 +2501,168 @@
         "summary": "Health",
         "tags": [
           "admin"
+        ]
+      }
+    },
+    "/api/admin/maintenance/database/checkpoint": {
+      "post": {
+        "operationId": "checkpoint_api_admin_maintenance_database_checkpoint_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "integer"
+                  },
+                  "title": "Response Checkpoint Api Admin Maintenance Database Checkpoint Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Checkpoint",
+        "tags": [
+          "maintenance"
+        ]
+      }
+    },
+    "/api/admin/maintenance/database/vacuum": {
+      "post": {
+        "operationId": "vacuum_api_admin_maintenance_database_vacuum_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "integer"
+                  },
+                  "title": "Response Vacuum Api Admin Maintenance Database Vacuum Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Vacuum",
+        "tags": [
+          "maintenance"
+        ]
+      }
+    },
+    "/api/admin/maintenance/orphans/apply": {
+      "post": {
+        "operationId": "orphan_apply_api_admin_maintenance_orphans_apply_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrphanApply"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Orphan Apply Api Admin Maintenance Orphans Apply Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Orphan Apply",
+        "tags": [
+          "maintenance"
+        ]
+      }
+    },
+    "/api/admin/maintenance/orphans/preview": {
+      "post": {
+        "operationId": "orphan_preview_api_admin_maintenance_orphans_preview_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Orphan Preview Api Admin Maintenance Orphans Preview Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Orphan Preview",
+        "tags": [
+          "maintenance"
+        ]
+      }
+    },
+    "/api/admin/maintenance/retention/preview": {
+      "post": {
+        "operationId": "retention_preview_api_admin_maintenance_retention_preview_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Retention Preview Api Admin Maintenance Retention Preview Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Retention Preview",
+        "tags": [
+          "maintenance"
+        ]
+      }
+    },
+    "/api/admin/maintenance/retention/run": {
+      "post": {
+        "operationId": "retention_run_api_admin_maintenance_retention_run_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Retention Run Api Admin Maintenance Retention Run Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Retention Run",
+        "tags": [
+          "maintenance"
         ]
       }
     },
@@ -4910,6 +5098,25 @@
         "summary": "Healthz",
         "tags": [
           "system"
+        ]
+      }
+    },
+    "/metrics": {
+      "get": {
+        "operationId": "metrics_metrics_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Metrics",
+        "tags": [
+          "maintenance"
         ]
       }
     },

@@ -169,8 +169,8 @@ Tick a task with `[x]`, then append ` — <PR link> — <one-line note>`. Blocke
 - [ ] **M19.6** Backup and restore archive (config, SQLite online backup, optional recordings).
 - [ ] **M19.7** Support bundle (redacted) and in-UI log viewer.
 - [ ] **M19.8** Credential management: rotate API token and live secret, change UI password, revoke sessions.
-- [ ] **M19.9** Maintenance: retention dry-run/run-now, checkpoint/vacuum, orphan cleanup.
-- [ ] **M19.10** Prometheus `/metrics`, off by default, token-protected.
+- [~] **M19.9** Maintenance: retention dry-run/run-now, checkpoint/vacuum, orphan cleanup. — backend/API done (shared plan/apply, shared lock, orphan safety age + temp-file exclusion, invalid-row reporting); UI pending.
+- [x] **M19.10** Prometheus `/metrics`, off by default, token-protected. — bearer-only, bounded labels, process-lifetime counters with HELP/TYPE, golden route test.
 - [ ] **M19.11** Audit log page with config diff view.
 - [ ] **M19.12** Replay recent calls or WAVs against a draft config before saving.
 

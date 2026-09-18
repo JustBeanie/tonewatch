@@ -59,6 +59,9 @@ class Recording(Base):
     path: Mapped[str] = mapped_column(Text, nullable=False)
     duration_s: Mapped[float] = mapped_column(Float, nullable=False)
     size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now().astimezone()
+    )
 
 
 class AlertAttempt(Base):

@@ -6,6 +6,31 @@ Authenticated `GET /api/admin/health` reports one entry per source, including th
 
 Disk scans run in a worker and are cached for up to 60 seconds so the API event loop is not blocked.
 
+## Maintenance and Prometheus metrics
+
+Maintenance actions are under `/api/admin/maintenance/` and require the write-authentication
+policy (including CSRF for cookie sessions). Retention preview and run-now share one immutable
+plan; checkpoint, vacuum, and orphan apply are serialized with retention and each action is
+audited. Orphan previews use relative paths below the recordings root and never follow symlinks.
+Orphan cleanup ignores dot-prefixed and `.tmp` files and files or rows newer than the configured
+orphan safety age (default: 3600 seconds), so recordings still being finalized are protected.
+
+Prometheus is disabled by default. Set `TONEWATCH_METRICS__ENABLED=true` (or `metrics.enabled`
+in the settings source) to enable `GET /metrics`. The endpoint accepts only the API bearer token;
+cookie sessions and Supervisor ingress are rejected. Labels are limited to configured IDs and
+contain no addresses, URLs, or secrets.
+
+Example scrape configuration:
+
+```yaml
+scrape_configs:
+  - job_name: tonewatch
+    scheme: https
+    bearer_token_file: /run/secrets/tonewatch_api_token
+    static_configs:
+      - targets: [tonewatch:8099]
+```
+
 ## Admin alerts
 
 Operational alerts are disabled by default. Enable `admin_alerts` and select existing alert-target IDs in `targets` to receive these notifications. The defaults are: feed unhealthy for 5 minutes, disk used at 90%, disk forecast under 7 days, 5 consecutive target failures, stuck squelch enabled, and realtime DSP below 1.5x for 300 seconds. `min_interval_s` defaults to 300 seconds per condition and `max_per_hour` defaults to 6 across all conditions.

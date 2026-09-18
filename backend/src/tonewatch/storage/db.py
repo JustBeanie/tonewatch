@@ -24,6 +24,7 @@ __all__ = [
     "create_database",
     "create_database_schema",
     "upgrade_database",
+    "vacuum_database",
 ]
 CHECKPOINT_COLUMNS = 3
 
@@ -85,6 +86,23 @@ def checkpoint_database(path: Path, timeout_s: float = 10.0) -> tuple[int, int, 
             if "busy" not in str(exc).casefold() and "locked" not in str(exc).casefold():
                 raise DatabaseCheckpointError from exc
         time.sleep(min(0.05, max(0.0, deadline - time.monotonic())))
+
+
+def vacuum_database(path: Path) -> tuple[int, int]:
+    """Vacuum SQLite in a worker thread and return file size before/after."""
+    if not path.is_file():
+        raise DatabaseFileMissingError
+    before = path.stat().st_size
+    connection = sqlite3.connect(path, timeout=0.25)
+    try:
+        connection.execute("VACUUM")
+    except sqlite3.OperationalError as exc:
+        if "busy" in str(exc).casefold() or "locked" in str(exc).casefold():
+            raise DatabaseCheckpointTimeoutError from exc
+        raise DatabaseCheckpointError from exc
+    finally:
+        connection.close()
+    return before, path.stat().st_size
 
 
 async def create_database_schema(engine: AsyncEngine) -> None:

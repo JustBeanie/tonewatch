@@ -13,10 +13,12 @@ from uuid import UUID
 
 from sqlalchemy import select
 
+from tonewatch.admin.counters import METRICS_COUNTERS
 from tonewatch.admin.health import OutputHealth, bounded_error
 from tonewatch.alerts.ha_discovery import HADiscovery
 from tonewatch.alerts.meshtastic import MeshtasticSender
 from tonewatch.alerts.mqtt import MqttPublisher
+from tonewatch.alerts.phases import ALERT_METRIC_PHASES
 from tonewatch.alerts.script import run_script
 from tonewatch.alerts.webhook import WebhookResult, send_webhook
 from tonewatch.config.models import (
@@ -672,6 +674,10 @@ class AlertDispatcher:
                     )
                 )
                 await session.commit()
+                if phase in ALERT_METRIC_PHASES:
+                    METRICS_COUNTERS.record_alert_attempt(
+                        target_id, phase, "success" if ok else "failure"
+                    )
         except Exception:
             self.logger.exception(
                 "alert attempt persistence failed", extra={"call_id": str(call_id)}
