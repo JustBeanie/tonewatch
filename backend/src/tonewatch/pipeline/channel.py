@@ -53,6 +53,8 @@ class RecorderCall:
     source_id: str
     started_at: datetime
     toneset_ids: frozenset[str]
+    drill: bool = False
+    drill_keep: bool = False
 
 
 class RecorderHook(Protocol):
@@ -101,6 +103,8 @@ class _OpenCall:
     last_detection_s: float
     merge_window_s: float
     toneset_ids: set[str] = field(default_factory=set)
+    drill: bool = False
+    drill_keep: bool = False
 
 
 class Channel:
@@ -163,6 +167,12 @@ class Channel:
         self._squelch_open: bool | None = None
         self._last_activity_at: datetime | None = None
         self._level_taps: set[Callable[[float], None]] = set()
+        self._drill_samples: np.ndarray | None = None
+        self._drill_mode = "replace"
+        self._drill_offset = 0
+        self._drill_id: UUID | None = None
+        self._drill_keep = False
+        self._current_frame_drill = False
         self.health = ChannelHealth()
 
     @property
@@ -191,6 +201,49 @@ class Channel:
     def remove_level_tap(self, tap: Callable[[float], None]) -> None:
         self._level_taps.discard(tap)
 
+    @property
+    def drill_active(self) -> bool:
+        return self._drill_samples is not None
+
+    async def start_drill(
+        self, samples: np.ndarray, mode: str, keep: bool = False
+    ) -> tuple[UUID, float]:
+        """Schedule a waveform on this running channel without restarting it."""
+        if mode not in {"mix", "replace"}:
+            raise ValueError("mode must be mix or replace")
+        if self.drill_active:
+            raise RuntimeError("drill already active")
+        self._drill_samples = np.asarray(samples, dtype=np.float32).copy()
+        self._drill_mode = mode
+        self._drill_offset = 0
+        self._drill_id = uuid4()
+        self._drill_keep = keep
+        return self._drill_id, self._drill_samples.size / 16_000
+
+    def _apply_drill(self, samples: np.ndarray) -> np.ndarray:
+        if self._drill_samples is None:
+            self._current_frame_drill = False
+            return samples
+        left = self._drill_offset
+        right = min(left + samples.size, self._drill_samples.size)
+        injected = self._drill_samples[left:right]
+        self._drill_offset = right
+        if injected.size == 0:
+            self._drill_samples = None
+            self._current_frame_drill = False
+            return samples
+        self._current_frame_drill = True
+        result = np.asarray(samples, dtype=np.float32).copy()
+        if self._drill_mode == "replace":
+            result[: injected.size] = injected
+        else:
+            result[: injected.size] = np.clip(
+                result[: injected.size] * np.float32(0.5) + injected * np.float32(0.5), -1.0, 1.0
+            )
+        if right >= self._drill_samples.size:
+            self._drill_samples = None
+        return result
+
     async def run(  # noqa: PLR0912,PLR0915 -- ordered stream lifecycle is intentionally explicit
         self,
     ) -> None:
@@ -202,7 +255,13 @@ class Channel:
         try:
             await source.open()
             engine = self._engine_factory(list(self.tonesets))
-            async for frame in source:
+            async for raw_frame in source:
+                frame = AudioFrame(
+                    self._apply_drill(raw_frame.samples),
+                    raw_frame.stream_time_s,
+                    raw_frame.source_id,
+                    raw_frame.discontinuity,
+                )
                 self._observe_frame(frame)
                 await self._close_expired(frame.stream_time_s)
                 self.ringbuffer.extend(frame.samples, stream_time_s=frame.stream_time_s)
@@ -390,14 +449,18 @@ class Channel:
             open_call.merge_window_s = max(open_call.merge_window_s, toneset.record.post_s)
             open_call.last_detection_s = detection.detected_at_s
         open_call.toneset_ids.add(detection.toneset_id)
+        open_call.drill = open_call.drill or self._current_frame_drill
+        open_call.drill_keep = open_call.drill_keep or self._drill_keep
         self.bus.publish(
             ToneDetected(
                 open_call.id,
                 detection.toneset_id,
                 self._to_wall_time(detection.detected_at_s),
                 self.source_id,
-                False,
+                open_call.drill,
                 self.agency_lookup(toneset.agency_id) if toneset.agency_id is not None else None,
+                open_call.drill,
+                open_call.drill_keep,
             )
         )
 
@@ -409,6 +472,8 @@ class Channel:
             self.source_id,
             self._to_wall_time(self._open_call.first_detection_s),
             frozenset(self._open_call.toneset_ids),
+            self._open_call.drill,
+            self._open_call.drill_keep,
         )
 
     @property

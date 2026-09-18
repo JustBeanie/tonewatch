@@ -164,7 +164,7 @@ Tick a task with `[x]`, then append ` — <PR link> — <one-line note>`. Blocke
 - [~] **M19.1** System health page + `/api/admin/health` (per-source realtime factor, drops, disk forecast, DB size, target status, versions). — UI complete; PENDING-REVIEW
 - [~] **M19.2** Admin alerts: dead feed, disk, failing target, stuck squelch, slow DSP; rate-limited, resolved follow-ups. — direct to main — engine on the supervisor timer, dedicated MQTT admin topic, pages unaffected; UI complete; PENDING-REVIEW
 - [~] **M19.3** Alert delivery log with single-attempt audited retry. — UI complete; PENDING-REVIEW
-- [ ] **M19.4** End-to-end drill: inject synthetic tones into a live channel, marked test everywhere.
+- [~] **M19.4** End-to-end drill: inject synthetic tones into a live channel, marked test everywhere. — backend/API done (POST /api/admin/drill mix/replace without restart, drill+test markers through every target, admin alerts excluded, drill retention with keep, migration 0009); UI pending.
 - [~] **M19.5** Config history, diff, rollback, masked export, dry-run import. — backend/API done (history in shared save path + startup baseline, masked versions/diffs, rollback/import require If-Match, secret export is a CSRF-protected POST, streaming import cap); UI pending.
 - [ ] **M19.6** Backup and restore archive (config, SQLite online backup, optional recordings).
 - [~] **M19.7** Support bundle (redacted) and in-UI log viewer. — backend/API done (redacted log ring + /api/admin/logs; support bundle with structured value/URL/path scrubbing, audited, rate-limited); UI pending.

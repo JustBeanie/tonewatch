@@ -798,6 +798,7 @@ async def test_m17_mqtt_call_enriched_payload_has_golden_keys():
             "recording_url": None,
             "source_id": "",
             "test": False,
+            "drill": False,
             "agency": {"name": "North Unit", "key": "north unit"},
             "recording_path_relative": True,
             "toneset": "page",

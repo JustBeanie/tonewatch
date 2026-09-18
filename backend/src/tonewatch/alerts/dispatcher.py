@@ -75,7 +75,13 @@ class AlertDispatcher:
         self._mesh_sent: set[tuple[UUID, str]] = set()
         self._seen: set[tuple[UUID, str, str]] = set()
         self._calls: dict[UUID, dict[str, Any]] = defaultdict(
-            lambda: {"tone_sets": [], "test": False, "source_id": "", "recording_path": None}
+            lambda: {
+                "tone_sets": [],
+                "test": False,
+                "drill": False,
+                "source_id": "",
+                "recording_path": None,
+            }
         )
         self._mqtt: dict[str, MqttPublisher] = {}
         self._meshtastic: dict[str, MeshtasticSender] = {}
@@ -320,9 +326,10 @@ class AlertDispatcher:
         phase: str
         call_id: UUID
         test = False
+        drill = False
         recording_url: str | None = None
         if isinstance(event, CallEnriched):
-            call_id, phase, test = event.call_id, "call_enriched", event.test
+            call_id, phase, test, drill = event.call_id, "call_enriched", event.test, event.drill
             state = self._calls[call_id]
             if not state["tone_sets"] and self.session_factory is not None:
                 async with self.session_factory() as session:
@@ -337,13 +344,14 @@ class AlertDispatcher:
             detected_at = None
             state["cad_incident"] = event.incident
         elif isinstance(event, ToneDetected):
-            call_id, phase, test = event.call_id, "pre_alert", event.test
+            call_id, phase, test, drill = event.call_id, "pre_alert", event.test, event.drill
             state = self._calls[call_id]
             if event.toneset_id not in state["tone_sets"]:
                 state["tone_sets"].append(event.toneset_id)
             state.update(
                 source_id=event.source_id,
                 test=state["test"] or test,
+                drill=state.get("drill", False) or drill,
                 detected_at=state.get("detected_at") or event.detected_at,
                 agency=self._agency_for_tone_sets(state["tone_sets"]),
             )
@@ -356,13 +364,18 @@ class AlertDispatcher:
         elif isinstance(event, RecordingStored):
             call_id, phase = event.call_id, "recording_ready"
             state = self._calls[call_id]
-            state.update(source_id=event.source_id, test=state["test"] or event.test)
+            state.update(
+                source_id=event.source_id,
+                test=state["test"] or event.test,
+                drill=state.get("drill", False) or event.drill,
+            )
             test, detected_at = bool(state["test"]), None
             recording_url = f"/api/recordings/{event.recording_id}"
         else:
-            call_id, phase, test = event.call_id, "closed", event.test
+            call_id, phase, test, drill = event.call_id, "closed", event.test, event.drill
             state = self._calls[call_id]
             state["test"] = state["test"] or test
+            state["drill"] = state.get("drill", False) or drill
             detected_at = None
         target_ids = self._target_ids(state["tone_sets"])
         payload = self._payload(
@@ -534,6 +547,7 @@ class AlertDispatcher:
             "recording_url": recording_url,
             "source_id": state.get("source_id", ""),
             "test": bool(state.get("test") or test),
+            "drill": bool(state.get("drill")),
             "agency": state.get("agency"),
         }
         if public_base_url is None:
@@ -575,9 +589,10 @@ class AlertDispatcher:
             except Exception as exc:
                 outcome = WebhookResult(False, error=str(exc)[:500])
             ok = bool(getattr(outcome, "ok", False))
-            self.output_health[target_id].record(
-                ok, datetime.now().astimezone(), getattr(outcome, "error", None)
-            )
+            if not payload.get("drill", False):
+                self.output_health[target_id].record(
+                    ok, datetime.now().astimezone(), getattr(outcome, "error", None)
+                )
             await self._record(call_id, target_id, phase, attempt_no, ok, outcome)
             if ok:
                 return

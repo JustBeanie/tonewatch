@@ -19,6 +19,8 @@ class ToneDetected:
     source_id: str = ""
     test: bool = False
     agency: dict[str, Any] | None = None
+    drill: bool = False
+    drill_keep: bool = False
 
 
 @dataclass(frozen=True)
@@ -28,6 +30,8 @@ class RecordingReady:
     format: str
     source_id: str = ""
     test: bool = False
+    drill: bool = False
+    drill_keep: bool = False
 
 
 @dataclass(frozen=True)
@@ -39,6 +43,8 @@ class RecordingStored:
     format: str
     source_id: str = ""
     test: bool = False
+    drill: bool = False
+    drill_keep: bool = False
 
 
 @dataclass(frozen=True)
@@ -54,6 +60,8 @@ class CallClosed:
     status: str
     source_id: str = ""
     test: bool = False
+    drill: bool = False
+    drill_keep: bool = False
 
 
 @dataclass(frozen=True)
@@ -64,6 +72,7 @@ class CallEnriched:
     incident: dict[str, Any]
     matched_at: datetime
     test: bool = False
+    drill: bool = False
 
 
 @dataclass(frozen=True)

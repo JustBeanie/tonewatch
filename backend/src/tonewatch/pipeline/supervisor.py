@@ -87,6 +87,9 @@ class Supervisor:
             else shutdown_timeout_s / 2
         )
         self._tasks: dict[str, asyncio.Task[None]] = {}
+        self._drill_active_sources: set[str] = set()
+        self._drill_last_started = 0.0
+        self._drill_tasks: set[asyncio.Task[None]] = set()
         self._background_shutdown: set[asyncio.Task[None]] = set()
         self._configs: dict[str, Source] = {}
         self._channels: dict[str, Channel] = {}
@@ -164,9 +167,15 @@ class Supervisor:
                 self._start_source(source)
         self._apply_cad_feeds()
 
-    async def stop(self) -> None:
+    async def stop(self) -> None:  # noqa: PLR0915 -- bounded shutdown lifecycle is intentionally explicit.
         """Cancel all channel tasks within the bounded shutdown period."""
         self._stopping = True
+        for task in tuple(self._drill_tasks):
+            task.cancel()
+        if self._drill_tasks:
+            await asyncio.gather(*self._drill_tasks, return_exceptions=True)
+        self._drill_tasks.clear()
+        self._drill_active_sources.clear()
         tasks = tuple(self._tasks.values())
         for task in tasks:
             task.cancel()

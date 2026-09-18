@@ -69,6 +69,18 @@ scrape_configs:
 
 ## Admin alerts
 
+## End-to-end drills
+
+`POST /api/admin/drill` injects a synthetic configured tone sequence into a
+currently running source. It requires an administrator bearer token (or a
+CSRF-protected session), and is deliberately refused through Home Assistant
+ingress because it can trigger real alert pages; every resulting call and
+delivery is marked `test: true` and `drill: true`. The request is audited with
+the actor, source, tone set, mode, and retention choice. Drills are limited to
+one active drill per source and one start per minute globally. Drill calls and
+recordings are retained for 24 hours by default; set `drill.retention_hours`
+or `keep: true` when a longer-lived evidence clip is needed.
+
 Operational alerts are disabled by default. Enable `admin_alerts` and select existing alert-target IDs in `targets` to receive these notifications. The defaults are: feed unhealthy for 5 minutes, disk used at 90%, disk forecast under 7 days, 5 consecutive target failures, stuck squelch enabled, and realtime DSP below 1.5x for 300 seconds. `min_interval_s` defaults to 300 seconds per condition and `max_per_hour` defaults to 6 across all conditions.
 
 Conditions are edge-triggered: a firing notification is sent once after its threshold or hysteresis duration is met, and a single `resolved` notification follows when the condition clears. Reminders while a condition remains latched obey both rate limits; dropped reminders are counted and logged. Feed and DSP conditions have hysteresis, while disk, target, and squelch recovery is immediate.

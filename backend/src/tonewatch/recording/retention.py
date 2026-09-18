@@ -14,7 +14,7 @@ from typing import Any
 from sqlalchemy import delete, exists, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from tonewatch.storage.models import CadIncident, CallCadIncident, DiscoveredTone, Recording
+from tonewatch.storage.models import CadIncident, Call, CallCadIncident, DiscoveredTone, Recording
 
 
 @dataclass(frozen=True, slots=True)
@@ -23,6 +23,7 @@ class RetentionPolicy:
     max_total_bytes: int | None = 5 * 1024**3
     max_count: int | None = None
     orphan_safety_age_seconds: int = 3600
+    drill_retention_hours: float = 24
 
 
 @dataclass(frozen=True, slots=True)
@@ -96,6 +97,7 @@ class RetentionPlan:
     cad_ids: tuple[tuple[str, str], ...]
     discovered_ids: tuple[int, ...] = ()
     discovered_paths: tuple[Path, ...] = ()
+    drill_call_ids: tuple[Any, ...] = ()
 
     @property
     def counts(self) -> dict[str, object]:
@@ -104,6 +106,7 @@ class RetentionPlan:
             "calls": len(self.call_ids),
             "cad_incidents": len(self.cad_ids),
             "discovered": len(self.discovered_ids),
+            "drills": len(self.drill_call_ids),
         }
 
 
@@ -143,6 +146,22 @@ class RetentionService:
         )
         total = sum(row.size_bytes for row in rows)
         selected: list[Recording] = []
+        drill_cutoff = datetime.fromtimestamp(self.clock(), UTC) - timedelta(
+            hours=self.policy.drill_retention_hours
+        )
+        drill_result = await session.scalars(select(Call).where(Call.drill.is_(True)))
+        drill_rows = list(drill_result.all())
+        drill_selected = tuple(
+            row.id
+            for row in drill_rows
+            if not row.drill_keep
+            and (
+                row.started_at.replace(tzinfo=UTC)
+                if row.started_at.tzinfo is None
+                else row.started_at
+            )
+            < drill_cutoff
+        )
         for row in rows:
             path = Path(row.path)
             safe_recording_path(self.root, path)
@@ -156,6 +175,9 @@ class RetentionService:
                 and len(rows) - len(selected) > self.policy.max_count
             )
             if too_old or over:
+                selected.append(row)
+                total -= row.size_bytes
+            if row.call_id in drill_selected and row not in selected:
                 selected.append(row)
                 total -= row.size_bytes
         cad_selected_list: list[tuple[str, str]] = []
@@ -207,10 +229,11 @@ class RetentionService:
             tuple(row.id for row in selected),
             tuple(Path(row.path) for row in selected),
             sum(row.size_bytes for row in selected),
-            tuple(dict.fromkeys(row.call_id for row in selected)),
+            tuple(dict.fromkeys([*(row.call_id for row in selected), *drill_selected])),
             cad_selected,
             tuple(item[0] for item in discovered_selected),
             tuple(item[1] for item in discovered_selected),
+            drill_selected,
         )
 
     async def apply(self, session: AsyncSession, plan: RetentionPlan) -> dict[str, object]:
@@ -228,6 +251,8 @@ class RetentionService:
                     CadIncident.feed_id == feed_id, CadIncident.incident_id == incident_id
                 )
             )
+        if plan.drill_call_ids:
+            await session.execute(delete(Call).where(Call.id.in_(plan.drill_call_ids)))
         for discovered_id in plan.discovered_ids:
             await session.execute(delete(DiscoveredTone).where(DiscoveredTone.id == discovered_id))
         await session.commit()

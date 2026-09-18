@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import time
 from datetime import datetime
@@ -10,8 +11,8 @@ from uuid import UUID
 
 import yaml
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from fastapi.responses import Response
-from pydantic import BaseModel, ConfigDict
+from fastapi.responses import JSONResponse, Response
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 
 from tonewatch import __version__
@@ -20,6 +21,7 @@ from tonewatch.api.audit import SecretRestoreError, mask_secrets, record_audit, 
 from tonewatch.api.deps import authenticated, save_config, write_auth
 from tonewatch.config.history import ConfigHistory, HistoryError, structured_diff
 from tonewatch.config.models import AppConfig, MeshtasticTarget, MqttTarget
+from tonewatch.pipeline.drill import build_waveform
 from tonewatch.storage.models import Call, Recording
 from tonewatch.storage.repository import list_alert_attempts
 
@@ -34,6 +36,83 @@ class ConfigExportRequest(BaseModel):
     format: Literal["yaml", "json"] = "yaml"
     include_secrets: bool = False
     confirm: str | None = None
+
+
+class DrillRequest(BaseModel):
+    source_id: str
+    toneset_id: str
+    mode: Literal["mix", "replace"] = "replace"
+    voice_s: float = Field(default=5.0, ge=0, le=20)
+    keep: bool = False
+
+
+@router.post("/drill", status_code=202, dependencies=[Depends(write_auth)])
+async def start_drill(request: Request, body: DrillRequest) -> JSONResponse:
+    """Inject a marked synthetic page into one already-running channel."""
+    if getattr(request.state, "auth", None) == "ingress":
+        raise HTTPException(403, "drills are not available through ingress")
+    config = request.app.state.config
+    source = next((item for item in config.sources if item.id == body.source_id), None)
+    if source is None:
+        raise HTTPException(404, "source not found")
+    if not source.enabled:
+        raise HTTPException(409, "source is disabled")
+    toneset = next((item for item in config.tone_sets if item.id == body.toneset_id), None)
+    if toneset is None:
+        raise HTTPException(404, "tone set not found")
+    if not toneset.enabled:
+        raise HTTPException(409, "tone set is disabled")
+    supervisor = request.app.state.supervisor
+    channel = supervisor.channel_for(body.source_id) if supervisor is not None else None
+    if channel is None:
+        raise HTTPException(409, "source is not running")
+    now = time.monotonic()
+    active: set[str] = getattr(supervisor, "_drill_active_sources", set())
+    if body.source_id in active or channel.drill_active:
+        raise HTTPException(429, "a drill is already active for this source")
+    last = getattr(supervisor, "_drill_last_started", 0.0)
+    if now - last < 60:
+        raise HTTPException(429, "drills are rate limited globally")
+    waveform = build_waveform(
+        [(item.freq_hz, item.min_s, item.max_s or item.min_s) for item in toneset.sequence],
+        voice_s=body.voice_s,
+    )
+    try:
+        drill_id, duration = await channel.start_drill(waveform.samples, body.mode, body.keep)
+    except RuntimeError as exc:
+        raise HTTPException(429, str(exc)) from exc
+    active.add(body.source_id)
+    supervisor._drill_active_sources = active
+    supervisor._drill_last_started = now
+    asyncio_task = asyncio.create_task(
+        _release_drill(supervisor, body.source_id, duration), name=f"tonewatch-drill-{drill_id}"
+    )
+    drill_tasks: set[asyncio.Task[None]] = getattr(supervisor, "_drill_tasks", set())
+    drill_tasks.add(asyncio_task)
+    supervisor._drill_tasks = drill_tasks
+    asyncio_task.add_done_callback(drill_tasks.discard)
+    await record_audit(
+        request.app.state.session_factory,
+        actor=getattr(request.state, "auth", "unknown"),
+        event_type="drill_started",
+        resource=str(drill_id),
+        details={
+            "source_id": body.source_id,
+            "toneset_id": body.toneset_id,
+            "mode": body.mode,
+            "keep": body.keep,
+        },
+    )
+    return JSONResponse(
+        {"drill_id": str(drill_id), "expected_duration_s": duration}, status_code=202
+    )
+
+
+async def _release_drill(supervisor: Any, source_id: str, duration: float) -> None:
+    try:
+        await asyncio.sleep(duration)
+    finally:
+        getattr(supervisor, "_drill_active_sources", set()).discard(source_id)
 
 
 def _history(request: Request) -> ConfigHistory:

@@ -226,6 +226,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/drill": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Drill
+         * @description Inject a marked synthetic page into one already-running channel.
+         */
+        post: operations["start_drill_api_admin_drill_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/health": {
         parameters: {
             query?: never;
@@ -1333,6 +1353,7 @@ export interface components {
             /** Cad Feeds */
             cad_feeds?: components["schemas"]["CadFeed"][];
             discovery?: components["schemas"]["DiscoveryConfig"];
+            drill?: components["schemas"]["DrillConfig"];
             live_stream?: components["schemas"]["LiveStreamConfig"];
             map?: components["schemas"]["MapConfig"];
             /** Sources */
@@ -1458,6 +1479,40 @@ export interface components {
              * @default 1.5
              */
             tol_pct: number;
+        };
+        /**
+         * DrillConfig
+         * @description Retention for synthetic administrative drills.
+         */
+        DrillConfig: {
+            /**
+             * Retention Hours
+             * @default 24
+             */
+            retention_hours: number;
+        };
+        /** DrillRequest */
+        DrillRequest: {
+            /**
+             * Keep
+             * @default false
+             */
+            keep: boolean;
+            /**
+             * Mode
+             * @default replace
+             * @enum {string}
+             */
+            mode: "mix" | "replace";
+            /** Source Id */
+            source_id: string;
+            /** Toneset Id */
+            toneset_id: string;
+            /**
+             * Voice S
+             * @default 5
+             */
+            voice_s: number;
         };
         /** FileSource */
         FileSource: {
@@ -2663,6 +2718,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+        };
+    };
+    start_drill_api_admin_drill_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DrillRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

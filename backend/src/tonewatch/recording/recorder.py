@@ -225,9 +225,21 @@ class CallRecorder:
         if self.bus is not None:
             for item in files:
                 self.bus.publish(
-                    RecordingReady(call.id, str(item.path), item.format, call.source_id)
+                    RecordingReady(
+                        call.id,
+                        str(item.path),
+                        item.format,
+                        call.source_id,
+                        call.drill,
+                        call.drill,
+                        call.drill_keep,
+                    )
                 )
-            self.bus.publish(CallClosed(call.id, "recorded", call.source_id))
+            self.bus.publish(
+                CallClosed(
+                    call.id, "recorded", call.source_id, call.drill, call.drill, call.drill_keep
+                )
+            )
         result = RecordingResult(str(call.id), tuple(files))
         self._reset()
         if cancelled:

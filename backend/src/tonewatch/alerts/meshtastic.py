@@ -100,7 +100,9 @@ def render_untruncated(target: MeshtasticTarget, payload: dict[str, object]) -> 
         "cad_address": _value_text(payload.get("cad_address", payload.get("address_clean", ""))),
     }
     rendered = target.template.format(**values)
-    if payload.get("test"):
+    if payload.get("drill"):
+        rendered = f"DRILL {rendered}"
+    elif payload.get("test"):
         rendered = f"TEST {rendered}"
     return sanitize(rendered)
 

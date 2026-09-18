@@ -537,6 +537,12 @@ class AdminAlertsConfig(FrozenModel):
     max_per_hour: int = Field(default=6, ge=1, le=100)
 
 
+class DrillConfig(FrozenModel):
+    """Retention for synthetic administrative drills."""
+
+    retention_hours: float = Field(default=24, gt=0, le=8760)
+
+
 def _validate_meshtastic_references(targets: list[AlertTarget]) -> None:
     mqtt_ids = {item.id for item in targets if isinstance(item, MqttTarget)}
     for target in targets:
@@ -579,6 +585,7 @@ class AppConfig(FrozenModel):
     discovery: DiscoveryConfig = Field(default_factory=DiscoveryConfig)
     live_stream: LiveStreamConfig = Field(default_factory=LiveStreamConfig)
     admin_alerts: AdminAlertsConfig = Field(default_factory=AdminAlertsConfig)
+    drill: DrillConfig = Field(default_factory=DrillConfig)
 
     @model_validator(mode="after")
     def references_and_unique_ids(self) -> "AppConfig":

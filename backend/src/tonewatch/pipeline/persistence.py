@@ -386,6 +386,8 @@ class PersistenceSubscriber:
             format=event.format,
             source_id=event.source_id,
             test=event.test,
+            drill=event.drill,
+            drill_keep=event.drill_keep,
         )
 
     async def _persist_detection(self, session: AsyncSession, event: ToneDetected) -> None:
@@ -396,6 +398,8 @@ class PersistenceSubscriber:
                 call_id=event.call_id,
                 source_id=event.source_id,
                 started_at=event.detected_at,
+                drill=event.drill,
+                drill_keep=event.drill_keep,
             )
         if await session.get(CallToneSet, (event.call_id, event.toneset_id)) is None:
             toneset = (

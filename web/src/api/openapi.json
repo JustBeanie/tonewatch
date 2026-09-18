@@ -458,6 +458,9 @@
           "discovery": {
             "$ref": "#/components/schemas/DiscoveryConfig"
           },
+          "drill": {
+            "$ref": "#/components/schemas/DrillConfig"
+          },
           "live_stream": {
             "$ref": "#/components/schemas/LiveStreamConfig"
           },
@@ -725,6 +728,60 @@
           }
         },
         "title": "DiscoveryConfig",
+        "type": "object"
+      },
+      "DrillConfig": {
+        "additionalProperties": false,
+        "description": "Retention for synthetic administrative drills.",
+        "properties": {
+          "retention_hours": {
+            "default": 24,
+            "exclusiveMinimum": 0.0,
+            "maximum": 8760.0,
+            "title": "Retention Hours",
+            "type": "number"
+          }
+        },
+        "title": "DrillConfig",
+        "type": "object"
+      },
+      "DrillRequest": {
+        "properties": {
+          "keep": {
+            "default": false,
+            "title": "Keep",
+            "type": "boolean"
+          },
+          "mode": {
+            "default": "replace",
+            "enum": [
+              "mix",
+              "replace"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "source_id": {
+            "title": "Source Id",
+            "type": "string"
+          },
+          "toneset_id": {
+            "title": "Toneset Id",
+            "type": "string"
+          },
+          "voice_s": {
+            "default": 5.0,
+            "maximum": 20.0,
+            "minimum": 0.0,
+            "title": "Voice S",
+            "type": "number"
+          }
+        },
+        "required": [
+          "source_id",
+          "toneset_id"
+        ],
+        "title": "DrillRequest",
         "type": "object"
       },
       "FileSource": {
@@ -2905,6 +2962,46 @@
         "summary": "Change Ui Password",
         "tags": [
           "admin-credentials"
+        ]
+      }
+    },
+    "/api/admin/drill": {
+      "post": {
+        "description": "Inject a marked synthetic page into one already-running channel.",
+        "operationId": "start_drill_api_admin_drill_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DrillRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Start Drill",
+        "tags": [
+          "admin"
         ]
       }
     },

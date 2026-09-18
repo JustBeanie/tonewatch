@@ -170,6 +170,7 @@ async def test_m19e_a_preview_equals_run_and_second_preview_is_empty(tmp_path: P
         "calls": 0,
         "cad_incidents": 0,
         "discovered": 0,
+        "drills": 0,
     }
 
 

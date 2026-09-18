@@ -58,15 +58,23 @@ class CallRecord:
     status: str
 
 
-async def create_call(
+async def create_call(  # noqa: PLR0913 -- drill retention flags are part of the row contract.
     session: AsyncSession,
     *,
     source_id: str,
     started_at: datetime,
     call_id: UUID | None = None,
+    drill: bool = False,
+    drill_keep: bool = False,
 ) -> CallRecord:
     """Create a call and return a value object."""
-    call = Call(id=call_id, source_id=source_id, started_at=started_at)
+    call = Call(
+        id=call_id,
+        source_id=source_id,
+        started_at=started_at,
+        drill=drill,
+        drill_keep=drill_keep,
+    )
     session.add(call)
     await session.flush()
     return CallRecord(call.id, call.started_at, call.source_id, call.status)

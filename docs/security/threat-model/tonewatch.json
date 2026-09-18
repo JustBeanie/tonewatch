@@ -104,7 +104,8 @@
         {"id": "TM-046", "category": "Denial of service / Spoofing", "element": "Live secret rotation", "status": "mitigated"},
         {"id": "TM-047", "category": "Elevation of privilege", "element": "UI sessions", "status": "mitigated"},
         {"id": "TM-048", "category": "Information disclosure / Tampering", "element": "Configuration history, export and import", "status": "mitigated", "evidence": "backend/src/tonewatch/config/history.py; backend/src/tonewatch/api/routes/admin.py; docs/guide/admin.md"},
-        {"id": "TM-049", "category": "Information disclosure / Denial of service", "element": "Support bundle and log ring", "status": "mitigated"}
+        {"id": "TM-049", "category": "Information disclosure / Denial of service", "element": "Support bundle and log ring", "status": "mitigated"},
+        {"id": "TM-051", "category": "Elevation of privilege / Denial of service", "element": "Admin drill API and running channel", "status": "mitigated"}
       ]
     }
   ]

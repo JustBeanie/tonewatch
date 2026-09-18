@@ -30,6 +30,10 @@ class Call(Base):
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     source_id: Mapped[str] = mapped_column(String(100), nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="active")
+    drill: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
+    drill_keep: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="0"
+    )
     tone_sets: Mapped[list["CallToneSet"]] = relationship(cascade="all, delete-orphan")
     recordings: Mapped[list["Recording"]] = relationship(cascade="all, delete-orphan")
     alerts: Mapped[list["AlertAttempt"]] = relationship(cascade="all, delete-orphan")
