@@ -813,6 +813,7 @@ async def test_m19e_fix_metrics_real_route_matches_fixture_golden(tmp_path: Path
     assert response.status_code == 200
     normalized = re.sub(r"(tonewatch_disk_free_bytes )\d+", r"\1<D not volatile>", response.text)
     normalized = re.sub(r"(tonewatch_db_size_bytes )\d+", r"\1<D not volatile>", normalized)
+    normalized = re.sub(r'(tonewatch_build_info\{version=")[^"]+', r"\1<version>", normalized)
     golden = Path(__file__).parents[1] / "golden" / "m19e_metrics.txt"
     assert normalized == golden.read_text(encoding="utf-8")
     for secret in (fixture_url, fixture_credential, "127.0.0.1"):

@@ -29,4 +29,4 @@ tonewatch_eventbus_queue_depth{subscriber="3"} 0
 tonewatch_disk_free_bytes <D not volatile>
 tonewatch_db_size_bytes <D not volatile>
 tonewatch_cad_feed_connected{feed_id="fixture-cad"} 0
-tonewatch_build_info{version="0.5.0"} 1
+tonewatch_build_info{version="<version>"} 1
