@@ -25,6 +25,8 @@ import { Audit } from "../features/admin/Audit";
 import { Drill } from "../features/admin/Drill";
 import { ConfigHistory } from "../features/admin/ConfigHistory";
 import { Logs } from "../features/admin/Logs";
+import { Backup } from "../features/admin/Backup";
+import { Replay } from "../features/admin/Replay";
 function Login() {
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
@@ -102,6 +104,8 @@ export function Router() {
                     <Route path="/admin/drill" element={<Drill />} />
                     <Route path="/admin/config" element={<ConfigHistory />} />
                     <Route path="/admin/logs" element={<Logs />} />
+                    <Route path="/admin/backup" element={<Backup />} />
+                    <Route path="/admin/replay" element={<Replay />} />
                     <Route
                         path="*"
                         element={

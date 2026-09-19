@@ -343,3 +343,34 @@ test("admin drill cancellation does not post", async ({ page }) => {
     await page.getByRole("button", { name: "Cancel" }).click();
     expect(posts).toBe(0);
 });
+
+test("admin backup downloads an archive without external requests", async ({ page }) => {
+    const external: string[] = [];
+    page.on("request", (request) => {
+        const url = new URL(request.url());
+        if (!["localhost", "127.0.0.1"].includes(url.hostname)) external.push(request.url());
+    });
+    await login(page);
+    await page.goto("/admin/backup");
+    await expect(page.getByRole("heading", { name: "Backup" })).toBeVisible();
+    const download = page.waitForEvent("download");
+    await page.getByRole("button", { name: /download backup/i }).click();
+    expect((await download).suggestedFilename()).toMatch(/\.tar\.gz$/);
+    expect(external).toEqual([]);
+});
+
+test("admin replay runs the unchanged draft without external requests", async ({ page }) => {
+    const external: string[] = [];
+    page.on("request", (request) => {
+        const url = new URL(request.url());
+        if (!["localhost", "127.0.0.1"].includes(url.hostname)) external.push(request.url());
+    });
+    await login(page);
+    await page.goto("/admin/replay");
+    await expect(page.getByRole("heading", { name: "Replay a draft" })).toBeVisible();
+    await expect(page.getByRole("button", { name: /run replay/i })).toBeEnabled();
+    await page.getByRole("button", { name: /run replay/i }).click();
+    await expect(page.getByRole("heading", { name: "Results" })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/No calls or uploads matched\.|Replay results/)).toBeVisible();
+    expect(external).toEqual([]);
+});

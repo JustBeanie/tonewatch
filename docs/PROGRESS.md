@@ -161,18 +161,18 @@ Tick a task with `[x]`, then append ` — <PR link> — <one-line note>`. Blocke
 - [ ] **M18.5** Document the HA Meshtastic integration path (after M11.7).
 
 ## M19: Admin tooling (added 2026-09-13 at user request)
-- [~] **M19.1** System health page + `/api/admin/health` (per-source realtime factor, drops, disk forecast, DB size, target status, versions). — UI complete; PENDING-REVIEW
-- [~] **M19.2** Admin alerts: dead feed, disk, failing target, stuck squelch, slow DSP; rate-limited, resolved follow-ups. — direct to main — engine on the supervisor timer, dedicated MQTT admin topic, pages unaffected; UI complete; PENDING-REVIEW
-- [~] **M19.3** Alert delivery log with single-attempt audited retry. — UI complete; PENDING-REVIEW
+- [x] **M19.1** System health page + `/api/admin/health` (per-source realtime factor, drops, disk forecast, DB size, target status, versions). — API + /admin/health page (M19c, reviewed and host-e2e verified).
+- [x] **M19.2** Admin alerts: dead feed, disk, failing target, stuck squelch, slow DSP; rate-limited, resolved follow-ups. — direct to main — engine on the supervisor timer, dedicated MQTT admin topic, pages unaffected; UI complete (M19c, reviewed).
+- [x] **M19.3** Alert delivery log with single-attempt audited retry. — API + /admin/deliveries page (M19c, reviewed and host-e2e verified).
 - [x] **M19.4** End-to-end drill: inject synthetic tones into a live channel, marked test everywhere. — API (mix/replace without restart, drill+test markers on every target, admin alerts excluded, drill retention) + /admin/drill page (explicit real-alerts confirmation).
 - [x] **M19.5** Config history, diff, rollback, masked export, dry-run import. — API (history in shared save path + baseline, If-Match rollback/import, CSRF secret export, streaming cap) + /admin/config page (diff, rollback, typed secret-export confirmation, preview-gated import).
-- [~] **M19.6** Backup and restore archive (config, SQLite online backup, optional recordings). — backend/API/CLI done (verified tar members vs manifest, restore replaces only archive-owned paths incl. -wal/-shm with rollback, lifetime tonewatch.pid.lock, exact revision check, credentials excluded by default); UI pending.
+- [x] **M19.6** Backup and restore archive (config, SQLite online backup, optional recordings). — API/CLI (verified members, restore replaces only archive-owned paths with rollback, lifetime instance lock, credentials opt-in) + /admin/backup page (download; restore is CLI-only by design).
 - [x] **M19.7** Support bundle (redacted) and in-UI log viewer. — API (redacted log ring, value-scrubbed bundle) + /admin/logs page (since_seq tail paused when hidden, 2000-row cap, bundle download).
 - [x] **M19.8** Credential management: rotate API token and live secret, change UI password, revoke sessions. — API (persisted single-previous-token grace, constant-time matching incl. WS, live log redaction, ingress refused) + /admin/credentials page (token shown once, never persisted).
 - [x] **M19.9** Maintenance: retention dry-run/run-now, checkpoint/vacuum, orphan cleanup. — API (shared plan/apply and lock, orphan safety age, invalid-row reporting) + /admin/maintenance page (run only after preview, expected_counts).
 - [x] **M19.10** Prometheus `/metrics`, off by default, token-protected. — bearer-only, bounded labels, process-lifetime counters with HELP/TYPE, golden route test.
 - [x] **M19.11** Audit log page with config diff view. — filtered keyset audit API (tz-aware since/until) + /admin/audit page with per-path diff.
-- [~] **M19.12** Replay recent calls or WAVs against a draft config before saving. — backend/API done (draft never persisted, current-vs-draft on the same audio, uploads with 1 h expiry, 600 s audio cap, one replay at a time; call replay is a voice false-positive check because recordings are tone-trimmed); UI pending.
+- [x] **M19.12** Replay recent calls or WAVs against a draft config before saving. — API (current-vs-draft on the same audio, never persisted, uploads with expiry, caps) + /admin/replay page (draft tone-set editor, uploads, classification table, limitations).
 
 ## M12: Docs, hardening and v1.0.0
 - [x] **M12.1** PM review passed; host ci-local green — Added the strict MkDocs Material site, public install and usage guides, internal-doc exclusions, offline `just docs`, and CI build; Pages publishing remains a user decision.
