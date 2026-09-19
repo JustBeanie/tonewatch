@@ -145,8 +145,8 @@ Tick a task with `[x]`, then append ` — <PR link> — <one-line note>`. Blocke
 - [ ] **M16.5** HA: agency on MQTT events; ha-tonewatch `geo_location` per active call (after M11.4).
 
 ## M17: CAD incident correlation via icad2mqtt (added 2026-09-12 at user request)
-- [ ] **M17.0** Codex improvement plan for icad2mqtt (audit, parsing, data cleaning, contract, packaging) → PM review → user. — brief M17-icad2mqtt-plan
-- [ ] **M17.1** icad2mqtt structured JSON contract: retained `incidents` snapshot and `incident` new/updated/closed events. — brief M17a (icad2mqtt repo)
+- [x] **M17.0** Codex improvement plan for icad2mqtt (audit, parsing, data cleaning, contract, packaging) → PM review → user. — brief M17-icad2mqtt-plan — done: plan reviewed and executed in icad2mqtt (ICA-ICF).
+- [x] **M17.1** icad2mqtt structured JSON contract: retained `incidents` snapshot and `incident` new/updated/closed events. — brief M17a (icad2mqtt repo) — done: shipped in icad2mqtt v2.0.0 (ghcr.io/justbeanie/icad2mqtt:2.0.0).
 - [x] **M17.2** ToneWatch CAD feed subscriber, strict schema validation, `CadIncident` table (migration 0006). — direct to main — cad_feeds config, hardened aiomqtt subscriber, snapshot authority, migration 0007
 - [x] **M17.3** Correlate incidents to calls by `Agency.cad_names` and time window; `CallEnriched` event. — direct to main — call-start + late-arrival correlation, CallEnriched to WS/MQTT/opt-in webhooks/Meshtastic
 - [x] **M17.4** Unmatched CAD agencies list with "Create agency". — direct to main — unmatched CAD agencies list with create-agency
@@ -176,7 +176,7 @@ Tick a task with `[x]`, then append ` — <PR link> — <one-line note>`. Blocke
 
 ## M12: Docs, hardening and v1.0.0
 - [x] **M12.1** PM review passed; host ci-local green — Added the strict MkDocs Material site, public install and usage guides, internal-doc exclusions, offline `just docs`, and CI build; Pages publishing remains a user decision.
-- [ ] **M12.2** Threat model doc: exposed API, token storage, the script hook, and webhook SSRF, with an allowlist and bloc...
+- [x] **M12.2** Threat model doc: exposed API, token storage, the script hook, and webhook SSRF, with an allowlist and blocks on link-local and metadata IPs by default. — docs/security/threat-model (TM-001..TM-052, evidence-tested), scope refreshed to M0-M19 on 2026-09-18.
 - [x] **M12.3** PM review passed; host ci-local green — Added the radio recording/rebroadcasting compliance disclaimer to README and the site home page.
 - [x] **M12.5** Clean-room naming scrub: rename the importer, route, CLI, fixtures and docs to neutral wording; add a pygrep gate. — local — Inventory is clean, audit migration and ASVS/threat-model evidence updated, pre-commit/just check green, and ci-local completed with four Playwright e2e tests on port 8799. PM: the proposed audit-event data migration was removed before landing (the importer never shipped in a release); the gate now also covers docs/pm.
 - [ ] **M12.4** Release-please cuts v1.0.0 and the integration v1.0.0 is tagged. The user installs through HACS and runs th...
