@@ -1,11 +1,19 @@
 """Global test safeguards against accidentally opening host audio hardware."""
 
+import gc
 from collections.abc import Iterator
 
 import pytest
 
 from tonewatch.integrations.zeroconf import ZeroconfAdvertiser
 from tonewatch.sources import soundcard
+
+
+@pytest.fixture(autouse=True)
+def collect_garbage_after_test() -> Iterator[None]:
+    """Finalize abandoned resources while the owning test is reported."""
+    yield
+    gc.collect()
 
 
 @pytest.fixture(autouse=True)
