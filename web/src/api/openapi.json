@@ -1014,6 +1014,20 @@
         "title": "LiveStreamConfig",
         "type": "object"
       },
+      "LoginRequest": {
+        "description": "Request body for password login.",
+        "properties": {
+          "password": {
+            "title": "Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "password"
+        ],
+        "title": "LoginRequest",
+        "type": "object"
+      },
       "MapConfig": {
         "additionalProperties": false,
         "description": "Optional external map tile provider configuration.",
@@ -1614,6 +1628,61 @@
           }
         },
         "title": "RecordingPolicy",
+        "type": "object"
+      },
+      "ReplayCallsRequest": {
+        "description": "Selection of persisted calls to replay.",
+        "properties": {
+          "last_n": {
+            "maximum": 50.0,
+            "minimum": 1.0,
+            "title": "Last N",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "last_n"
+        ],
+        "title": "ReplayCallsRequest",
+        "type": "object"
+      },
+      "ReplayRequest": {
+        "description": "Validated replay draft and audio selection.",
+        "properties": {
+          "calls": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReplayCallsRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "draft": {
+            "additionalProperties": true,
+            "title": "Draft",
+            "type": "object"
+          },
+          "uploads": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uploads"
+          }
+        },
+        "required": [
+          "draft"
+        ],
+        "title": "ReplayRequest",
         "type": "object"
       },
       "RtlSdrSource": {
@@ -2282,6 +2351,32 @@
         "title": "ToneSpec",
         "type": "object"
       },
+      "UIPasswordChangeRequest": {
+        "description": "Request body for setting or changing the UI password.",
+        "properties": {
+          "current_password": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Password"
+          },
+          "new_password": {
+            "minLength": 12,
+            "title": "New Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "new_password"
+        ],
+        "title": "UIPasswordChangeRequest",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -2389,6 +2484,34 @@
           "url"
         ],
         "title": "WebhookTarget",
+        "type": "object"
+      },
+      "tonewatch__api__routes__auth__TokenRotationRequest": {
+        "description": "Compatibility request body for API-token rotation.",
+        "properties": {
+          "grace_seconds": {
+            "default": 3600,
+            "maximum": 86400.0,
+            "minimum": 0.0,
+            "title": "Grace Seconds",
+            "type": "integer"
+          }
+        },
+        "title": "TokenRotationRequest",
+        "type": "object"
+      },
+      "tonewatch__api__routes__credentials__TokenRotationRequest": {
+        "description": "Request body for rotating the API token.",
+        "properties": {
+          "grace_seconds": {
+            "default": 3600,
+            "maximum": 86400.0,
+            "minimum": 0.0,
+            "title": "Grace Seconds",
+            "type": "integer"
+          }
+        },
+        "title": "TokenRotationRequest",
         "type": "object"
       }
     }
@@ -2963,6 +3086,16 @@
     "/api/admin/credentials/api-token/rotate": {
       "post": {
         "operationId": "rotate_api_token_api_admin_credentials_api_token_rotate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/tonewatch__api__routes__credentials__TokenRotationRequest"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -2971,6 +3104,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "Rotate Api Token",
@@ -3020,6 +3163,16 @@
     "/api/admin/credentials/ui-password": {
       "post": {
         "operationId": "change_ui_password_api_admin_credentials_ui_password_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UIPasswordChangeRequest"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -3028,6 +3181,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "Change Ui Password",
@@ -3336,6 +3499,16 @@
     "/api/admin/replay": {
       "post": {
         "operationId": "replay_api_admin_replay_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplayRequest"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -3348,6 +3521,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "Replay",
@@ -4114,6 +4297,16 @@
     "/api/auth/login": {
       "post": {
         "operationId": "login_api_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -4122,6 +4315,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "Login",
@@ -4186,6 +4389,18 @@
       "post": {
         "description": "Compatibility alias for credential rotation with the hardened policy.",
         "operationId": "legacy_token_rotate_api_auth_token_rotate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/tonewatch__api__routes__auth__TokenRotationRequest",
+                "default": {
+                  "grace_seconds": 3600
+                }
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "content": {
@@ -4194,6 +4409,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "Legacy Token Rotate",

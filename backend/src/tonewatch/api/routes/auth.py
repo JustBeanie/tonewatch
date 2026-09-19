@@ -3,11 +3,24 @@
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field
 
 from tonewatch.api.audit import record_audit
 from tonewatch.api.deps import credential_write_auth
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+
+
+class LoginRequest(BaseModel):
+    """Request body for password login."""
+
+    password: str
+
+
+class TokenRotationRequest(BaseModel):
+    """Compatibility request body for API-token rotation."""
+
+    grace_seconds: int = Field(default=3600, ge=0, le=86400, strict=True)
 
 
 @router.get("/status")
@@ -32,14 +45,8 @@ def _write_auth(request: Request) -> None:
 
 
 @router.post("/login")
-async def login(request: Request) -> JSONResponse:
-    try:
-        body = await request.json()
-    except ValueError:  # malformed JSON or non-UTF-8 body (found by the S5 ZAP API scan)
-        body = None
-    password = body.get("password") if isinstance(body, dict) else None
-    if not isinstance(password, str):
-        raise HTTPException(422, "password is required")
+async def login(request: Request, body: LoginRequest) -> JSONResponse:
+    password = body.password
     ip = request.client.host if request.client else "unknown"
     try:
         sid, csrf = request.app.state.auth.check_login(ip, password)
@@ -91,15 +98,11 @@ async def logout(request: Request) -> JSONResponse:
 
 
 @router.post("/token/rotate", dependencies=[Depends(credential_write_auth)])
-async def legacy_token_rotate(request: Request) -> JSONResponse:
+async def legacy_token_rotate(
+    request: Request, body: TokenRotationRequest = TokenRotationRequest()
+) -> JSONResponse:
     """Compatibility alias for credential rotation with the hardened policy."""
-    try:
-        body = await request.json()
-    except ValueError:
-        body = None
-    grace = body.get("grace_seconds", 3600) if isinstance(body, dict) else 3600
-    if not isinstance(grace, int) or isinstance(grace, bool) or not 0 <= grace <= 86400:
-        raise HTTPException(422, "grace_seconds must be between 0 and 86400")
+    grace = body.grace_seconds
     token, valid_until = request.app.state.auth.rotate_api_token(grace)
     await record_audit(
         request.app.state.session_factory,

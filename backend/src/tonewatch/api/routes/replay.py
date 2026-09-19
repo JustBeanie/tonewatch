@@ -13,7 +13,7 @@ from typing import Any, cast
 import av
 import numpy as np
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
-from pydantic import ValidationError
+from pydantic import BaseModel, Field, ValidationError, model_validator
 from sqlalchemy import select
 
 from tonewatch.__main__ import _read_wav
@@ -29,6 +29,26 @@ MAX_UPLOAD_BYTES = 20 * 1024 * 1024
 MAX_AUDIO_SECONDS = 600.0
 UPLOAD_TTL_SECONDS = 3600.0
 REPLAY_TIMEOUT_SECONDS = 10.0
+
+
+class ReplayCallsRequest(BaseModel):
+    """Selection of persisted calls to replay."""
+
+    last_n: int = Field(ge=1, le=50, strict=True)
+
+
+class ReplayRequest(BaseModel):
+    """Validated replay draft and audio selection."""
+
+    draft: dict[str, Any]
+    calls: ReplayCallsRequest | None = None
+    uploads: list[str] | None = None
+
+    @model_validator(mode="after")
+    def require_audio_selection(self) -> ReplayRequest:
+        if self.calls is None and self.uploads is None:
+            raise ValueError("calls or uploads is required")
+        return self
 
 
 def classify_replay(
@@ -196,7 +216,7 @@ async def upload_replay_wav(request: Request, file: UploadFile = File(...)) -> d
 
 
 @router.post("", dependencies=[Depends(authenticated)])
-async def replay(request: Request) -> dict[str, Any]:
+async def replay(request: Request, body: ReplayRequest) -> dict[str, Any]:
     if getattr(request.app.state, "replay_active", False):
         raise HTTPException(429, "replay already in progress")
     lock = getattr(request.app.state, "replay_lock", None)
@@ -205,23 +225,10 @@ async def replay(request: Request) -> dict[str, Any]:
     request.app.state.replay_active = True
     async with lock:
         try:
-            body = await request.json()
-            draft, tuning = _draft_config(request.app.state.config, body.get("draft"))
-            calls = body.get("calls")
-            uploads = body.get("uploads")
-            if calls is None and uploads is None:
-                raise HTTPException(422, "calls or uploads is required")
-            if calls is not None and (
-                not isinstance(calls, dict)
-                or not isinstance(calls.get("last_n"), int)
-                or not 1 <= calls["last_n"] <= 50
-            ):
-                raise HTTPException(422, "calls.last_n must be between 1 and 50")
-            if uploads is not None and (
-                not isinstance(uploads, list) or not all(isinstance(item, str) for item in uploads)
-            ):
-                raise HTTPException(422, "uploads must be an array of ids")
-            items = await _recording_items(request, calls["last_n"]) if calls else []
+            draft, tuning = _draft_config(request.app.state.config, body.draft)
+            calls = body.calls
+            uploads = body.uploads
+            items = await _recording_items(request, calls.last_n) if calls else []
             directory = _upload_dir(request)
             _clean_uploads(directory, now=request.app.state.auth.clock())
             for upload_id in uploads or []:

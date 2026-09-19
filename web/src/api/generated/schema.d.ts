@@ -1706,6 +1706,14 @@ export interface components {
             token_ttl_s: number;
         };
         /**
+         * LoginRequest
+         * @description Request body for password login.
+         */
+        LoginRequest: {
+            /** Password */
+            password: string;
+        };
+        /**
          * MapConfig
          * @description Optional external map tile provider configuration.
          */
@@ -2044,6 +2052,27 @@ export interface components {
              */
             stop_on_squelch: boolean;
         };
+        /**
+         * ReplayCallsRequest
+         * @description Selection of persisted calls to replay.
+         */
+        ReplayCallsRequest: {
+            /** Last N */
+            last_n: number;
+        };
+        /**
+         * ReplayRequest
+         * @description Validated replay draft and audio selection.
+         */
+        ReplayRequest: {
+            calls?: components["schemas"]["ReplayCallsRequest"] | null;
+            /** Draft */
+            draft: {
+                [key: string]: unknown;
+            };
+            /** Uploads */
+            uploads?: string[] | null;
+        };
         /** RtlSdrSource */
         RtlSdrSource: {
             /**
@@ -2356,6 +2385,16 @@ export interface components {
              */
             tol_pct: number;
         };
+        /**
+         * UIPasswordChangeRequest
+         * @description Request body for setting or changing the UI password.
+         */
+        UIPasswordChangeRequest: {
+            /** Current Password */
+            current_password?: string | null;
+            /** New Password */
+            new_password: string;
+        };
         /** ValidationError */
         ValidationError: {
             /** Context */
@@ -2407,6 +2446,28 @@ export interface components {
              * Format: uri
              */
             url: string;
+        };
+        /**
+         * TokenRotationRequest
+         * @description Compatibility request body for API-token rotation.
+         */
+        tonewatch__api__routes__auth__TokenRotationRequest: {
+            /**
+             * Grace Seconds
+             * @default 3600
+             */
+            grace_seconds: number;
+        };
+        /**
+         * TokenRotationRequest
+         * @description Request body for rotating the API token.
+         */
+        tonewatch__api__routes__credentials__TokenRotationRequest: {
+            /**
+             * Grace Seconds
+             * @default 3600
+             */
+            grace_seconds: number;
         };
     };
     responses: never;
@@ -2757,7 +2818,11 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["tonewatch__api__routes__credentials__TokenRotationRequest"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -2766,6 +2831,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -2817,7 +2891,11 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UIPasswordChangeRequest"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -2826,6 +2904,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -3070,7 +3157,11 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReplayRequest"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -3081,6 +3172,15 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -3617,7 +3717,11 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoginRequest"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -3626,6 +3730,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -3679,7 +3792,11 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["tonewatch__api__routes__auth__TokenRotationRequest"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -3688,6 +3805,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

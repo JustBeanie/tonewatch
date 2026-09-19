@@ -6,6 +6,7 @@ import secrets
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field
 
 from tonewatch.api.audit import record_audit
 from tonewatch.api.auth import atomic_write_secret, verify_password
@@ -15,17 +16,27 @@ from tonewatch.streaming.live import live_secret_path
 router = APIRouter(prefix="/api/admin/credentials", tags=["admin-credentials"])
 
 
+class TokenRotationRequest(BaseModel):
+    """Request body for rotating the API token."""
+
+    grace_seconds: int = Field(default=3600, ge=0, le=86400, strict=True)
+
+
+class UIPasswordChangeRequest(BaseModel):
+    """Request body for setting or changing the UI password."""
+
+    new_password: str = Field(min_length=12)
+    current_password: str | None = None
+
+
 def _private(response: JSONResponse) -> JSONResponse:
     response.headers["Cache-Control"] = "no-store"
     return response
 
 
 @router.post("/api-token/rotate", dependencies=[Depends(credential_write_auth)])
-async def rotate_api_token(request: Request) -> JSONResponse:
-    body = await request.json()
-    grace = body.get("grace_seconds", 3600) if isinstance(body, dict) else 3600
-    if not isinstance(grace, int) or isinstance(grace, bool) or not 0 <= grace <= 86400:
-        raise HTTPException(422, "grace_seconds must be between 0 and 86400")
+async def rotate_api_token(request: Request, body: TokenRotationRequest) -> JSONResponse:
+    grace = body.grace_seconds
     token, valid_until = request.app.state.auth.rotate_api_token(grace)
     await record_audit(
         request.app.state.session_factory,
@@ -53,18 +64,13 @@ async def rotate_live_secret(request: Request) -> JSONResponse:
 
 
 @router.post("/ui-password", dependencies=[Depends(credential_write_auth)])
-async def change_ui_password(request: Request) -> JSONResponse:
-    body = await request.json()
-    if not isinstance(body, dict) or not isinstance(body.get("new_password"), str):
-        raise HTTPException(422, "new_password is required")
-    new = body["new_password"]
-    if len(new) < 12:
-        raise HTTPException(422, "new_password must be at least 12 characters")
+async def change_ui_password(request: Request, body: UIPasswordChangeRequest) -> JSONResponse:
+    new = body.new_password
     auth = request.app.state.auth
     ip = request.client.host if request.client else "unknown"
     if not auth.password_attempt_allowed(ip):
         raise HTTPException(429, "too many password attempts")
-    current = body.get("current_password")
+    current = body.current_password
     if auth.password_hash is None:
         if request.state.auth != "bearer" or current not in (None, ""):
             raise HTTPException(403, "current password is required")
