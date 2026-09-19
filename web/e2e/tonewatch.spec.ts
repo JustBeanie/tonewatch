@@ -371,6 +371,8 @@ test("admin replay runs the unchanged draft without external requests", async ({
     await expect(page.getByRole("button", { name: /run replay/i })).toBeEnabled();
     await page.getByRole("button", { name: /run replay/i }).click();
     await expect(page.getByRole("heading", { name: "Results" })).toBeVisible({ timeout: 15000 });
-    await expect(page.getByText(/No calls or uploads matched\.|Replay results/)).toBeVisible();
+    await expect(
+        page.getByText(/No calls or uploads matched\.|Replay results/).first(),
+    ).toBeVisible();
     expect(external).toEqual([]);
 });
