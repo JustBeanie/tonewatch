@@ -213,6 +213,7 @@ def create_app(
         system_router,
         ws_router,
         live_router,
+        __import__("tonewatch.api.routes.replay", fromlist=["router"]).router,
     ):
         app.include_router(router)
     register_spa(app, settings.web_root)

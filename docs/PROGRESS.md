@@ -172,7 +172,7 @@ Tick a task with `[x]`, then append ` — <PR link> — <one-line note>`. Blocke
 - [x] **M19.9** Maintenance: retention dry-run/run-now, checkpoint/vacuum, orphan cleanup. — API (shared plan/apply and lock, orphan safety age, invalid-row reporting) + /admin/maintenance page (run only after preview, expected_counts).
 - [x] **M19.10** Prometheus `/metrics`, off by default, token-protected. — bearer-only, bounded labels, process-lifetime counters with HELP/TYPE, golden route test.
 - [x] **M19.11** Audit log page with config diff view. — filtered keyset audit API (tz-aware since/until) + /admin/audit page with per-path diff.
-- [ ] **M19.12** Replay recent calls or WAVs against a draft config before saving.
+- [~] **M19.12** Replay recent calls or WAVs against a draft config before saving. — backend/API done (draft never persisted, current-vs-draft on the same audio, uploads with 1 h expiry, 600 s audio cap, one replay at a time; call replay is a voice false-positive check because recordings are tone-trimmed); UI pending.
 
 ## M12: Docs, hardening and v1.0.0
 - [x] **M12.1** PM review passed; host ci-local green — Added the strict MkDocs Material site, public install and usage guides, internal-doc exclusions, offline `just docs`, and CI build; Pages publishing remains a user decision.

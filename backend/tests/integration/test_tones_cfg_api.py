@@ -7,8 +7,11 @@ from tempfile import TemporaryDirectory
 
 import httpx
 import pytest
+from fastapi import HTTPException
+from starlette.requests import Request
 
 from tonewatch.api.app import MAX_TONES_CFG_IMPORT_BYTES, create_app
+from tonewatch.api.routes.import_tones_cfg import _request_text
 from tonewatch.config.models import AppConfig, FileSource, MqttTarget, ToneSet, ToneSpec
 from tonewatch.config.store import ConfigStore
 from tonewatch.settings import Settings
@@ -181,6 +184,46 @@ async def test_tones_cfg_api_rejects_bad_utf8_and_missing_multipart_file() -> No
             )
             assert failed_apply.status_code == 200
             assert failed_apply.json()["applied"] is False
+
+
+@pytest.mark.asyncio
+async def test_tones_cfg_preview_reports_malformed_section_without_side_effects() -> None:
+    with TemporaryDirectory(ignore_cleanup_errors=True) as directory:
+        root = Path(directory)
+        store = ConfigStore(root)
+        store.save(AppConfig())
+        app = create_app(Settings(data_dir=root, zeroconf_enabled=False))
+        async with app.router.lifespan_context(app):
+            token = (root / "api_token").read_text(encoding="ascii").strip()
+            async with httpx.AsyncClient(
+                transport=httpx.ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                response = await client.post(
+                    "/api/import/tones-cfg",
+                    content="[bad",
+                    headers={"Authorization": f"Bearer {token}"},
+                )
+            assert response.status_code == 200
+            assert response.json()["skipped"] == 1
+            assert store.load() == AppConfig()
+
+
+@pytest.mark.asyncio
+async def test_tones_cfg_request_reader_rejects_oversize_body() -> None:
+    async def receive() -> dict[str, object]:
+        return {
+            "type": "http.request",
+            "body": b"x" * (MAX_TONES_CFG_IMPORT_BYTES + 1),
+            "more_body": False,
+        }
+
+    request = Request(
+        {"type": "http", "method": "POST", "path": "/api/import/tones-cfg", "headers": []},
+        receive,
+    )
+    with pytest.raises(HTTPException, match="256 KiB") as error:
+        await _request_text(request)
+    assert error.value.status_code == 413
 
 
 @pytest.mark.asyncio

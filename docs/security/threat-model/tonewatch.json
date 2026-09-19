@@ -106,7 +106,8 @@
         {"id": "TM-048", "category": "Information disclosure / Tampering", "element": "Configuration history, export and import", "status": "mitigated", "evidence": "backend/src/tonewatch/config/history.py; backend/src/tonewatch/api/routes/admin.py; docs/guide/admin.md"},
         {"id": "TM-049", "category": "Information disclosure / Denial of service", "element": "Support bundle and log ring", "status": "mitigated"},
         {"id": "TM-050", "category": "Information disclosure / Tampering", "element": "Backup archive secrets, unsafe members and restore rollback", "status": "mitigated", "evidence": "backend/src/tonewatch/backup.py; backend/src/tonewatch/api/routes/admin.py; backend/tests/unit/test_m19i_backup.py; docs/guide/admin.md"},
-        {"id": "TM-051", "category": "Elevation of privilege / Denial of service", "element": "Admin drill API and running channel", "status": "mitigated"}
+        {"id": "TM-051", "category": "Elevation of privilege / Denial of service", "element": "Admin drill API and running channel", "status": "mitigated"},
+        {"id": "TM-052", "category": "Information disclosure / Denial of service", "element": "Draft replay and replay uploads", "status": "mitigated"}
       ]
     }
   ]

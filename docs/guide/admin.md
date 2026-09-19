@@ -67,6 +67,17 @@ scrape_configs:
       - targets: [tonewatch:8099]
 ```
 
+## Replay against a draft configuration
+
+`POST /api/admin/replay` validates a draft without saving it and replays the
+last 1–50 calls or previously uploaded WAVs. `POST /api/admin/replay/uploads`
+accepts the same 20 MiB, ten-minute WAV limits as `/api/analyze`; uploads are
+stored under `replay-uploads/` with random IDs and expire after one hour.
+
+Stored call recordings are tone-trimmed voice clips. Replaying them checks that
+the draft doesn't start triggering on voice traffic. Use uploaded WAVs to test
+tone detection. A replay processes at most 600 audio seconds per request.
+
 ## Admin alerts
 
 ## End-to-end drills
