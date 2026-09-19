@@ -12,7 +12,7 @@ type Row = {
     details?: unknown;
 };
 type Result = { items: Row[]; next_cursor: string | null };
-function diff(
+export function diff(
     before: Record<string, unknown> | null | undefined,
     after: Record<string, unknown> | null | undefined,
 ) {
@@ -41,7 +41,7 @@ function diff(
     visit(before ?? {}, after ?? {}, "");
     return [...paths];
 }
-function valueAt(value: Record<string, unknown> | null | undefined, path: string): unknown {
+export function valueAt(value: Record<string, unknown> | null | undefined, path: string): unknown {
     return path
         .split(".")
         .reduce<unknown>(
@@ -51,6 +51,22 @@ function valueAt(value: Record<string, unknown> | null | undefined, path: string
                     : undefined,
             value,
         );
+}
+export function DiffView({
+    rows,
+}: {
+    rows: { path: string; before?: unknown; after?: unknown }[];
+}) {
+    return (
+        <div>
+            {rows.map((row) => (
+                <p key={row.path}>
+                    <code>{row.path}</code>: {String(row.before ?? "—")} →{" "}
+                    {String(row.after ?? "—")}
+                </p>
+            ))}
+        </div>
+    );
 }
 export function Audit() {
     const [rows, setRows] = useState<Row[]>([]);

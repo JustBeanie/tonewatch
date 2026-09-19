@@ -310,3 +310,36 @@ test("admin credentials rotates the live secret with confirmation", async ({ pag
     await page.getByRole("button", { name: "Rotate live secret" }).click();
     await expect(page.getByRole("status")).toContainText("listeners disconnected");
 });
+
+test("admin config history shows the startup baseline", async ({ page }) => {
+    await login(page);
+    await page.goto("/admin/config");
+    await expect(page.getByRole("heading", { name: "Configuration history" })).toBeVisible();
+    await expect(page.getByText("startup", { exact: true })).toBeVisible();
+});
+
+test("admin logs shows a live row", async ({ page }) => {
+    await login(page);
+    await page.goto("/admin/logs");
+    await expect(page.getByRole("heading", { name: "Logs and support" })).toBeVisible();
+    await expect
+        .poll(() => page.locator("pre span").count(), { timeout: 15000 })
+        .toBeGreaterThan(0);
+});
+
+test("admin drill cancellation does not post", async ({ page }) => {
+    let posts = 0;
+    page.on("request", (request) => {
+        if (request.method() === "POST" && request.url().includes("/api/admin/drill")) posts += 1;
+    });
+    await login(page);
+    await page.goto("/admin/drill");
+    await expect(page.getByRole("heading", { name: "Run an admin drill" })).toBeVisible();
+    await expect(page.getByRole("option", { name: /fixture/i }).first()).toBeAttached();
+    await page.getByRole("combobox", { name: "Source" }).selectOption({ index: 1 });
+    await page.getByRole("combobox", { name: "Tone set" }).selectOption({ index: 1 });
+    await page.getByRole("button", { name: "Start drill" }).click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await page.getByRole("button", { name: "Cancel" }).click();
+    expect(posts).toBe(0);
+});

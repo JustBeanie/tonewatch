@@ -22,6 +22,9 @@ import { Deliveries } from "../features/admin/Deliveries";
 import { Credentials } from "../features/admin/Credentials";
 import { Maintenance } from "../features/admin/Maintenance";
 import { Audit } from "../features/admin/Audit";
+import { Drill } from "../features/admin/Drill";
+import { ConfigHistory } from "../features/admin/ConfigHistory";
+import { Logs } from "../features/admin/Logs";
 function Login() {
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
@@ -96,6 +99,9 @@ export function Router() {
                     <Route path="/admin/credentials" element={<Credentials />} />
                     <Route path="/admin/maintenance" element={<Maintenance />} />
                     <Route path="/admin/audit" element={<Audit />} />
+                    <Route path="/admin/drill" element={<Drill />} />
+                    <Route path="/admin/config" element={<ConfigHistory />} />
+                    <Route path="/admin/logs" element={<Logs />} />
                     <Route
                         path="*"
                         element={

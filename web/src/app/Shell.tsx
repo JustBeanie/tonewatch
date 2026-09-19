@@ -34,6 +34,9 @@ export function Shell() {
                             ["/admin/credentials", "Admin · Credentials"],
                             ["/admin/maintenance", "Admin · Maintenance"],
                             ["/admin/audit", "Admin · Audit log"],
+                            ["/admin/drill", "Admin · Drill"],
+                            ["/admin/config", "Admin · Config history"],
+                            ["/admin/logs", "Admin · Logs & support"],
                         ] as [string, string][]
                     ).map(([to, label]) => (
                         <NavLink key={to} to={to}>
