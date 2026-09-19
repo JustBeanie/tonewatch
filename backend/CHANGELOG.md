@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.6.0](https://github.com/JustBeanie/tonewatch/compare/v0.5.0...v0.6.0) (2026-09-19)
+
+
+### Features
+
+* **admin:** M19.12 replay against a draft config ([e5e025e](https://github.com/JustBeanie/tonewatch/commit/e5e025e8eebb7edbb75d47af376b449a10fee4dc))
+* **admin:** M19.4 end-to-end drill API ([b74454d](https://github.com/JustBeanie/tonewatch/commit/b74454d11e0a9edb5190827eefbc96fef3289036))
+* **admin:** M19.5 config history, diff, rollback, export and import API ([46000aa](https://github.com/JustBeanie/tonewatch/commit/46000aa1b1da945dec26a29f30e205c1a89b8032))
+* **admin:** M19.6 backup and restore ([fcb63a8](https://github.com/JustBeanie/tonewatch/commit/fcb63a8f06dd0e66bdc4db3ab086da355f866e54))
+* **admin:** M19.7 support bundle and log viewer API ([ba5261e](https://github.com/JustBeanie/tonewatch/commit/ba5261e33ef891a288a8d275fd96367db90ab882))
+* **admin:** M19.8 credential management API ([fb6dec5](https://github.com/JustBeanie/tonewatch/commit/fb6dec5d992a00553134b81ed472df2196f8e2c1))
+* **admin:** M19.9 maintenance API and M19.10 Prometheus metrics ([1ad46d6](https://github.com/JustBeanie/tonewatch/commit/1ad46d6050746baf77b92200764519b1462c436c))
+* **cad:** M17.2-M17.4 CAD incident feed and call correlation ([b4bc79d](https://github.com/JustBeanie/tonewatch/commit/b4bc79d6d04dbd96ffd6a17718d4d710a6a7a6fa))
+* **web:** M16.4 agencies editor and map; fix live events after reconnect ([ef88068](https://github.com/JustBeanie/tonewatch/commit/ef88068e2359ad6cafa239725d8c4e4418072363))
+* **web:** M17.5 CAD incidents in the web UI ([1f7a2b4](https://github.com/JustBeanie/tonewatch/commit/1f7a2b42a47238de7a5988960fe17b5afe4f9583))
+* **web:** M19.1-M19.3 admin health, alerts and delivery log pages ([505708b](https://github.com/JustBeanie/tonewatch/commit/505708b1242e848d2bd1a4813dbba0cf412563b8))
+* **web:** M19.8/M19.9/M19.11 credentials, maintenance and audit log pages ([827faa5](https://github.com/JustBeanie/tonewatch/commit/827faa54883e898174a6e514661ab7101cb37499))
+
+
+### Bug Fixes
+
+* **api:** mask only real secret config fields; keep logs conservative ([1fd0965](https://github.com/JustBeanie/tonewatch/commit/1fd09650ccf3f49f56c7531990a04a05b1bb8a3a))
+
 ## [0.5.0](https://github.com/JustBeanie/tonewatch/compare/v0.4.0...v0.5.0) (2026-09-17)
 
 
