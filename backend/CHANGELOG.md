@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.1](https://github.com/JustBeanie/tonewatch/compare/v0.6.0...v0.6.1) (2026-09-19)
+
+
+### Bug Fixes
+
+* **api:** return 422, never 500, for malformed request bodies ([f7fc871](https://github.com/JustBeanie/tonewatch/commit/f7fc871d35e66144fe2b0176b57e10b86b6d27db))
+
 ## [0.6.0](https://github.com/JustBeanie/tonewatch/compare/v0.5.0...v0.6.0) (2026-09-19)
 
 
