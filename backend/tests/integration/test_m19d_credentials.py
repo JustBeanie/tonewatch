@@ -1,5 +1,7 @@
 """M19d credential-management contracts (A--F)."""
 
+import re
+from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, cast
@@ -44,6 +46,12 @@ async def test_m19d_a_token_rotation_grace_and_persistence(tmp_path: Path) -> No
         )
         assert response.status_code == 200, response.text
         new = response.json()["token"]
+        previous_valid_until = response.json()["previous_valid_until"]
+        assert re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", previous_valid_until)
+        assert datetime.fromisoformat(previous_valid_until) == datetime.fromtimestamp(
+            app.state.auth.previous_valid_until or 0,
+            UTC,
+        )
         assert response.headers["cache-control"] == "no-store"
         assert (await client.get("/api/tonesets", headers=_headers(new))).status_code == 200
         assert (await client.get("/api/tonesets", headers=_headers(old))).status_code == 200
@@ -294,6 +302,7 @@ async def test_m19d_fix_legacy_rotation_is_csrf_protected(tmp_path: Path) -> Non
             headers={"Authorization": f"Bearer {token}", "X-Ingress-Path": "/api/hassio_ingress/x"},
         )
         assert response.status_code == 200
+        assert response.json()["previous_valid_until"] is None
         ingress = await client.post(
             "/api/auth/token/rotate",
             json={"grace_seconds": 0},

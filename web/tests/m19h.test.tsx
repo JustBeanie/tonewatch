@@ -59,12 +59,14 @@ describe("M19h credentials", () => {
         expect(screen.getByLabelText("New password")).toHaveValue("");
     });
     it("shows a token once, never persists it, and drops it on remount", async () => {
+        vi.setSystemTime(new Date("2026-09-19T01:38:17Z"));
+        const expiry = "2026-09-19T02:38:17Z";
         const storage = vi.spyOn(Storage.prototype, "setItem");
         vi.spyOn(globalThis, "fetch").mockImplementation((input) =>
             response(
                 String(input).includes("auth/status")
                     ? { via: "direct" }
-                    : { token: "secret-token", previous_valid_until: "later" },
+                    : { token: "secret-token", previous_valid_until: expiry },
             ),
         );
         vi.spyOn(window, "confirm").mockReturnValue(true);
@@ -78,6 +80,7 @@ describe("M19h credentials", () => {
         );
         fireEvent.click(screen.getByRole("button", { name: "Rotate API token" }));
         expect(await screen.findByDisplayValue("secret-token")).toBeInTheDocument();
+        expect(screen.getByRole("alert")).toHaveTextContent(formatExpiry(expiry));
         expect(storage).not.toHaveBeenCalledWith(
             expect.anything(),
             expect.stringContaining("secret-token"),
@@ -91,12 +94,12 @@ describe("M19h credentials", () => {
         expect(screen.queryByDisplayValue("secret-token")).not.toBeInTheDocument();
     });
     it("formats the previous token expiry as local time and remaining duration", async () => {
-        vi.spyOn(Date, "now").mockReturnValue(1789996400000);
+        vi.setSystemTime(new Date("2026-09-19T01:53:20Z"));
         vi.spyOn(globalThis, "fetch").mockImplementation((input) =>
             response(
                 String(input).includes("auth/status")
                     ? { via: "direct" }
-                    : { token: "secret-token", previous_valid_until: 1790000000 },
+                    : { token: "secret-token", previous_valid_until: "2026-09-19T02:53:20Z" },
             ),
         );
         vi.spyOn(window, "confirm").mockReturnValue(true);

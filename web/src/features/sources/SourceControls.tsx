@@ -81,7 +81,7 @@ export function LivePlayer({
     message: WsMessage | undefined;
 }) {
     const [url, setUrl] = useState<string>();
-    const [expires, setExpires] = useState<number>();
+    const [expires, setExpires] = useState<string>();
     const [error, setError] = useState("");
     const [statusCount, setStatusCount] = useState<number | null>();
     const audio = useRef<HTMLAudioElement>(null);
@@ -123,7 +123,7 @@ export function LivePlayer({
     async function start() {
         setError("");
         try {
-            const result = await request<{ url: string; expires_at: number }>(
+            const result = await request<{ url: string; expires_at: string }>(
                 `sources/${encodeURIComponent(source.id)}/live-url`,
                 { method: "POST" },
             );
@@ -165,7 +165,10 @@ export function LivePlayer({
             "Player URL copied. Clipboard fallback is used when browser permission is unavailable.",
         );
     }
-    const minutes = expires ? Math.max(0, Math.ceil((expires * 1000 - Date.now()) / 60000)) : 0;
+    const expiry = expires ? Date.parse(expires) : Number.NaN;
+    const minutes = Number.isFinite(expiry)
+        ? Math.max(0, Math.ceil((expiry - Date.now()) / 60000))
+        : 0;
     const enabled = source.live_stream_enabled === true;
     return (
         <div className="live-player">
@@ -187,8 +190,7 @@ export function LivePlayer({
                         Copy player URL
                     </button>
                     <span>
-                        Expires {new Date((expires ?? 0) * 1000).toLocaleString()} (in {minutes}{" "}
-                        min)
+                        Expires {new Date(expiry).toLocaleString()} (in {minutes} min)
                     </span>
                 </>
             )}

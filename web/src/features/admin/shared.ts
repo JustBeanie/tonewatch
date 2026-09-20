@@ -51,9 +51,11 @@ export function formatDuration(value: unknown): string {
 }
 
 export function formatExpiry(value: unknown, now = Date.now()): string {
-    if (typeof value !== "number" || !Number.isFinite(value)) return "—";
-    const remaining = Math.max(0, value - now / 1000);
-    return `${new Date(value * 1000).toLocaleString()} (in ${formatDuration(remaining)})`;
+    if (typeof value !== "string") return "—";
+    const expiry = Date.parse(value);
+    if (!Number.isFinite(expiry)) return "—";
+    const remaining = Math.max(0, expiry / 1000 - now / 1000);
+    return `${new Date(expiry).toLocaleString()} (in ${formatDuration(remaining)})`;
 }
 
 export function formatForecast(value: unknown): string {

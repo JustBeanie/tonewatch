@@ -9,7 +9,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import Response, StreamingResponse
 
-from tonewatch.api.audit import record_audit
+from tonewatch.api.audit import format_expiry_timestamp, record_audit
 from tonewatch.api.deps import base_path, write_auth
 from tonewatch.config.models import Source
 from tonewatch.streaming.live import LiveHub, make_live_token, verify_live_token
@@ -49,7 +49,7 @@ async def issue_live_url(
         resource=source_id,
         details={"source_id": source_id, "expires_at": expires_at},
     )
-    return {"url": url, "expires_at": expires_at}
+    return {"url": url, "expires_at": format_expiry_timestamp(expires_at)}
 
 
 @router.get("/sources/{source_id}/live.mp3")

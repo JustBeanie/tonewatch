@@ -9,7 +9,7 @@ export function Credentials() {
     const nav = useNavigate();
     const [ingress, setIngress] = useState(false);
     const [grace, setGrace] = useState("3600");
-    const [token, setToken] = useState<{ value: string; until: number | null } | null>(null);
+    const [token, setToken] = useState<{ value: string; until: string | null } | null>(null);
     const [message, setMessage] = useState("");
     const [error, setError] = useState("");
     const [current, setCurrent] = useState("");
@@ -28,7 +28,7 @@ export function Credentials() {
     async function rotateToken() {
         if (!window.confirm("Rotate the API token? The new token will be shown only once.")) return;
         try {
-            const result = await request<{ token: string; previous_valid_until: number | null }>(
+            const result = await request<{ token: string; previous_valid_until: string | null }>(
                 "admin/credentials/api-token/rotate",
                 { method: "POST", body: JSON.stringify({ grace_seconds: Number(grace) }) },
             );

@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
-from tonewatch.api.audit import record_audit
+from tonewatch.api.audit import format_expiry_timestamp, record_audit
 from tonewatch.api.auth import atomic_write_secret, verify_password
 from tonewatch.api.deps import credential_write_auth
 from tonewatch.streaming.live import live_secret_path
@@ -45,7 +45,9 @@ async def rotate_api_token(request: Request, body: TokenRotationRequest) -> JSON
         resource="api_token",
         details={"grace_seconds": grace},
     )
-    return _private(JSONResponse({"token": token, "previous_valid_until": valid_until}))
+    return _private(
+        JSONResponse({"token": token, "previous_valid_until": format_expiry_timestamp(valid_until)})
+    )
 
 
 @router.post("/live-secret/rotate", dependencies=[Depends(credential_write_auth)])

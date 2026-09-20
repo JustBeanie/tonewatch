@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
-from tonewatch.api.audit import record_audit
+from tonewatch.api.audit import format_expiry_timestamp, record_audit
 from tonewatch.api.deps import credential_write_auth
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -111,6 +111,8 @@ async def legacy_token_rotate(
         resource="api_token",
         details={"grace_seconds": grace},
     )
-    response = JSONResponse({"token": token, "previous_valid_until": valid_until})
+    response = JSONResponse(
+        {"token": token, "previous_valid_until": format_expiry_timestamp(valid_until)}
+    )
     response.headers["Cache-Control"] = "no-store"
     return response

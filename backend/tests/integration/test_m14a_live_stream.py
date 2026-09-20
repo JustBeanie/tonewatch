@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import time
+from datetime import UTC, datetime
 from io import BytesIO
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -65,7 +66,8 @@ async def test_live_url_and_invalid_token_cases(capsys: pytest.CaptureFixture[st
             issued = await client.post("/api/sources/radio/live-url", headers=bearer)
             assert issued.status_code == 200
             token = issued.json()["url"].split("t=", 1)[1]
-            assert issued.json()["expires_at"] > int(time.time())
+            expires_at = datetime.fromisoformat(issued.json()["expires_at"])
+            assert expires_at > datetime.now(UTC)
             assert issued.json()["url"].startswith("/api/sources/radio/live.mp3?t=")
             app.state.settings.public_base_url = "https://example.test/tonewatch"
             external = await client.post(

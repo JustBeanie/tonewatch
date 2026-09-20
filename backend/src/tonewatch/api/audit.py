@@ -13,6 +13,13 @@ _SECRET_PLURAL_WORDS = frozenset(f"{word}s" for word in _SECRET_WORDS)
 _EXPLICIT_SECRET_KEYS = frozenset({"api_key", "private_key", "passphrase", "x-api-key"})
 
 
+def format_expiry_timestamp(value: float | None) -> str | None:
+    """Format an internal epoch expiry for an API response."""
+    if value is None:
+        return None
+    return datetime.fromtimestamp(value, UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
+
+
 class SecretRestoreError(ValueError):
     """A masked credential could not be matched to a stored credential."""
 
