@@ -109,7 +109,7 @@ Tick a task with `[x]`, then append ` — <PR link> — <one-line note>`. Blocke
 - [x] **M11.5** `media_source.py` browses calls by date and resolves to authenticated recording URLs proxied through HA, so... — browse by date, resolve through an HA-authenticated proxy with Range support (#7, e7a578c).
 - [x] **M11.6** `diagnostics.py` (token redacted), `strings.json`/translations, and repairs for app/integration version mis... — redacted diagnostics and runtime repairs for version mismatch and long disconnect (#7).
 - [x] **M11.7** Blueprints: — play-dispatch-audio and notify-with-audio blueprints, iOS attachment and Android link (#7).
-- [ ] **M11.8** CI: hassfest, `hacs/action`, ruff, mypy and pytest. Aim for HA integration quality scale Silver rules.
+- [x] **M11.8** CI: hassfest, `hacs/action`, ruff, mypy and pytest. Aim for HA integration quality scale Silver rules. — quality_scale.yaml (27 done, 3 exempt), runtime data, PARALLEL_UPDATES, translations and device classes, HomeAssistantError from actions, full config-flow branch coverage; v0.2.0 (#8).
 
 ## M13: Tone auto-discovery (added 2026-09-12 at user request)
 - [x] **M13.1** `dsp/discovery.py`: unmatched tone-sequence candidates (two-tone, long tone, N-tone) per channel, suppressed when any tone set matched. — PM review passed (M13-fix, M13-rebase); host ci-local green.
