@@ -97,18 +97,18 @@ Tick a task with `[x]`, then append ` — <PR link> — <one-line note>`. Blocke
 - [x] **M9.3** `windows.yml` builds, smoke-tests, exercises the service lifecycle and schannel HTTPS, and uploads the zip — local — CI green on GitHub (250221e); workflow lint and local frozen smoke pass.
 
 ## M10: HA add-on (in `JustBeanie/ha-addons`)
-- [ ] **M10.1** `tonewatch/config.yaml` settings:
+- [x] **M10.1** `tonewatch/config.yaml` settings: — ha-addons `tonewatch/` manifest (image-only, ingress, media/audio/USB, MQTT service, discovery, backup_pre), tracking app 0.6.1.
 - [~] **M10.2** **PENDING-HIL** — App-side add-on mode fetches MQTT credentials from Supervisor at connect time, writes recordings to `/media/tonewatch`, and posts discovery; real Home Assistant verification remains in `docs/hil-checklist.md`.
-- [ ] **M10.3** Add `DOCS.md`, `CHANGELOG.md`, icon/logo and `translations/en.yaml`. Run `frenck/action-addon-linter` in th...
+- [x] **M10.3** Add `DOCS.md`, `CHANGELOG.md`, icon/logo and `translations/en.yaml`. Run `frenck/action-addon-linter` in th... — DOCS/CHANGELOG/icons/translations plus the ToneWatch workflow (manifest tests, add-on linter, anonymous GHCR image resolve); green on ha-addons main.
 
 ## M11: HA custom integration (`JustBeanie/ha-tonewatch`)
-- [ ] **M11.1** Scaffold `custom_components/tonewatch/` (manifest with `zeroconf: ["_tonewatch._tcp.local."]`, `config_flow...
-- [ ] **M11.2** Config flow supporting user entry (host, port, token), `async_step_zeroconf`, `async_step_hassio` (Supervis...
-- [ ] **M11.3** `api.py` WebSocket client using HA's aiohttp session, with reconnect/backoff and a `DataUpdateCoordinator` ...
-- [ ] **M11.4** Entities:
-- [ ] **M11.5** `media_source.py` browses calls by date and resolves to authenticated recording URLs proxied through HA, so...
-- [ ] **M11.6** `diagnostics.py` (token redacted), `strings.json`/translations, and repairs for app/integration version mis...
-- [ ] **M11.7** Blueprints:
+- [x] **M11.1** Scaffold `custom_components/tonewatch/` (manifest with `zeroconf: ["_tonewatch._tcp.local."]`, `config_flow... — ha-tonewatch scaffold, manifest, strings and translations (fbd1c70).
+- [x] **M11.2** Config flow supporting user entry (host, port, token), `async_step_zeroconf`, `async_step_hassio` (Supervis... — user, zeroconf and Supervisor discovery, reauth and duplicate abort (fbd1c70).
+- [x] **M11.3** `api.py` WebSocket client using HA's aiohttp session, with reconnect/backoff and a `DataUpdateCoordinator` ... — push WebSocket client on HA's session with jittered backoff feeding the coordinator (fbd1c70).
+- [x] **M11.4** Entities: — event/sensor/binary_sensor/switch/button plus the tonewatch_detected bus event (#6, 9375eea).
+- [x] **M11.5** `media_source.py` browses calls by date and resolves to authenticated recording URLs proxied through HA, so... — browse by date, resolve through an HA-authenticated proxy with Range support (#7, e7a578c).
+- [x] **M11.6** `diagnostics.py` (token redacted), `strings.json`/translations, and repairs for app/integration version mis... — redacted diagnostics and runtime repairs for version mismatch and long disconnect (#7).
+- [x] **M11.7** Blueprints: — play-dispatch-audio and notify-with-audio blueprints, iOS attachment and Android link (#7).
 - [ ] **M11.8** CI: hassfest, `hacs/action`, ruff, mypy and pytest. Aim for HA integration quality scale Silver rules.
 
 ## M13: Tone auto-discovery (added 2026-09-12 at user request)
