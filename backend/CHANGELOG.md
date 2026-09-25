@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.2](https://github.com/JustBeanie/tonewatch/compare/v0.6.1...v0.6.2) (2026-09-23)
+
+
+### Bug Fixes
+
+* **api:** report token and live-URL expiry as ISO 8601, not epoch seconds ([1108dda](https://github.com/JustBeanie/tonewatch/commit/1108dda69459210b65e47a6cf370f7f0e1e538f6))
+
 ## [0.6.1](https://github.com/JustBeanie/tonewatch/compare/v0.6.0...v0.6.1) (2026-09-19)
 
 
