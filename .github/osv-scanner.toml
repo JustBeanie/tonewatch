@@ -1,0 +1,8 @@
+# OSV-Scanner config for the Security (dependencies) workflow.
+# Every ignore must cite an unexpired accepted risk in docs/security/accepted-risks.md and
+# expire no later than it; scripts/security_scorecard.py enforces both.
+
+[[IgnoredVulns]]
+id = "GHSA-vfj7-8cjw-p6xm"
+ignoreUntil = 2027-01-20
+reason = "AR-006: braces 3.0.3 has no fixed release; dev-only via markdownlint-cli2, globs come from repo config"

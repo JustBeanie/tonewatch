@@ -11,6 +11,7 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any, TypeVar
 
+import tomllib
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -146,12 +147,15 @@ def _validate_suppressions() -> None:
         accepted_path.read_text(encoding="utf-8") if accepted_path.exists() else ""
     )
     accepted: dict[str, date] = {}
-    for match in re.finditer(
-        r"^## (AR-\d+)\s*$.*?^- Expiry: (\d{4}-\d{2}-\d{2})\s*$",
-        accepted_text,
-        re.MULTILINE | re.DOTALL,
+    for section in re.finditer(
+        r"^## (AR-\d+)\b.*?(?=^## |\Z)", accepted_text, re.MULTILINE | re.DOTALL
     ):
-        accepted[match.group(1)] = date.fromisoformat(match.group(2))
+        expiry_match = re.search(
+            r"^- Expires:\s*(\d{4}-\d{2}-\d{2})\s*$", section.group(0), re.MULTILINE
+        )
+        if expiry_match is not None:
+            accepted[section.group(1)] = date.fromisoformat(expiry_match.group(1))
+    today = datetime.now(timezone.utc).date()
 
     suppression = re.compile(r"(?:nosemgrep:|--ignore-vuln).*?(AR-\d+)")
     scan_roots = [
@@ -184,6 +188,8 @@ def _validate_suppressions() -> None:
             }:
                 continue
             text = path.read_text(encoding="utf-8", errors="replace")
+            if path.name == "osv-scanner.toml":
+                _validate_osv_ignores(path, tomllib.loads(text), accepted, today)
             for line_number, line in enumerate(text.splitlines(), start=1):
                 if "nosemgrep:" not in line and "--ignore-vuln" not in line:
                     continue
@@ -194,10 +200,33 @@ def _validate_suppressions() -> None:
                     )
                 risk_id = suppression_match.group(1)
                 expiry = accepted.get(risk_id)
-                if expiry is None or expiry < datetime.now(timezone.utc).date():
+                if expiry is None or expiry < today:
                     raise ValueError(
                         f"suppression references missing or expired risk: {risk_id}"
                     )
+
+
+def _validate_osv_ignores(
+    path: Path, config: dict[str, Any], accepted: dict[str, date], today: date
+) -> None:
+    for ignore in config.get("IgnoredVulns", []):
+        vuln_id = ignore.get("id", "?")
+        risk_match = re.search(r"\bAR-\d+\b", str(ignore.get("reason", "")))
+        if risk_match is None:
+            raise ValueError(f"suppression lacks accepted-risk id: {path} {vuln_id}")
+        risk_id = risk_match.group(0)
+        expiry = accepted.get(risk_id)
+        if expiry is None or expiry < today:
+            raise ValueError(
+                f"suppression references missing or expired risk: {risk_id}"
+            )
+        until = ignore.get("ignoreUntil")
+        if isinstance(until, datetime):
+            until = until.date()
+        if not isinstance(until, date) or until > expiry:
+            raise ValueError(
+                f"suppression must set ignoreUntil on or before {risk_id} expiry: {path} {vuln_id}"
+            )
 
 
 def validate() -> tuple[list[SammEntry], list[DsommActivity]]:

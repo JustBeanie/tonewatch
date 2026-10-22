@@ -64,3 +64,17 @@ after it is recorded.
 - Scope: Browser-facing deployments outside a trusted local network.
 - Mitigation: M12 deployment documentation must specify HTTPS termination and
   HSTS at the reverse proxy before exposing ToneWatch to untrusted networks.
+
+## AR-006 - braces stack-exhaustion advisory with no fixed release
+
+- Recorded: 2026-10-22
+- Expires: 2027-01-20
+- Owner: ToneWatch maintainers
+- Risk: `braces` 3.0.3 (GHSA-vfj7-8cjw-p6xm) can overflow the call stack on
+  deeply nested brace patterns. No fixed release exists, and `micromatch` 4.0.8
+  (latest) still requires it.
+- Scope: Web development tooling only, via `markdownlint-cli2` -> `globby` ->
+  `fast-glob` -> `micromatch`. It is not part of the built UI or the container.
+- Mitigation: Glob patterns come from repository configuration, never from
+  users. The OSV-Scanner ignore in `.github/osv-scanner.toml` cites this entry
+  and expires with it; recheck for a `braces` or `micromatch` fix before then.

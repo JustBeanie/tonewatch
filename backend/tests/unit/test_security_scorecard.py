@@ -185,3 +185,72 @@ def test_suppression_requires_matching_unexpired_risk(
     monkeypatch.setattr(scorecard, "_official_questions", lambda: _official_fixture(_entries()))
     with pytest.raises(ValueError, match="missing or expired"):
         scorecard.validate()
+
+
+_ACCEPTED_RISK = (
+    "# Accepted security risks\n\n"
+    "## AR-007 - Example risk\n\n"
+    "- Recorded: 2026-10-01\n"
+    "- Expires: 2999-01-01\n"
+    "- Risk: example.\n\n"
+    "## AR-008 - Expired risk\n\n"
+    "- Recorded: 2020-01-01\n"
+    "- Expires: 2020-03-01\n"
+)
+
+
+def _osv_fixture(root: Path, reason: str, until: str) -> None:
+    (root / "docs/security/accepted-risks.md").write_text(_ACCEPTED_RISK, encoding="utf-8")
+    (root / ".github").mkdir()
+    (root / ".github/osv-scanner.toml").write_text(
+        f'[[IgnoredVulns]]\nid = "GHSA-test"\nignoreUntil = {until}\nreason = "{reason}"\n',
+        encoding="utf-8",
+    )
+
+
+def _validate_fixture(root: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(scorecard, "ROOT", root)
+    monkeypatch.setattr(scorecard, "_official_questions", lambda: _official_fixture(_entries()))
+    scorecard.validate()
+
+
+def test_suppression_with_matching_unexpired_risk_passes(
+    fixture_root: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _write_fixture(fixture_root)
+    (fixture_root / "docs/security/accepted-risks.md").write_text(_ACCEPTED_RISK, encoding="utf-8")
+    (fixture_root / ".github").mkdir()
+    (fixture_root / ".github/workflows.yml").write_text(
+        "# nosemgrep: python.lang.security -- AR-007\n", encoding="utf-8"
+    )
+    _validate_fixture(fixture_root, monkeypatch)
+
+
+def test_osv_ignore_with_live_risk_passes(
+    fixture_root: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _write_fixture(fixture_root)
+    _osv_fixture(fixture_root, "AR-007: example", "2998-12-31")
+    _validate_fixture(fixture_root, monkeypatch)
+
+
+@pytest.mark.parametrize(
+    ("reason", "until", "message"),
+    [
+        ("no risk id", "2998-12-31", "lacks accepted-risk id"),
+        ("AR-404: unknown", "2998-12-31", "missing or expired"),
+        ("AR-008: expired", "2019-12-31", "missing or expired"),
+        ("AR-007: outlives the risk", "2999-06-01", "ignoreUntil on or before AR-007"),
+    ],
+)
+def test_osv_ignore_requires_live_risk_and_bounded_expiry(
+    fixture_root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    reason: str,
+    until: str,
+    message: str,
+) -> None:
+    _write_fixture(fixture_root)
+    _osv_fixture(fixture_root, reason, until)
+    with pytest.raises(ValueError, match=message):
+        _validate_fixture(fixture_root, monkeypatch)
