@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.6.2](https://github.com/JustBeanie/tonewatch/compare/v0.6.1...v0.6.2) (2026-10-22)
+
+
+### Bug Fixes
+
+* **api:** report token and live-URL expiry as ISO 8601, not epoch seconds ([1108dda](https://github.com/JustBeanie/tonewatch/commit/1108dda69459210b65e47a6cf370f7f0e1e538f6))
+* **deps:** bump urllib3 2.7.0 -&gt; 2.8.0 (Dependabot high alert) ([a7238c6](https://github.com/JustBeanie/tonewatch/commit/a7238c6a9fe4f7f64022ca3b92da2555e50d8158))
+* **deps:** bump virtualenv 21.7.9 -&gt; 21.14.12 (dev pip-audit) ([1458015](https://github.com/JustBeanie/tonewatch/commit/14580159d127e3476ded7a63f4112bb089103b36))
+* **deps:** clear OSV backlog in both lockfiles ([b362f65](https://github.com/JustBeanie/tonewatch/commit/b362f654ff8794b589ef3237d765792c23635938))
+* **security:** AR-006 for braces and enforce AR ids on OSV ignores ([f440709](https://github.com/JustBeanie/tonewatch/commit/f4407097866747315263bfedae51014e5406da58))
+* **security:** clear pre-existing CI reds blocking PR checks ([1e514d9](https://github.com/JustBeanie/tonewatch/commit/1e514d9a519742d0664b85cb54763b3b0450aa23))
+
 ## [0.6.1](https://github.com/JustBeanie/tonewatch/compare/v0.6.0...v0.6.1) (2026-09-19)
 
 
