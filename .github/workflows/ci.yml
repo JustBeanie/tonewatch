@@ -74,6 +74,8 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with: {persist-credentials: false}
+      # The S4 guard tests diff against origin/main; pull_request checkouts don't create that ref.
+      - run: git fetch --no-tags --depth=1 origin main:refs/remotes/origin/main
       - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
       # The sounddevice wheel bundles PortAudio on Windows/macOS only.
       - if: runner.os == 'Linux'

@@ -35,7 +35,7 @@ LABEL org.opencontainers.image.source="https://github.com/JustBeanie/tonewatch" 
       org.opencontainers.image.licenses="MIT"
 RUN apt-get update \
     && apt-get install --only-upgrade --no-install-recommends -y \
-        gzip libpcre2-8-0 libsqlite3-0 perl-base \
+        gzip libpcre2-8-0 libsqlite3-0 libssl3t64 perl-base \
     && apt-get install --no-install-recommends -y libportaudio2 rtl-sdr tini ca-certificates \
     && rm -rf /var/lib/apt/lists/* \
     && rm -rf \
