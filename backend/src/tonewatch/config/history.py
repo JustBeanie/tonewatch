@@ -71,10 +71,14 @@ class ConfigHistory:
         self.root = data_dir / "config-history"
 
     def _path(self, version_id: str) -> Path:
+        """Find an existing snapshot; the path comes from the directory, never the caller."""
         # Version ids are uuid4().hex; anything else cannot name a snapshot file.
         if not _VERSION_ID.fullmatch(version_id):
             raise HistoryError("invalid configuration version id")  # noqa: TRY003 -- stable API error
-        return self.root / f"{version_id}.yaml"
+        for path in self.root.glob("*.yaml"):
+            if path.stem == version_id:
+                return path
+        raise HistoryError("configuration version is unavailable")  # noqa: TRY003 -- stable API error
 
     def record(self, config: AppConfig, *, actor: str, route: str) -> dict[str, Any]:
         """Write one secret-bearing snapshot atomically and prune old snapshots."""
@@ -96,7 +100,7 @@ class ConfigHistory:
                 os.fsync(handle.fileno())
             if os.name != "nt":
                 Path(temporary).chmod(0o600)
-            Path(temporary).replace(self._path(version["id"]))
+            Path(temporary).replace(self.root / f"{version['id']}.yaml")
         except OSError as exc:
             Path(temporary).unlink(missing_ok=True)
             raise HistoryError(f"could not save configuration history: {exc}") from exc  # noqa: TRY003 -- actionable storage error
