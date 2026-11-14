@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-FROM node:24-slim@sha256:3638d9a6fe4030bd716be989438248074489337ba3275657f93595428be4fc03 AS web
+FROM node:24-slim@sha256:dc26ae92c9fb15cf6b1d63e20f0944b2efe0f115b20e00be48fb23fceb061c54 AS web
 WORKDIR /src/web
 COPY web/package.json web/pnpm-lock.yaml ./
 RUN corepack enable && corepack prepare pnpm@10.34.5 --activate
@@ -7,7 +7,7 @@ RUN pnpm install --frozen-lockfile
 COPY web/ ./
 RUN pnpm build
 
-FROM python:3.13-slim@sha256:9d2e5553305c7c7b0097999bb17187c69b921ccd6bc9d40e4bb5ebe652c00285 AS builder
+FROM python:3.13-slim@sha256:e48f59cdba69a3cbd9ed2cf0f348d90d45a8d350d98134cf1070bc106ee9ed90 AS builder
 COPY --from=ghcr.io/astral-sh/uv@sha256:f64ad69940b634e75d2e4d799eb5238066c5eeda49f76e782d4873c3d014ea33 /uv /uvx /usr/local/bin/
 ENV UV_PROJECT_ENVIRONMENT=/opt/venv
 WORKDIR /src/backend
@@ -26,7 +26,7 @@ RUN apt-get update \
     && rm -rf /opt/venv/lib/python3.13/site-packages/numpy/_core/include \
     && find /opt/venv -type f -name '*.so*' -exec strip --strip-unneeded {} \; 2>/dev/null
 
-FROM python:3.13-slim@sha256:9d2e5553305c7c7b0097999bb17187c69b921ccd6bc9d40e4bb5ebe652c00285 AS runtime
+FROM python:3.13-slim@sha256:e48f59cdba69a3cbd9ed2cf0f348d90d45a8d350d98134cf1070bc106ee9ed90 AS runtime
 ARG VERSION=0.1.0
 ARG REVISION=unknown
 LABEL org.opencontainers.image.source="https://github.com/JustBeanie/tonewatch" \
