@@ -3,7 +3,7 @@
 import io
 import logging
 import sys
-from importlib import import_module
+from importlib.util import find_spec
 from typing import Any, cast
 
 import av
@@ -30,8 +30,10 @@ def _round_trip(codec: str) -> None:
 
 
 def test_pyav_mp3_and_opus_and_sounddevice() -> None:
-    """Both planned codecs round-trip and PortAudio imports."""
-    assert import_module("sounddevice") is not None
+    """Both planned codecs round-trip and sounddevice is installed."""
+    # Importing it initializes PortAudio, which needs a sound server on some hosts;
+    # tonewatch.sources.soundcard.load_sounddevice covers that path.
+    assert find_spec("sounddevice") is not None
     message = f"PyAV version={av.__version__}; FFmpeg libraries={av.library_versions}\n"
     LOGGER.info(message.rstrip())
     sys.stderr.write(message)

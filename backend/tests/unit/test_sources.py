@@ -15,7 +15,7 @@ from tonewatch.config.models import RtlSdrSource as RtlConfig
 from tonewatch.config.models import SoundcardSource as SoundcardConfig
 from tonewatch.config.models import StreamSource as StreamConfig
 from tonewatch.events import EventBus, FeedHealthChanged
-from tonewatch.sources.base import AudioFrame, SourceConfigError, make_source
+from tonewatch.sources.base import AudioFrame, SourceConfigError, SourceUnavailable, make_source
 from tonewatch.sources.file import FileAudioSource
 from tonewatch.sources.resample import resample_audio
 from tonewatch.sources.rtlsdr import RtlSdrSource
@@ -477,3 +477,25 @@ def test_soundcard_emits_selected_frame(monkeypatch) -> None:
 
     frame = asyncio.run(run())
     assert np.all(frame.samples == 1)
+
+
+def test_load_sounddevice_degrades_when_portaudio_cannot_initialize() -> None:
+    from tonewatch.sources.soundcard import MissingSoundDevice, load_sounddevice
+
+    def broken(_name: str) -> object:
+        raise RuntimeError("PulseAudio_Initialize: Can't connect to server")  # noqa: TRY003
+
+    sd = load_sounddevice(broken)
+    assert isinstance(sd, MissingSoundDevice)
+    assert sd.query_devices() == []
+    assert sd.query_hostapis() == []
+    for factory in (sd.InputStream, sd.RawInputStream):
+        with np.testing.assert_raises(SourceUnavailable):
+            factory(device=0)
+
+
+def test_load_sounddevice_returns_the_real_module() -> None:
+    from tonewatch.sources.soundcard import load_sounddevice
+
+    module = object()
+    assert load_sounddevice(lambda _name: module) is module

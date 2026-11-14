@@ -14,9 +14,45 @@ from tonewatch.config.models import SoundcardSource as SoundcardConfig
 from tonewatch.sources.base import AudioFrame, SourceConfigError, SourceUnavailable
 from tonewatch.sources.resample import resample_audio
 
-sd: Any = import_module("sounddevice")
-
 LOGGER = logging.getLogger(__name__)
+
+
+class MissingSoundDevice:
+    """Stand-in for ``sounddevice`` when PortAudio cannot load or initialize."""
+
+    def __init__(self, reason: str) -> None:
+        """Remember why audio input is unavailable."""
+        self.reason = reason
+
+    def query_devices(self) -> list[dict[str, Any]]:
+        """Report no devices, so listings stay empty instead of failing."""
+        return []
+
+    def query_hostapis(self) -> list[dict[str, Any]]:
+        """Report no host APIs."""
+        return []
+
+    def InputStream(self, *_args: object, **_kwargs: object) -> Any:  # noqa: N802 -- mirrors sounddevice
+        """Refuse to open a stream, with the PortAudio failure as the reason."""
+        raise SourceUnavailable(f"audio input is unavailable: {self.reason}")
+
+    RawInputStream = InputStream
+
+
+def load_sounddevice(importer: Callable[[str], Any] = import_module) -> Any:
+    """Import ``sounddevice``, which initializes PortAudio and can fail at import time.
+
+    A PortAudio build with a PulseAudio backend raises on import when no sound
+    server is running (headless hosts, CI). That must not take down the app.
+    """
+    try:
+        return importer("sounddevice")
+    except Exception as exc:  # OSError or sounddevice.PortAudioError
+        LOGGER.warning("soundcard input disabled: %s", exc)
+        return MissingSoundDevice(str(exc))
+
+
+sd: Any = load_sounddevice()
 
 
 def input_devices() -> list[dict[str, object]]:
