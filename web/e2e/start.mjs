@@ -21,19 +21,6 @@ const python = existsSync(localPython) ? localPython : "python";
 console.error(`e2e launcher starting on port ${port}`);
 
 function run(command, args, cwd) {
-    if (process.platform === "win32" && command.toLowerCase().endsWith(".cmd")) {
-        const quote = (value) => {
-            const text = String(value);
-            return /[\s"]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
-        };
-        const commandLine = [command, ...args].map(quote).join(" ");
-        execFileSync(process.env.ComSpec || "cmd.exe", ["/d", "/c", commandLine], {
-            cwd,
-            stdio: "ignore",
-            windowsHide: true,
-        });
-        return;
-    }
     execFileSync(command, args, { cwd, stdio: "ignore", windowsHide: true });
 }
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
@@ -18,6 +19,7 @@ from tonewatch.api.audit import is_secret_key, mask_secrets
 from tonewatch.config.models import AppConfig
 
 MAX_VERSIONS = 100
+_VERSION_ID = re.compile(r"[0-9a-f]{32}")
 
 
 class HistoryError(ValueError):
@@ -69,12 +71,8 @@ class ConfigHistory:
         self.root = data_dir / "config-history"
 
     def _path(self, version_id: str) -> Path:
-        if (
-            not version_id
-            or Path(version_id).name != version_id
-            or "/" in version_id
-            or "\\" in version_id
-        ):
+        # Version ids are uuid4().hex; anything else cannot name a snapshot file.
+        if not _VERSION_ID.fullmatch(version_id):
             raise HistoryError("invalid configuration version id")  # noqa: TRY003 -- stable API error
         return self.root / f"{version_id}.yaml"
 
