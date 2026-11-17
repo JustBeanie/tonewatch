@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.3](https://github.com/JustBeanie/tonewatch/compare/v0.6.2...v0.6.3) (2026-11-17)
+
+
+### Performance Improvements
+
+* **cad:** query calls within the incident window (PERF-CAD) ([#20](https://github.com/JustBeanie/tonewatch/issues/20)) ([ff55b30](https://github.com/JustBeanie/tonewatch/commit/ff55b30aa5f267fce6827970b90f61ff1d0140d0))
+
 ## [0.6.2](https://github.com/JustBeanie/tonewatch/compare/v0.6.1...v0.6.2) (2026-11-17)
 
 
