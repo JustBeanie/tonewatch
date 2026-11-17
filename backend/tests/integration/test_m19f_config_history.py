@@ -1,7 +1,9 @@
+import asyncio
 import os
 from collections.abc import Awaitable, Callable
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from typing import Literal
 
 import httpx
 import pytest
@@ -321,6 +323,84 @@ async def test_history_failure_does_not_fail_saved_config(
             assert "history disk unavailable" in capsys.readouterr().err
             audit = await client.get("/api/audit", headers=headers)
             assert audit.json()["items"][0]["details"]["history_recorded"] is False
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("cancel_first", [False, True])
+async def test_overlapping_configuration_edits_preserve_disk_and_runtime(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, cancel_first: bool
+) -> None:
+    app = create_app(Settings(data_dir=tmp_path, zeroconf_enabled=False))
+    written, finish_write, waiting = asyncio.Event(), asyncio.Event(), asyncio.Event()
+
+    class ObservedLock(asyncio.Lock):
+        async def acquire(self) -> Literal[True]:
+            if self.locked():
+                waiting.set()
+            return await super().acquire()
+
+    app.state.config_write_lock = ObservedLock()
+    async with (
+        app.router.lifespan_context(app),
+        httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client,
+    ):
+        headers = {"Authorization": f"Bearer {app.state.auth.token}"}
+        initial = await client.get("/api/config", headers=headers)
+        save = app.state.store.save_async
+
+        async def pause_first_write(*args, **kwargs):
+            revision = await save(*args, **kwargs)
+            if not written.is_set():
+                written.set()
+                await finish_write.wait()
+            return revision
+
+        monkeypatch.setattr(app.state.store, "save_async", pause_first_write)
+
+        async def create_source(source_id: str) -> httpx.Response:
+            return await client.post(
+                "/api/sources",
+                headers=headers,
+                json={
+                    "id": source_id,
+                    "name": source_id,
+                    "type": "file",
+                    "path": "unused.wav",
+                    "enabled": False,
+                },
+            )
+
+        first = asyncio.create_task(create_source("first"))
+        tasks = [first]
+        try:
+            await asyncio.wait_for(written.wait(), timeout=5)
+            second = asyncio.create_task(create_source("second"))
+            tasks.append(second)
+            await asyncio.wait_for(waiting.wait(), timeout=5)
+            if cancel_first:
+                first.cancel()
+            reading = await client.get("/api/config", headers=headers)
+            assert reading.headers["etag"] == initial.headers["etag"]
+            assert reading.json()["sources"] == []
+            finish_write.set()
+            if cancel_first:
+                with pytest.raises(asyncio.CancelledError):
+                    await first
+            else:
+                assert (await first).status_code == 201
+            assert (await asyncio.wait_for(second, timeout=5)).status_code == 201
+        finally:
+            finish_write.set()
+            await asyncio.gather(*tasks, return_exceptions=True)
+
+        snapshot = await client.get("/api/config", headers=headers)
+        assert snapshot.headers["etag"] == app.state.store.etag()
+        assert [source["id"] for source in snapshot.json()["sources"]] == ["first", "second"]
+        assert app.state.supervisor.config == app.state.config == app.state.store.load()
+        stale = await client.put(
+            "/api/config", headers={**headers, "If-Match": initial.headers["etag"]}, json={}
+        )
+        assert stale.status_code == 412
 
 
 @pytest.mark.asyncio

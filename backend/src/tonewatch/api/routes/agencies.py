@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
 from tonewatch.api.audit import record_audit
-from tonewatch.api.deps import _dump, authenticated, save_config, write_auth
+from tonewatch.api.deps import _dump, authenticated, config_write, save_config
 from tonewatch.config.models import Agency, AppConfig
 from tonewatch.config.store import replace_config
 
@@ -43,7 +43,7 @@ async def list_agencies(request: Request) -> list[Any]:
     return [_dump(value) for value in request.app.state.config.agencies]
 
 
-@router.post("/agencies", dependencies=[Depends(write_auth)], status_code=201)
+@router.post("/agencies", dependencies=[Depends(config_write)], status_code=201)
 async def create_agency(request: Request, payload: dict[str, Any] = Body(...)) -> Any:
     try:
         item = Agency.model_validate(payload)
@@ -62,7 +62,7 @@ async def get_agency(request: Request, item_id: str) -> Any:
     return _dump(item)
 
 
-@router.put("/agencies/{item_id}", dependencies=[Depends(write_auth)])
+@router.put("/agencies/{item_id}", dependencies=[Depends(config_write)])
 async def update_agency(request: Request, item_id: str, payload: dict[str, Any] = Body(...)) -> Any:
     if payload.get("id") != item_id:
         raise HTTPException(422, "id does not match path")
@@ -78,7 +78,7 @@ async def update_agency(request: Request, item_id: str, payload: dict[str, Any] 
     return _dump(await _save_agency(request, item, "agency_updated", before))
 
 
-@router.delete("/agencies/{item_id}", dependencies=[Depends(write_auth)])
+@router.delete("/agencies/{item_id}", dependencies=[Depends(config_write)])
 async def delete_agency(request: Request, item_id: str) -> Any:
     current = request.app.state.config
     item = next((value for value in current.agencies if value.id == item_id), None)

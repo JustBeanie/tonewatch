@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from starlette.datastructures import UploadFile
 
 from tonewatch.api.audit import record_audit
-from tonewatch.api.deps import save_config, write_auth
+from tonewatch.api.deps import config_write, save_config
 from tonewatch.importers.tones_cfg import (
     TONES_CFG_MAX_BYTES,
     TonesCfgImportError,
@@ -40,8 +40,8 @@ async def _request_text(request: Request) -> str:
         raise HTTPException(422, "tones.cfg input must be UTF-8 text") from exc
 
 
-@router.post("/import/tones-cfg/", include_in_schema=False, dependencies=[Depends(write_auth)])
-@router.post("/import/tones-cfg", dependencies=[Depends(write_auth)])
+@router.post("/import/tones-cfg/", include_in_schema=False, dependencies=[Depends(config_write)])
+@router.post("/import/tones-cfg", dependencies=[Depends(config_write)])
 async def import_tones_cfg(
     request: Request,
     apply: bool = False,

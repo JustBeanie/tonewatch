@@ -220,6 +220,8 @@ def create_app(
     app.state.settings = settings
     app.state.ready = False
     app.state.config = AppConfig()
+    app.state.config_etag = '"empty"'
+    app.state.config_write_lock = asyncio.Lock()
     app.state.auth = auth
     app.state.bus = bus
     app.state.session_factory = sessions
@@ -332,6 +334,7 @@ def create_app(
                 await upgrade_database(app.state.engine)
             app.state.config = config_store.load()
             app.state.config = ensure_addon_mqtt_target(app.state.config, settings, config_store)
+            app.state.config_etag = config_store.etag()
             if app.state.retention_service is None:
                 app.state.retention_service = RetentionService(
                     settings.recording_path, settings.retention, clock=runtime_clock
