@@ -4,6 +4,8 @@ import asyncio
 import io
 import ipaddress
 import threading
+import wave
+from contextlib import suppress
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from itertools import pairwise
 from typing import Any, cast
@@ -11,9 +13,11 @@ from typing import Any, cast
 import av
 import httpx
 import numpy as np
+import pytest
 
 from tonewatch.alerts.urlsafety import ResolvedURL
 from tonewatch.config.models import StreamSource
+from tonewatch.sources import stream as stream_module
 from tonewatch.sources.base import AudioFrame
 from tonewatch.sources.stream import StreamAudioSource
 
@@ -112,3 +116,86 @@ def test_stream_real_pyav_http_reconnect(monkeypatch) -> None:
         current.stream_time_s > previous.stream_time_s for previous, current in pairwise(frames)
     )
     assert sum(frame.samples.size for frame in frames) >= 0.95 * 16_000
+
+
+@pytest.mark.asyncio
+async def test_live_stream_yields_before_eof_and_does_not_read_ahead(monkeypatch) -> None:
+    """Exercise PyAV against a stalled peer with a bounded cleanup deadline."""
+    output = io.BytesIO()
+    with wave.open(output, "wb") as wav:
+        wav.setparams((1, 2, 16_000, 0, "NONE", "not compressed"))
+        wav.writeframes(b"\x01\x00" * (512 * 1024))
+    payload = output.getvalue()
+    release = threading.Event()
+    stalled = threading.Event()
+
+    class LiveWave(BaseHTTPRequestHandler):
+        def do_GET(self) -> None:
+            self.send_response(200)
+            self.send_header("Content-Type", "audio/wav")
+            self.send_header("Content-Length", str(len(payload)))
+            self.end_headers()
+            if self.headers.get("User-Agent") == "ToneWatch redirect probe":
+                return
+            if self.path == "/stalled.wav":
+                stalled.set()
+                release.wait(timeout=8)
+                return
+            with suppress(OSError):
+                self.wfile.write(payload[: 256 * 1024])
+                self.wfile.flush()
+                if release.wait(timeout=8):
+                    self.wfile.write(payload[256 * 1024 :])
+
+        def log_message(self, format_string: str, *args: object) -> None:
+            del format_string, args
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), LiveWave)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    url = f"http://127.0.0.1:{server.server_port}/audio.wav"
+
+    async def resolve(address: str, **_kwargs: Any) -> ResolvedURL:
+        return ResolvedURL(httpx.URL(address), ipaddress.ip_address("127.0.0.1"))
+
+    monkeypatch.setattr(stream_module, "resolve_and_validate", resolve)
+    real_resample = stream_module.resample_audio
+    decode_threads: list[threading.Thread] = []
+
+    def resample(samples: np.ndarray, rate: int) -> np.ndarray:
+        decode_threads.append(threading.current_thread())
+        return real_resample(samples, rate)
+
+    monkeypatch.setattr(stream_module, "resample_audio", resample)
+    source = StreamAudioSource(StreamSource(id="live", name="Live", url=cast("Any", url)))
+    frames = aiter(source)
+    stalled_url = url.replace("/audio", "/stalled")
+    stalled_source = StreamAudioSource(
+        StreamSource(id="stalled", name="Stalled", url=cast("Any", stalled_url))
+    )
+    pending: asyncio.Future[AudioFrame] | None = None
+    try:
+        first = await asyncio.wait_for(anext(frames), timeout=3)
+        assert first.stream_time_s == 0
+        assert len(decode_threads) == 1
+        second = await asyncio.wait_for(anext(frames), timeout=1)
+        assert second.stream_time_s == pytest.approx(first.samples.size / 16_000)
+        assert len(decode_threads) == 2
+        assert decode_threads[0] is decode_threads[1]
+        await asyncio.wait_for(source.close(), timeout=3)
+        assert not decode_threads[0].is_alive()
+
+        pending = asyncio.ensure_future(anext(aiter(stalled_source)))
+        assert await asyncio.to_thread(stalled.wait, 3)
+        await asyncio.wait_for(stalled_source.close(), timeout=4)
+        with pytest.raises(StopAsyncIteration):
+            await asyncio.wait_for(pending, timeout=1)
+    finally:
+        release.set()
+        await source.close()
+        await stalled_source.close()
+        if pending is not None:
+            await asyncio.gather(pending, return_exceptions=True)
+        await asyncio.to_thread(server.shutdown)
+        server.server_close()
+        await asyncio.to_thread(thread.join, 2)

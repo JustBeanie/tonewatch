@@ -3,6 +3,8 @@
 import asyncio
 import threading
 import wave
+from collections.abc import Generator
+from contextlib import closing
 from pathlib import Path
 from typing import Any, cast
 
@@ -303,7 +305,9 @@ def test_factory_and_file_error(tmp_path: Path) -> None:
 def test_stream_uses_thread_decode(monkeypatch) -> None:
     import tonewatch.sources.stream as stream_module
 
-    monkeypatch.setattr(stream_module, "_decode_url", lambda _: [np.ones(4, dtype=np.float32)])
+    monkeypatch.setattr(
+        stream_module, "_decode_url", lambda _: (np.ones(4, dtype=np.float32) for _ in range(1))
+    )
 
     async def skip_redirect_probe(resolved: Any, *, allow_private: bool) -> Any:
         del allow_private
@@ -401,16 +405,17 @@ def test_pyav_decode_helpers_and_stream_retry(monkeypatch) -> None:
     monkeypatch.setattr(file_module.av, "open", lambda *args, **kwargs: Container())
     assert file_module._decode_av(Path("audio.mp3")).size == 16
     monkeypatch.setattr(stream_module.av, "open", lambda *args, **kwargs: Container())
-    assert stream_module._decode_url("http://localhost/audio")[0].size == 16
+    with closing(stream_module._decode_url("http://localhost/audio")) as frames:
+        assert next(frames).size == 16
 
     attempts = 0
 
-    def retry_decode(_: str) -> list[np.ndarray]:
+    def retry_decode(_: str) -> Generator[np.ndarray]:
         nonlocal attempts
         attempts += 1
         if attempts == 1:
             raise OSError("offline")
-        return [np.ones(4, dtype=np.float32)]
+        yield np.ones(4, dtype=np.float32)
 
     async def no_sleep(_: float) -> None:
         return

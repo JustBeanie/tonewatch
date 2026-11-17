@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import asyncio
 import random
-from collections.abc import AsyncIterator, Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable, Generator
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any, cast
 from urllib.parse import urljoin
 
@@ -20,34 +21,75 @@ from tonewatch.sources.resample import resample_audio
 
 FFMPEG_PROTOCOL_WHITELIST = "http,https,tcp,tls,rtsp,rtp,udp"
 MAX_STREAM_REDIRECTS = 5
+STREAM_IO_TIMEOUT_US = "2000000"
 
 
-def _decode_url(url: str) -> list[np.ndarray]:
+def _decode_url(url: str) -> Generator[np.ndarray]:
     safe_url = httpx.URL(url)
     options = {
         "protocol_whitelist": FFMPEG_PROTOCOL_WHITELIST,
         "max_redirects": "0",
+        "rw_timeout": STREAM_IO_TIMEOUT_US,
     }
     if safe_url.scheme in {"rtsp", "rtsps"}:
         options["rtsp_transport"] = "tcp"
+        options["timeout"] = STREAM_IO_TIMEOUT_US
     if safe_url.scheme == "https":
         options["tls_verify"] = "1"
         options["ca_file"] = certifi.where()
-    chunks: list[np.ndarray] = []
-    with av.open(str(safe_url), options=options) as container:
-        audio = next((stream for stream in container.streams if stream.type == "audio"), None)
-        if audio is None:
-            raise SourceUnavailable(f"stream contains no audio: {url}")
-        for decoded in container.decode(audio):
-            frame = cast("Any", decoded)
-            array = cast("np.ndarray", frame.to_ndarray())
-            rate = frame.sample_rate or cast("Any", audio).rate or 16_000
-            chunks.append(
-                resample_audio(
+
+    def frames() -> Generator[np.ndarray | None]:
+        with av.open(str(safe_url), options=options) as container:
+            audio = next((stream for stream in container.streams if stream.type == "audio"), None)
+            if audio is None:
+                raise SourceUnavailable(f"stream contains no audio: {url}")
+            yield None
+            for decoded in container.decode(audio):
+                frame = cast("Any", decoded)
+                array = cast("np.ndarray", frame.to_ndarray())
+                rate = frame.sample_rate or cast("Any", audio).rate or 16_000
+                yield resample_audio(
                     array.T if array.ndim == 2 and array.shape[0] < array.shape[1] else array, rate
                 )
-            )
-    return chunks
+
+    decoded = frames()
+    # Open and validate the input eagerly. The generator owns the open container from here on.
+    next(decoded)
+    return cast("Generator[np.ndarray]", decoded)
+
+
+class _Decoder:
+    """Own the PyAV iterator and run each operation on the same worker."""
+
+    def __init__(self, url: httpx.URL) -> None:
+        self.url = url
+        self.frames: Generator[np.ndarray] | None = None
+        self.executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="tonewatch-stream")
+        self.closing: asyncio.Task[None] | None = None
+
+    async def read(self) -> np.ndarray | None:
+        return await asyncio.get_running_loop().run_in_executor(self.executor, self._read)
+
+    def _read(self) -> np.ndarray | None:
+        if self.frames is None:
+            self.frames = _decode_url(str(self.url))
+        return next(self.frames, None)
+
+    def _close_frames(self) -> None:
+        if self.frames is not None:
+            self.frames.close()
+            self.frames = None
+
+    async def close(self) -> None:
+        if self.closing is None:
+            self.closing = asyncio.create_task(self._close())
+        await asyncio.shield(self.closing)
+
+    async def _close(self) -> None:
+        try:
+            await asyncio.get_running_loop().run_in_executor(self.executor, self._close_frames)
+        finally:
+            await asyncio.to_thread(self.executor.shutdown, wait=True)
 
 
 async def _resolve_redirects(
@@ -109,8 +151,10 @@ class StreamAudioSource:
         self._reconnected = False
         self._validated_url: httpx.URL | None = None
         self._started = False
+        self._decoder: _Decoder | None = None
+        self._retry: asyncio.Future[None] | None = None
 
-    async def open(self) -> None:
+    async def _resolve_url(self) -> httpx.URL:
         try:
             resolved = await resolve_and_validate(
                 str(self.config.url),
@@ -123,7 +167,10 @@ class StreamAudioSource:
             resolved,
             allow_private=not bool(getattr(self.settings, "stream_block_private", False)),
         )
-        self._validated_url = resolved.original
+        return cast("httpx.URL", resolved.original)
+
+    async def open(self) -> None:
+        self._validated_url = await self._resolve_url()
         self._closed = False
         if not self._started:
             self._position = 0
@@ -133,6 +180,10 @@ class StreamAudioSource:
     async def close(self) -> None:
         self._closed = True
         self._validated_url = None
+        if self._retry is not None:
+            self._retry.cancel()
+        if self._decoder is not None:
+            await self._decoder.close()
 
     async def __aenter__(self) -> StreamAudioSource:
         await self.open()
@@ -149,30 +200,42 @@ class StreamAudioSource:
         while not self._closed:
             try:
                 if self._validated_url is None:
-                    await self.open()
-                chunks = await asyncio.to_thread(_decode_url, str(self._validated_url))
-                for samples in chunks:
-                    if self._closed:
-                        return
-                    yield AudioFrame(
-                        samples, self._position / 16_000, self.config.id, self._reconnected
-                    )
-                    self._position += samples.size
-                    self._reconnected = False
-                if chunks:
-                    self._reconnected = True
-                delay = 1.0
-            except SourceConfigError:
-                raise
-            except Exception as exc:
-                self._reconnected = True
-                self._validated_url = None
-                await self._sleep(min(60.0, delay) * (0.5 + self._jitter()))
-                delay = min(60.0, delay * 2)
+                    self._validated_url = await self._resolve_url()
                 if self._closed:
                     return
-                if not isinstance(exc, SourceUnavailable):
-                    continue
+                decoder = self._decoder = _Decoder(self._validated_url)
+                try:
+                    while not self._closed:
+                        samples = await decoder.read()
+                        if samples is None or self._closed:
+                            break
+                        frame = AudioFrame(
+                            samples, self._position / 16_000, self.config.id, self._reconnected
+                        )
+                        self._position += samples.size
+                        self._reconnected = False
+                        delay = 1.0
+                        yield frame
+                finally:
+                    await decoder.close()
+                    self._decoder = None
+            except SourceConfigError:
+                raise
+            except (SourceUnavailable, av.error.FFmpegError, OSError):
+                pass
+            if self._closed:
+                return
+            self._reconnected = True
+            self._validated_url = None
+            self._retry = asyncio.ensure_future(self._sleep(delay * (0.5 + self._jitter())))
+            try:
+                await self._retry
+            except asyncio.CancelledError:
+                if not self._closed:
+                    raise
+            finally:
+                self._retry = None
+            delay = min(60.0, delay * 2)
 
 
 StreamSource = StreamAudioSource
