@@ -61,7 +61,7 @@ describe("M16b agency editor", () => {
         fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Alpha" } });
         fireEvent.change(screen.getByLabelText("Short name"), { target: { value: "A" } });
         fireEvent.click(screen.getByRole("button", { name: "Place on map" }));
-        fireEvent.click(screen.getByTestId("agency-map-click"));
+        fireEvent.click(await screen.findByTestId("agency-map-click"));
         expect(screen.getByLabelText("Latitude")).toHaveValue(40.1);
         expect(screen.getByLabelText("Longitude")).toHaveValue(-105.2);
         fireEvent.click(screen.getByTestId("map-marker-draft"));
@@ -116,7 +116,7 @@ describe("M16b agency editor", () => {
         render(routed(<AgencyForm />));
         fireEvent.change(screen.getByLabelText("Station name"), { target: { value: "Station 1" } });
         fireEvent.click(screen.getByRole("button", { name: "Add station at map click" }));
-        fireEvent.click(screen.getByTestId("agency-map-click"));
+        fireEvent.click(await screen.findByTestId("agency-map-click"));
         expect(screen.getByText(/Station 1/)).toBeInTheDocument();
         const file = new File(['{"type":"Polygon"}'], "coverage.geojson", {
             type: "application/geo+json",

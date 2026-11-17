@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router";
 import { request } from "../api/client";
 export function Shell() {
@@ -60,7 +60,9 @@ export function Shell() {
                 </button>
             </aside>
             <main className="content">
-                <Outlet />
+                <Suspense fallback={<p role="status">Loading page…</p>}>
+                    <Outlet />
+                </Suspense>
             </main>
         </div>
     );
