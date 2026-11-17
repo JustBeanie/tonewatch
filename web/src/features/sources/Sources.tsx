@@ -3,15 +3,12 @@ import { request } from "../../api/client";
 import { useSubscription } from "../../lib/ws";
 import { Diagnostics, LivePlayer, Source, SquelchEditor } from "./SourceControls";
 
-const sourceTopics = ["levels", "events"];
-
 export function Sources() {
     const [items, setItems] = useState<Source[]>([]);
     const [devices, setDevices] = useState<{ name?: string; index?: number }[]>([]);
     const [type, setType] = useState("soundcard");
     const [error, setError] = useState("");
-    const message = useSubscription(sourceTopics);
-    const events = message;
+    const message = useSubscription("levels");
     const levelMessage =
         message?.type === "LevelUpdate" || message?.type === "ChannelLevel" ? message : undefined;
     const reload = () =>
@@ -24,16 +21,6 @@ export function Sources() {
             .then(setDevices)
             .catch(() => undefined);
     }, []);
-    useEffect(() => {
-        if (events?.type !== "live_listeners_changed") return;
-        const sourceId = String(events.data?.source_id ?? "");
-        const listeners = Number(events.data?.source_listeners ?? 0);
-        setItems((current) =>
-            current.map((source) =>
-                source.id === sourceId ? { ...source, live_listeners: listeners } : source,
-            ),
-        );
-    }, [events]);
     async function save(e: FormEvent<HTMLFormElement>) {
         e.preventDefault();
         setError("");
@@ -109,7 +96,7 @@ export function Sources() {
                                 <span>{`${String(levelMessage.data.dbfs ?? levelMessage.data.rms_dbfs ?? "")} dBFS`}</span>
                             )}
                         </p>
-                        <LivePlayer source={source} message={message} />
+                        <LivePlayer source={source} />
                         <Diagnostics source={live} />
                         <SquelchEditor
                             source={source}

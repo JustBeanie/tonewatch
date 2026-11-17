@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { request } from "../../api/client";
-import type { WsMessage } from "../../lib/ws";
+import { useConnectionStatus, useWsEvents, type WsMessage } from "../../lib/ws";
 
 export type Source = {
     id: string;
@@ -73,79 +73,108 @@ function errorText(error: unknown): string {
     return typeof body === "string" ? body : (error as Error).message;
 }
 
-export function LivePlayer({
-    source,
-    message,
-}: {
-    source: Source;
-    message: WsMessage | undefined;
-}) {
+export function LivePlayer({ source }: { source: Source }) {
+    return <SourcePlayer key={source.id} source={source} />;
+}
+
+function SourcePlayer({ source }: { source: Source }) {
     const [url, setUrl] = useState<string>();
     const [expires, setExpires] = useState<string>();
+    const [now, setNow] = useState(Date.now);
     const [error, setError] = useState("");
+    const [starting, setStarting] = useState(false);
     const [statusCount, setStatusCount] = useState<number | null>();
     const audio = useRef<HTMLAudioElement>(null);
-    const event = message;
-    const count =
-        event?.type === "live_listeners_changed" && event.data?.source_id === source.id
-            ? Number(event.data.source_listeners)
-            : (statusCount ?? source.live_listeners);
+    const pendingStart = useRef<AbortController>(null);
+    const statusVersion = useRef(0);
+    const connected = useConnectionStatus() === "connected";
+    const count = statusCount ?? source.live_listeners;
+
+    useWsEvents("events", (event) => {
+        if (event.type === "live_listeners_changed" && event.data?.source_id === source.id) {
+            statusVersion.current++;
+            setStatusCount(Number(event.data.source_listeners));
+        }
+    });
+    useEffect(() => () => pendingStart.current?.abort(), []);
     useEffect(() => {
         if (!expires) return;
-        const timer = window.setInterval(() => setExpires((value) => value), 1000);
+        const timer = window.setInterval(() => setNow(Date.now()), 60_000);
         return () => window.clearInterval(timer);
     }, [expires]);
     useEffect(() => {
-        if (!url || !audio.current) return;
-        audio.current.src = url;
-        audio.current.load();
-        void Promise.resolve(audio.current.play()).catch(() => undefined);
+        const element = audio.current;
+        if (!url || !element) return;
+        element.src = url;
+        element.load();
+        void Promise.resolve(element.play()).catch(() => undefined);
+        return () => {
+            element.pause();
+            element.removeAttribute("src");
+            element.load();
+        };
     }, [url]);
     useEffect(() => {
         if (!url) return;
-        let active = true;
-        const refresh = () => {
-            void request<Source>(`sources/${encodeURIComponent(source.id)}`)
-                .then((current) => {
-                    if (active && current.live_listeners !== undefined) {
-                        setStatusCount(current.live_listeners);
-                    }
-                })
-                .catch(() => undefined);
-        };
-        refresh();
-        const timer = window.setInterval(refresh, 250);
+        const controller = new AbortController();
+        let timer: number | undefined;
+        async function refresh(): Promise<void> {
+            const version = statusVersion.current;
+            try {
+                const current = await request<Source>(`sources/${encodeURIComponent(source.id)}`, {
+                    signal: controller.signal,
+                });
+                if (
+                    !controller.signal.aborted &&
+                    statusVersion.current === version &&
+                    current.live_listeners !== undefined
+                ) {
+                    setStatusCount(current.live_listeners);
+                }
+            } catch {
+                // Listener status is best-effort while the connection is unavailable.
+            } finally {
+                if (!connected && !controller.signal.aborted) {
+                    timer = window.setTimeout(() => void refresh(), 2000);
+                }
+            }
+        }
+        void refresh();
         return () => {
-            active = false;
-            window.clearInterval(timer);
+            controller.abort();
+            window.clearTimeout(timer);
         };
-    }, [source.id, url]);
+    }, [connected, source.id, url]);
     async function start() {
+        if (pendingStart.current) return;
+        const controller = new AbortController();
+        pendingStart.current = controller;
+        setStarting(true);
         setError("");
         try {
             const result = await request<{ url: string; expires_at: string }>(
                 `sources/${encodeURIComponent(source.id)}/live-url`,
-                { method: "POST" },
+                { method: "POST", signal: controller.signal },
             );
+            if (controller.signal.aborted) return;
             setUrl(result.url);
+            setNow(Date.now());
             setExpires(result.expires_at);
         } catch (error) {
+            if (controller.signal.aborted) return;
             setError(
                 (error as { status?: number }).status === 503
                     ? "Live listener capacity is full. Try again when another listener stops."
                     : "Unable to start live audio.",
             );
+        } finally {
+            pendingStart.current = null;
+            if (!controller.signal.aborted) setStarting(false);
         }
     }
     function stop() {
-        if (audio.current) {
-            audio.current.pause();
-            audio.current.src = "";
-            audio.current.load();
-        }
         setUrl(undefined);
         setExpires(undefined);
-        setStatusCount(0);
     }
     async function copy() {
         if (!url) return;
@@ -166,13 +195,15 @@ export function LivePlayer({
         );
     }
     const expiry = expires ? Date.parse(expires) : Number.NaN;
-    const minutes = Number.isFinite(expiry)
-        ? Math.max(0, Math.ceil((expiry - Date.now()) / 60000))
-        : 0;
+    const minutes = Number.isFinite(expiry) ? Math.max(0, Math.ceil((expiry - now) / 60000)) : 0;
     const enabled = source.live_stream_enabled === true;
     return (
         <div className="live-player">
-            <button type="button" onClick={url ? stop : () => void start()} disabled={!enabled}>
+            <button
+                type="button"
+                onClick={url ? stop : () => void start()}
+                disabled={!enabled || starting}
+            >
                 {url ? "Stop live" : "Listen live"}
             </button>
             <span role="status">
