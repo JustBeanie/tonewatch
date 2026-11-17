@@ -168,9 +168,9 @@ describe("M6a pages", () => {
         vi.stubGlobal("WebSocket", MockSocket);
         vi.spyOn(globalThis, "fetch").mockReturnValue(json({ items: [] }));
         render(<App />);
-        await waitFor(() => expect(sockets.length).toBeGreaterThanOrEqual(2));
+        await waitFor(() => expect(sockets).toHaveLength(1));
         sockets[0]?.emit({ type: "FeedHealthChanged", data: { reason: "No frames" } });
-        sockets[1]?.emit({ type: "ChannelLevel", data: { dbfs: -12.5 } });
+        sockets[0]?.emit({ type: "ChannelLevel", data: { dbfs: -12.5 } });
         expect(await screen.findByText(/No frames/)).toBeInTheDocument();
         expect(await screen.findByText("-12.5 dBFS")).toBeInTheDocument();
     });

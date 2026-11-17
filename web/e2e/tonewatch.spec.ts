@@ -93,6 +93,34 @@ test("websocket connects", async ({ page }) => {
     await expect.poll(() => received).toBeGreaterThan(0);
 });
 
+test("live pages reuse a single WebSocket including Spectrum pause", async ({ page }) => {
+    const counts: number[] = [];
+    let opened = 0;
+    page.on("websocket", () => {
+        opened += 1;
+    });
+    await login(page);
+    await expect(page.getByRole("status", { name: "Live connection" })).toHaveText(
+        "Live connection: connected",
+    );
+    counts.push(opened);
+
+    opened = 0;
+    await page.goto("/sources");
+    await expect(page.getByRole("button", { name: "Listen live" }).first()).toBeEnabled();
+    await expect.poll(() => opened).toBeGreaterThan(0);
+    counts.push(opened);
+
+    opened = 0;
+    await page.goto("/spectrum");
+    await page.getByRole("combobox").selectOption("fixture-radio");
+    await expect.poll(() => opened).toBeGreaterThan(0);
+    await page.getByRole("button", { name: "Pause", exact: true }).click();
+    await page.getByRole("button", { name: "Resume", exact: true }).click();
+    counts.push(opened);
+    expect(counts).toEqual([1, 1, 1]);
+});
+
 test("live listen starts and releases a file-source listener", async ({ page }) => {
     await login(page);
     await page.goto("/sources");

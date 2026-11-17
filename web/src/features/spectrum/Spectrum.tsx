@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { request } from "../../api/client";
-import { ToneWatchSocket, WsMessage } from "../../lib/ws";
+import { useWsEvents, WsMessage } from "../../lib/ws";
+
+function frequency(message: WsMessage | undefined): number {
+    return Number(message?.data?.dominant_frequency_hz ?? message?.data?.dominant_hz ?? 0);
+}
+
 export function Spectrum() {
     const [sources, setSources] = useState<{ id: string; name?: string }[]>([]);
     const [source, setSource] = useState("");
@@ -16,29 +21,15 @@ export function Spectrum() {
             .then(setSources)
             .catch(() => undefined);
     }, []);
-    useEffect(() => {
-        if (!source) return;
-        const s = new ToneWatchSocket();
-        s.connect();
-        s.subscribe(`spectrum:${source}`);
-        const off = s.onMessage((x) => {
-            if (!paused && x.type === "SpectrumUpdate") {
-                setM(x);
-                const now = Date.now();
-                if (now - last.current >= 1000) {
-                    setAnnouncement(
-                        `${Number(x.data?.dominant_hz ?? 0).toFixed(1)} hertz dominant`,
-                    );
-                    last.current = now;
-                }
-            }
-        });
-        return () => {
-            off();
-            s.unsubscribe(`spectrum:${source}`);
-            s.close();
-        };
-    }, [source, paused]);
+    useWsEvents(source ? `spectrum:${source}` : "", (message) => {
+        if (paused) return;
+        setM(message);
+        const now = Date.now();
+        if (now - last.current >= 1000) {
+            setAnnouncement(`${frequency(message).toFixed(1)} hertz dominant`);
+            last.current = now;
+        }
+    });
     useEffect(() => {
         const c = canvas.current;
         if (!c) return;
@@ -53,7 +44,7 @@ export function Spectrum() {
             ctx.stroke();
         }
     }, [m]);
-    const freq = Number(m?.data?.dominant_hz ?? 0);
+    const freq = frequency(m);
     return (
         <>
             <h1>Spectrum</h1>
@@ -62,7 +53,11 @@ export function Spectrum() {
                 <select
                     id="spectrum-source"
                     value={source}
-                    onChange={(e) => setSource(e.target.value)}
+                    onChange={(e) => {
+                        setSource(e.target.value);
+                        setM(undefined);
+                        setAnnouncement("");
+                    }}
                 >
                     <option value="">Choose a source</option>
                     {sources.map((s) => (
@@ -82,7 +77,7 @@ export function Spectrum() {
             <p>Dominant frequency: {freq.toFixed(1)} Hz</p>
             <p>
                 Purity: {Number(m?.data?.purity ?? 0).toFixed(1)} · Level:{" "}
-                {Number(m?.data?.dbfs ?? -100).toFixed(1)} dBFS
+                {Number(m?.data?.level_dbfs ?? m?.data?.dbfs ?? -100).toFixed(1)} dBFS
             </p>
             <button onClick={() => setPaused(!paused)}>{paused ? "Resume" : "Pause"}</button>
             <button onClick={() => nav(`/tonesets/new?freq_hz=${freq}`)}>Capture tone</button>

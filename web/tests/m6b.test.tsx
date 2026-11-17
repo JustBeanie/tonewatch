@@ -53,13 +53,19 @@ describe("M6b edge paths", () => {
             new MessageEvent("message", {
                 data: JSON.stringify({
                     type: "SpectrumUpdate",
-                    data: { dominant_hz: 1234.5, purity: 0.8, dbfs: -10 },
+                    data: {
+                        source_id: "r",
+                        dominant_frequency_hz: 1234.5,
+                        purity: 0.8,
+                        level_dbfs: -10,
+                    },
                 }),
             }),
         );
         expect(await screen.findByText(/1234.5 hertz/)).toBeInTheDocument();
         fireEvent.click(screen.getByRole("button", { name: "Pause" }));
         fireEvent.click(screen.getByRole("button", { name: "Resume" }));
+        expect(sockets).toHaveLength(1);
     });
     it("analyze explains server size and media errors", async () => {
         for (const status of [413, 415]) {
