@@ -56,7 +56,7 @@ export function Dashboard() {
                 {sources.map((source) => (
                     <div className="card" key={source.id}>
                         <h2>{source.name ?? source.id}</h2>
-                        <LivePlayer source={source} message={event} />
+                        <LivePlayer source={source} />
                     </div>
                 ))}
                 <div className="card">

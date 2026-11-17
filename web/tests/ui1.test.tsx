@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
     LivePlayer,
@@ -7,6 +7,12 @@ import {
     SquelchEditor,
 } from "../src/features/sources/SourceControls";
 import { Settings } from "../src/features/settings/Settings";
+import { useConnectionStatus, useWsEvents } from "../src/lib/ws";
+
+vi.mock("../src/lib/ws", () => ({
+    useConnectionStatus: vi.fn(() => "connected"),
+    useWsEvents: vi.fn(),
+}));
 
 const source: Source = { id: "radio", name: "Radio", type: "file", live_stream_enabled: true };
 const level = {
@@ -26,6 +32,8 @@ const json = (value: unknown, status = 200) =>
 afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
+    vi.useRealTimers();
+    vi.mocked(useConnectionStatus).mockReturnValue("connected");
 });
 
 describe("UI1 live and squelch controls", () => {
@@ -49,15 +57,7 @@ describe("UI1 live and squelch controls", () => {
             value: { writeText: vi.fn() },
         });
         const play = vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue(undefined);
-        render(
-            <LivePlayer
-                source={source}
-                message={{
-                    type: "live_listeners_changed",
-                    data: { source_id: "radio", source_listeners: 1 },
-                }}
-            />,
-        );
+        render(<LivePlayer source={source} />);
         fireEvent.click(screen.getByRole("button", { name: "Listen live" }));
         const audio = await screen.findByLabelText("Live audio for Radio");
         await waitFor(() =>
@@ -74,18 +74,70 @@ describe("UI1 live and squelch controls", () => {
         expect(serializedConsoleCalls).not.toContain("https://example/live.mp3");
         expect(serializedConsoleCalls).not.toContain("secret");
         fireEvent.click(screen.getByRole("button", { name: "Stop live" }));
-        expect(audio).toHaveAttribute("src", "");
+        expect(audio).not.toHaveAttribute("src");
     });
     it("explains disabled and capacity errors", async () => {
         const disabled = { ...source, live_stream_enabled: false };
-        render(<LivePlayer source={disabled} message={undefined} />);
+        render(<LivePlayer source={disabled} />);
         expect(screen.getByRole("button", { name: "Listen live" })).toBeDisabled();
         expect(screen.getByText(/disabled for this source/)).toBeInTheDocument();
         vi.restoreAllMocks();
         vi.spyOn(globalThis, "fetch").mockReturnValue(json({}, 503));
-        render(<LivePlayer source={source} message={undefined} />);
+        render(<LivePlayer source={source} />);
         fireEvent.click(screen.getAllByRole("button", { name: "Listen live" })[1]!);
         expect(await screen.findByRole("alert")).toHaveTextContent(/capacity is full/);
+    });
+    it("uses events while connected and cancels a single-flight polling fallback", async () => {
+        vi.useFakeTimers();
+        const statusRequests: AbortSignal[] = [];
+        const complete: Array<(response: Response) => void> = [];
+        vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
+            if (String(input).endsWith("/live-url")) {
+                return json({
+                    url: "/api/sources/radio/live.mp3",
+                    expires_at: new Date(Date.now() + 60_000).toISOString(),
+                });
+            }
+            if (init?.signal) statusRequests.push(init.signal);
+            return new Promise((resolve) => complete.push(resolve));
+        });
+        vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue(undefined);
+        const pause = vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
+        vi.spyOn(HTMLMediaElement.prototype, "load").mockImplementation(() => {});
+
+        const view = render(<LivePlayer source={source} />);
+        await act(async () => fireEvent.click(screen.getByRole("button", { name: "Listen live" })));
+        expect(statusRequests).toHaveLength(1);
+        const receiveEvent = vi.mocked(useWsEvents).mock.calls.at(-1)?.[1];
+        await act(async () => {
+            receiveEvent?.({
+                type: "live_listeners_changed",
+                data: { source_id: source.id, source_listeners: 2 },
+            });
+            complete[0]?.(new Response(JSON.stringify({ live_listeners: 0 })));
+            await vi.advanceTimersByTimeAsync(6000);
+        });
+        expect(screen.getByRole("status")).toHaveTextContent("2 listeners");
+        expect(statusRequests).toHaveLength(1);
+
+        vi.mocked(useConnectionStatus).mockReturnValue("disconnected");
+        view.rerender(<LivePlayer source={source} />);
+        await act(async () => vi.advanceTimersByTimeAsync(6000));
+        expect(statusRequests).toHaveLength(2);
+        await act(async () => {
+            complete[1]?.(new Response(JSON.stringify({ live_listeners: 2 })));
+        });
+        await act(async () => vi.advanceTimersByTimeAsync(2000));
+        expect(statusRequests).toHaveLength(3);
+        vi.mocked(useConnectionStatus).mockReturnValue("connected");
+        view.rerender(<LivePlayer source={source} />);
+        expect(statusRequests[2]?.aborted).toBe(true);
+        expect(statusRequests).toHaveLength(4);
+        const audio = screen.getByLabelText("Live audio for Radio");
+        view.rerender(<LivePlayer source={{ ...source, id: "other" }} />);
+        expect(statusRequests[3]?.aborted).toBe(true);
+        expect(audio).not.toHaveAttribute("src");
+        expect(pause).toHaveBeenCalledOnce();
     });
     it("uses the documented clipboard fallback", async () => {
         vi.spyOn(globalThis, "fetch").mockReturnValue(
@@ -97,14 +149,14 @@ describe("UI1 live and squelch controls", () => {
         Object.defineProperty(navigator, "clipboard", { configurable: true, value: undefined });
         const copy = vi.fn().mockReturnValue(true);
         Object.defineProperty(document, "execCommand", { configurable: true, value: copy });
-        render(<LivePlayer source={source} message={undefined} />);
+        render(<LivePlayer source={source} />);
         fireEvent.click(screen.getByRole("button", { name: "Listen live" }));
         fireEvent.click(await screen.findByRole("button", { name: "Copy player URL" }));
         expect(copy).toHaveBeenCalledWith("copy");
     });
     it("handles a non-cap mint failure without throwing", async () => {
         vi.spyOn(globalThis, "fetch").mockReturnValue(json({}, 500));
-        render(<LivePlayer source={source} message={undefined} />);
+        render(<LivePlayer source={source} />);
         fireEvent.click(screen.getByRole("button", { name: "Listen live" }));
         expect(await screen.findByRole("alert")).toHaveTextContent(/Unable to start/);
     });
