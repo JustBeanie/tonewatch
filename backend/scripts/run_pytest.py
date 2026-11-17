@@ -3,14 +3,13 @@
 The Codex sandbox runs as a different Windows account that reports the same
 user name, so pytest's default ``%TEMP%/pytest-of-<user>`` and any fixed
 ``--basetemp`` end up owned by whichever account ran first and are unusable
-(pytest must delete them) for the other. A unique directory per run avoids
-sharing entirely; stale ones are removed best-effort.
+(pytest must delete them) for the other. Each invocation owns its temporary
+directory so it can run alongside a benchmark or another test suite.
 """
 
-import shutil
 import sys
-import uuid
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 import pytest
 
@@ -21,11 +20,10 @@ TMP_ROOT = BACKEND / ".pytest-tmp"
 def main() -> int:
     """Run pytest with a unique basetemp and return its exit code."""
     TMP_ROOT.mkdir(exist_ok=True)
-    for stale in TMP_ROOT.iterdir():
-        shutil.rmtree(stale, ignore_errors=True)
-    basetemp = TMP_ROOT / uuid.uuid4().hex
-    args = ["-c", str(BACKEND / "pyproject.toml"), f"--basetemp={basetemp}", *sys.argv[1:]]
-    return int(pytest.main(args))
+    with TemporaryDirectory(dir=TMP_ROOT, ignore_cleanup_errors=True) as run_dir:
+        basetemp = Path(run_dir) / "pytest"
+        args = ["-c", str(BACKEND / "pyproject.toml"), f"--basetemp={basetemp}", *sys.argv[1:]]
+        return int(pytest.main(args))
 
 
 if __name__ == "__main__":
