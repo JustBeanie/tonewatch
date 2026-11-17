@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.6.2](https://github.com/JustBeanie/tonewatch/compare/v0.6.1...v0.6.2) (2026-11-17)
+
+
+### Bug Fixes
+
+* **api:** report token and live-URL expiry as ISO 8601, not epoch seconds ([1108dda](https://github.com/JustBeanie/tonewatch/commit/1108dda69459210b65e47a6cf370f7f0e1e538f6))
+* **ci:** scope Scorecard to the default branch (CI-SCORECARD) ([f966bca](https://github.com/JustBeanie/tonewatch/commit/f966bcac1d780c19c2f4ac8b71877a7424f78139))
+* **ci:** stabilize backend tests (CI-175) ([246bb61](https://github.com/JustBeanie/tonewatch/commit/246bb61d9512adc02de2420d4e8bcb224c48e6ba))
+* **config:** serialize configuration writes and reloads (APP-2) ([4e9ee6f](https://github.com/JustBeanie/tonewatch/commit/4e9ee6fddbd9bd134f9d5fec74cdd5855575f179))
+* **deps:** bump urllib3 2.7.0 -&gt; 2.8.0 (Dependabot high alert) ([a7238c6](https://github.com/JustBeanie/tonewatch/commit/a7238c6a9fe4f7f64022ca3b92da2555e50d8158))
+* **deps:** bump virtualenv 21.7.9 -&gt; 21.14.12 (dev pip-audit) ([1458015](https://github.com/JustBeanie/tonewatch/commit/14580159d127e3476ded7a63f4112bb089103b36))
+* **deps:** clear Dependabot and trivy alerts ([fd6b4f4](https://github.com/JustBeanie/tonewatch/commit/fd6b4f4334604b11d263916b90427c292d1efa38))
+* **deps:** clear OSV backlog in both lockfiles ([b362f65](https://github.com/JustBeanie/tonewatch/commit/b362f654ff8794b589ef3237d765792c23635938))
+* **pipeline:** timestamp squelch health events (APP-3) ([e26ddcf](https://github.com/JustBeanie/tonewatch/commit/e26ddcf53860399b14b8130d89729bb9bbefc4a3))
+* **security:** AR-006 for braces and enforce AR ids on OSV ignores ([f440709](https://github.com/JustBeanie/tonewatch/commit/f4407097866747315263bfedae51014e5406da58))
+* **security:** clear pre-existing CI reds blocking PR checks ([1e514d9](https://github.com/JustBeanie/tonewatch/commit/1e514d9a519742d0664b85cb54763b3b0450aa23))
+* **security:** close remaining trivy, osv and CodeQL findings ([c647a59](https://github.com/JustBeanie/tonewatch/commit/c647a59c9695d497acc314df86c1c152e69e00c1))
+* **security:** resolve CodeQL alerts and expand the security policy ([cec8f15](https://github.com/JustBeanie/tonewatch/commit/cec8f15e701ade503b662bcd24c04bae1f0572a8))
+* **sources:** decode network audio incrementally (APP-1) ([481a2c1](https://github.com/JustBeanie/tonewatch/commit/481a2c1dbe1c3fbaaeef33f5d63df2d787b1cdd2))
+* **sources:** keep running when PortAudio cannot initialize ([a0c0b50](https://github.com/JustBeanie/tonewatch/commit/a0c0b509429a6815fee9b9adbb485994f79a030b))
+* **web:** stop continuous listener polling (WEB-2) ([f0df4f4](https://github.com/JustBeanie/tonewatch/commit/f0df4f41a57acf131dd2206f575a22a47e41ab48))
+* **ws:** share live connections and preserve the event pump (WEB-1) ([a82c775](https://github.com/JustBeanie/tonewatch/commit/a82c77529fed0e51cfa6a072f63415ed88f42f51))
+
 ## [0.6.1](https://github.com/JustBeanie/tonewatch/compare/v0.6.0...v0.6.1) (2026-09-19)
 
 
