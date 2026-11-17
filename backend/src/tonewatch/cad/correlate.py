@@ -99,7 +99,8 @@ class CadCorrelationService:
 
     async def reload(self, config: AppConfig) -> None:
         """Apply the current agency and feed windows."""
-        self.config = config
+        async with self._lock:
+            self.config = config
 
     async def _consume(self) -> None:
         if self.subscription is None:
@@ -130,16 +131,29 @@ class CadCorrelationService:
     async def on_incident(self, feed_id: str, incident_id: str) -> None:
         """Match a newly persisted incident to eligible nearby calls."""
         async with self._lock:
+            feed = next(
+                (item for item in self.config.cad_feeds if item.enabled and item.id == feed_id),
+                None,
+            )
+            if feed is None:
+                return
             async with self.session_factory() as session:
-                incident = await session.scalar(
-                    select(CadIncident).where(
+                received_at = await session.scalar(
+                    select(CadIncident.received_at).where(
                         CadIncident.feed_id == feed_id,
                         CadIncident.incident_id == incident_id,
                     )
                 )
-                if incident is None:
+                if received_at is None:
                     return
-                calls = list((await session.scalars(select(Call))).all())
+                # Invert the call-relative window to find calls for this incident.
+                earliest = received_at - timedelta(seconds=feed.window_after_s)
+                latest = received_at + timedelta(seconds=feed.window_before_s)
+                calls = (
+                    await session.scalars(
+                        select(Call).where(Call.started_at.between(earliest, latest))
+                    )
+                ).all()
             for call in calls:
                 await self._correlate_call(call, None, feed_id=feed_id)
 

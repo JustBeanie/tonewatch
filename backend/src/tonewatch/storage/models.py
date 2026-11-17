@@ -27,7 +27,9 @@ class Base(DeclarativeBase):
 class Call(Base):
     __tablename__ = "calls"
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
-    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    started_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, index=True
+    )
     source_id: Mapped[str] = mapped_column(String(100), nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="active")
     drill: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")

@@ -7,6 +7,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Literal
+from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
@@ -636,6 +637,58 @@ async def test_m17_d_late_arrival_links_once_and_dispatches_only_opt_in(tmp_path
     bus.unsubscribe(events)
     await dispatcher.stop()
     await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_late_incident_only_considers_calls_in_its_inverted_window(tmp_path: Path):
+    incident_at = datetime(2026, 1, 1, tzinfo=UTC)
+    config = _correlation_config()
+    feed = config.cad_feeds[0].model_copy(update={"window_before_s": 30, "window_after_s": 90})
+    config = config.model_copy(update={"cad_feeds": [feed]})
+    engine, sessions = create_database(f"sqlite+aiosqlite:///{tmp_path / 'window.sqlite'}")
+    try:
+        async with engine.begin() as connection:
+            await connection.run_sync(Base.metadata.create_all)
+        calls = {
+            offset: Call(
+                id=uuid4(), started_at=incident_at + timedelta(seconds=offset), source_id="radio"
+            )
+            for offset in (-91, -90, 0, 30, 31)
+        }
+        async with sessions() as session:
+            for call in calls.values():
+                call.tone_sets.append(
+                    CallToneSet(
+                        toneset_id="page",
+                        detected_at=call.started_at,
+                        matched_segment_freqs=[],
+                        agency_id="north",
+                    )
+                )
+            session.add_all(calls.values())
+            await session.commit()
+
+        runner = CadFeedRunner(feed, client_factory=lambda _feed: None, session_factory=sessions)
+        await runner.persist(
+            CadEvent.model_validate(
+                {
+                    "schema": 1,
+                    "event": "new",
+                    "incident": _incident(when=incident_at.isoformat()),
+                }
+            )
+        )
+        service = CadCorrelationService(config, EventBus(), sessions)
+        with patch.object(service, "_correlate_call", wraps=service._correlate_call) as match:
+            await service.on_incident(feed.id, "abcdef12")
+
+        expected = {calls[offset].id: -offset for offset in (-90, 0, 30)}
+        assert {attempt.args[0].id for attempt in match.await_args_list} == set(expected)
+        async with sessions() as session:
+            links = (await session.scalars(select(CallCadIncident))).all()
+        assert {link.call_id: link.delta_s for link in links} == expected
+    finally:
+        await engine.dispose()
 
 
 @pytest.mark.asyncio
