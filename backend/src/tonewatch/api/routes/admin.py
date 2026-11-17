@@ -18,7 +18,7 @@ from sqlalchemy import select
 from tonewatch import __version__
 from tonewatch.admin.health import StorageScanner, event_bus_health, storage_forecast
 from tonewatch.api.audit import SecretRestoreError, mask_secrets, record_audit, restore_secrets
-from tonewatch.api.deps import authenticated, save_config, write_auth
+from tonewatch.api.deps import authenticated, config_write, save_config, write_auth
 from tonewatch.config.history import ConfigHistory, HistoryError, structured_diff
 from tonewatch.config.models import AppConfig, MeshtasticTarget, MqttTarget
 from tonewatch.pipeline.drill import build_waveform
@@ -180,7 +180,7 @@ async def config_version_diff(
         raise _history_error(exc) from None
 
 
-@router.post("/config/versions/{version_id}/rollback", dependencies=[Depends(write_auth)])
+@router.post("/config/versions/{version_id}/rollback", dependencies=[Depends(config_write)])
 async def rollback_config(request: Request, version_id: str) -> Response:
     _require_if_match(request)
     try:
@@ -191,7 +191,7 @@ async def rollback_config(request: Request, version_id: str) -> Response:
     return Response(
         content=json.dumps(mask_secrets(saved.model_dump(mode="json"))),
         media_type="application/json",
-        headers={"ETag": request.app.state.store.etag()},
+        headers={"ETag": request.app.state.config_etag},
     )
 
 
@@ -270,7 +270,7 @@ async def preview_config_import(request: Request) -> dict[str, Any]:
     }
 
 
-@router.post("/config/import/apply", dependencies=[Depends(write_auth)])
+@router.post("/config/import/apply", dependencies=[Depends(config_write)])
 async def apply_config_import(request: Request) -> Response:
     _require_if_match(request)
     config = await _validated_import(request)
@@ -278,7 +278,7 @@ async def apply_config_import(request: Request) -> Response:
     return Response(
         content=json.dumps(mask_secrets(saved.model_dump(mode="json"))),
         media_type="application/json",
-        headers={"ETag": request.app.state.store.etag()},
+        headers={"ETag": request.app.state.config_etag},
     )
 
 

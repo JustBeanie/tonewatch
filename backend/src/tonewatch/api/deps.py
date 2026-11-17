@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
 from fastapi import HTTPException, Request
@@ -13,6 +14,9 @@ from tonewatch.api.audit import SecretRestoreError, mask_secrets, record_audit, 
 from tonewatch.config.history import ConfigHistory, HistoryError
 from tonewatch.config.models import AppConfig
 from tonewatch.config.store import ConfigConflictError, replace_config
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
 
 _logger = structlog.get_logger("tonewatch.config")
 _python_logger = logging.getLogger("tonewatch.config")
@@ -33,6 +37,13 @@ def write_auth(request: Request) -> None:
     request.state.auth = request.app.state.auth.authorize(request, state_changing=True)
 
 
+async def config_write(request: Request) -> AsyncIterator[None]:
+    """Keep read-modify-write handlers and their runtime reloads in order."""
+    write_auth(request)
+    async with request.app.state.config_write_lock:
+        yield
+
+
 def credential_write_auth(request: Request) -> None:
     """Require write auth, and require CSRF-capable auth for credential changes."""
     write_auth(request)
@@ -45,6 +56,24 @@ def collection(request: Request, kind: str) -> list[Any]:
 
 
 async def save_config(request: Request, config: AppConfig, *, audit: bool = True) -> AppConfig:
+    task = asyncio.create_task(_save_config(request, config, audit=audit))
+    try:
+        return await asyncio.shield(task)
+    except asyncio.CancelledError:
+        # Keep the request's write lock until an in-progress disk write and reload finish.
+        while not task.done():
+            try:
+                await asyncio.shield(task)
+            except asyncio.CancelledError:
+                continue
+            except Exception:
+                _python_logger.exception("configuration write failed after request cancellation")
+        if not task.cancelled():
+            task.exception()
+        raise
+
+
+async def _save_config(request: Request, config: AppConfig, *, audit: bool) -> AppConfig:
     before = request.app.state.config
     expected_etag = request.headers.get("if-match")
     try:
@@ -58,12 +87,14 @@ async def save_config(request: Request, config: AppConfig, *, audit: bool = True
         raise HTTPException(422, str(exc)) from None
     try:
         if hasattr(request.app.state.store, "save_async"):
-            await request.app.state.store.save_async(config, expected_etag=expected_etag)
+            revision = await request.app.state.store.save_async(config, expected_etag=expected_etag)
         else:
             request.app.state.store.save(config)
+            revision = request.app.state.store.etag()
     except ConfigConflictError as exc:
         raise HTTPException(412, str(exc)) from None
     request.app.state.config = config
+    request.app.state.config_etag = revision
     live = config.live_stream
     live_hub = getattr(request.app.state, "live_hub", None)
     if live_hub is not None:

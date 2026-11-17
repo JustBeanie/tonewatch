@@ -11,7 +11,15 @@ from pydantic import BaseModel, Field, TypeAdapter, ValidationError
 
 from tonewatch.alerts.meshtastic import render_message, render_untruncated
 from tonewatch.api.audit import is_secret_key
-from tonewatch.api.deps import _dump, authenticated, collection, put, save_config, write_auth
+from tonewatch.api.deps import (
+    _dump,
+    authenticated,
+    collection,
+    config_write,
+    put,
+    save_config,
+    write_auth,
+)
 from tonewatch.api.routes.cad import router as cad_router
 from tonewatch.config.models import (
     AlertTarget,
@@ -146,14 +154,14 @@ async def calibrate_squelch(request: Request, source_id: str, payload: Calibrate
 @router.get("/config", dependencies=[Depends(authenticated)])
 async def get_config(request: Request) -> JSONResponse:
     return JSONResponse(
-        _dump(request.app.state.config), headers={"ETag": request.app.state.store.etag()}
+        _dump(request.app.state.config), headers={"ETag": request.app.state.config_etag}
     )
 
 
-@router.put("/config", dependencies=[Depends(write_auth)])
+@router.put("/config", dependencies=[Depends(config_write)])
 async def replace_config(request: Request, config: AppConfig) -> JSONResponse:
     saved = await save_config(request, config)
-    return JSONResponse(_dump(saved), headers={"ETag": request.app.state.store.etag()})
+    return JSONResponse(_dump(saved), headers={"ETag": request.app.state.config_etag})
 
 
 @router.get("/tonesets", dependencies=[Depends(authenticated)])
@@ -161,7 +169,7 @@ async def tonesets(request: Request) -> list[Any]:
     return [_dump(value) for value in request.app.state.config.tone_sets]
 
 
-@router.post("/tonesets", dependencies=[Depends(write_auth)], status_code=201)
+@router.post("/tonesets", dependencies=[Depends(config_write)], status_code=201)
 async def create_toneset(request: Request, payload: dict[str, Any] = Body(...)) -> Any:
     discovered_id = payload.pop("discovered_tone_id", None)
     try:
@@ -193,14 +201,14 @@ async def get_toneset(request: Request, item_id: str) -> Any:
     return _dump(item)
 
 
-@router.put("/tonesets/{item_id}", dependencies=[Depends(write_auth)])
+@router.put("/tonesets/{item_id}", dependencies=[Depends(config_write)])
 async def update_toneset(request: Request, item_id: str, item: ToneSet) -> Any:
     if item.id != item_id:
         raise HTTPException(422, "id does not match path")
     return _dump((await put(request, "tone_sets", item)).tone_sets[-1])
 
 
-@router.delete("/tonesets/{item_id}", dependencies=[Depends(write_auth)])
+@router.delete("/tonesets/{item_id}", dependencies=[Depends(config_write)])
 async def delete_toneset(request: Request, item_id: str) -> Any:
     refs = [
         value.id
@@ -244,7 +252,7 @@ def _crud(path: str, kind: str, model: Any) -> None:
             values.append(item)
         return values
 
-    @router.post(path, dependencies=[Depends(write_auth)], status_code=201)
+    @router.post(path, dependencies=[Depends(config_write)], status_code=201)
     async def create_item(request: Request, payload: dict[str, Any] = Body(...)) -> Any:
         try:
             item = TypeAdapter(model).validate_python(payload)
@@ -282,7 +290,7 @@ def _crud(path: str, kind: str, model: Any) -> None:
             )
         return result
 
-    @router.put(f"{path}/{{item_id}}", dependencies=[Depends(write_auth)])
+    @router.put(f"{path}/{{item_id}}", dependencies=[Depends(config_write)])
     async def update_item(
         request: Request, item_id: str, payload: dict[str, Any] = Body(...)
     ) -> Any:
@@ -324,7 +332,7 @@ def _crud(path: str, kind: str, model: Any) -> None:
         await put(request, kind, item)
         return _dump(item)
 
-    @router.delete(f"{path}/{{item_id}}", dependencies=[Depends(write_auth)])
+    @router.delete(f"{path}/{{item_id}}", dependencies=[Depends(config_write)])
     async def delete_item(request: Request, item_id: str) -> Any:
         if not any(value.id == item_id for value in collection(request, kind)):
             raise HTTPException(404, "not found")

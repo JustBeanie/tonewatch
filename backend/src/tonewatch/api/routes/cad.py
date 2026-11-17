@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import and_, func, or_, select
 
 from tonewatch.api.audit import record_audit
-from tonewatch.api.deps import authenticated, save_config, write_auth
+from tonewatch.api.deps import authenticated, config_write, save_config
 from tonewatch.config.models import Agency, AgencyLocation
 from tonewatch.storage.models import CadIncident, CallCadIncident
 
@@ -92,7 +92,7 @@ async def unmatched(request: Request) -> list[dict[str, Any]]:
 
 
 @router.post(
-    "/unmatched-agencies/{key}/create-agency", dependencies=[Depends(write_auth)], status_code=201
+    "/unmatched-agencies/{key}/create-agency", dependencies=[Depends(config_write)], status_code=201
 )
 async def create_agency(request: Request, key: str) -> dict[str, Any]:
     async with request.app.state.session_factory() as session:
