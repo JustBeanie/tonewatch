@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import io
 import re
+import zipfile
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING, Any
 
@@ -30,6 +32,27 @@ _CASES: tuple[tuple[str, bytes, str], ...] = (
 )
 _SENSITIVE_RESPONSE_MARKERS = ("traceback", "exception")
 _FILE_PATH = re.compile(r"(?:[a-z]:\\|/(?:home|usr|app|workspace)/)[^\s\"']+")
+
+
+def _response_failure(response: httpx.Response) -> str | None:
+    if response.status_code >= 500:
+        return "unexpected server error"
+    media_type = response.headers.get("content-type", "").partition(";")[0].strip().lower()
+    if response.is_success and media_type == "application/zip":
+        # The support endpoint accepts an empty body. Its redaction tests inspect the
+        # extracted files, whereas raw compressed bytes can match the text detectors.
+        try:
+            with zipfile.ZipFile(io.BytesIO(response.content)) as archive:
+                valid = "manifest.json" in archive.namelist() and archive.testzip() is None
+        except zipfile.BadZipFile:
+            valid = False
+        return None if valid else "invalid support bundle"
+    body = response.text.casefold()
+    if any(marker in body for marker in _SENSITIVE_RESPONSE_MARKERS):
+        return "internal error marker in response"
+    if _FILE_PATH.search(body):
+        return "filesystem path in response"
+    return None
 
 
 def _route_path(route: Any) -> str:
@@ -103,13 +126,9 @@ async def test_mutating_routes_reject_malformed_bodies_without_server_errors(
                     content=body,
                     headers=request_headers,
                 )
-                text = response.text.casefold()
-                if (
-                    response.status_code >= 500
-                    or any(marker in text for marker in _SENSITIVE_RESPONSE_MARKERS)
-                    or _FILE_PATH.search(text)
-                ):
+                failure = _response_failure(response)
+                if failure:
                     failures.append(
-                        f"{method} {route} [{name}] -> {response.status_code}: {response.text}"
+                        f"{method} {route} [{name}] -> {response.status_code}: {failure}"
                     )
         assert not failures, "\n".join(failures)
