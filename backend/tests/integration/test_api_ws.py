@@ -16,6 +16,7 @@ import pytest
 
 from tonewatch.api.app import create_app
 from tonewatch.api.auth import Session
+from tonewatch.api.routes import ws
 from tonewatch.api.routes.ws import ClientQueue, _heartbeat, _sender
 from tonewatch.events import ChannelLevel, SpectrumUpdate, ToneDetected
 from tonewatch.pipeline.channel import Channel
@@ -185,7 +186,25 @@ async def test_ws_disconnect_releases_bus_subscriptions_and_tasks() -> None:
 
 
 @pytest.mark.asyncio
-async def test_ws_restarts_pump_when_a_new_socket_reuses_the_hub() -> None:
+async def test_ws_restarts_pump_while_old_pump_is_still_shutting_down(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    retiring, finish = asyncio.Event(), asyncio.Event()
+    original = ws._event_pump
+    first_pump = True
+
+    async def pause_first_pump(*args: Any) -> None:
+        nonlocal first_pump
+        pause = first_pump
+        first_pump = False
+        try:
+            await original(*args)
+        finally:
+            if pause:
+                retiring.set()
+                await finish.wait()
+
+    monkeypatch.setattr(ws, "_event_pump", pause_first_pump)
     with TemporaryDirectory() as directory:
         app = make_app(Path(directory))
         headers = {"authorization": f"Bearer {app.state.auth.token}"}
@@ -193,18 +212,22 @@ async def test_ws_restarts_pump_when_a_new_socket_reuses_the_hub() -> None:
         await first.start()
         await first.send_json({"type": "subscribe", "topics": ["events"]})
         assert (await first.recv_json())["type"] == "subscribed"
-        await first.close()
-        assert app.state.ws_pump is None
-
+        closing = asyncio.create_task(first.close())
         second = Socket(app, headers)
-        await second.start()
-        await second.send_json({"type": "subscribe", "topics": ["events"]})
-        assert (await second.recv_json())["type"] == "subscribed"
-        event = ToneDetected(uuid4(), "fire", datetime(2026, 1, 2, tzinfo=UTC), "radio")
-        app.state.bus.publish(event)
-        payload = await asyncio.wait_for(second.recv_json(), timeout=1)
-        assert payload["type"] == "ToneDetected"
-        await second.close()
+        try:
+            await asyncio.wait_for(retiring.wait(), timeout=1)
+            await second.start()
+            await second.send_json({"type": "subscribe", "topics": ["events"]})
+            assert (await second.recv_json())["type"] == "subscribed"
+            finish.set()
+            await closing
+            event = ToneDetected(uuid4(), "fire", datetime(2026, 1, 2, tzinfo=UTC), "radio")
+            app.state.bus.publish(event)
+            assert (await asyncio.wait_for(second.recv_json(), timeout=1))["type"] == "ToneDetected"
+        finally:
+            finish.set()
+            await closing
+            await second.close()
 
 
 @pytest.mark.asyncio

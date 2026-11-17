@@ -193,17 +193,20 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
         websocket.app.state.ws_hub = hub
     else:
         hub = state_hub
-    pump = getattr(websocket.app.state, "ws_pump", None)
-    if pump is None or pump.done():
-        websocket.app.state.ws_pump = asyncio.create_task(_event_pump(hub.bus, hub))
     client = await hub.add(websocket)
     if client is None:
         return
-    await websocket.accept(subprotocol=_authorized(websocket)[1])
+    pump = getattr(websocket.app.state, "ws_pump", None)
+    if pump is None or pump.done():
+        websocket.app.state.ws_pump = asyncio.create_task(_event_pump(hub.bus, hub))
     spectrum_topics: set[str] = set()
-    sender = asyncio.create_task(_sender(websocket, client))
-    heartbeat = asyncio.create_task(_heartbeat(websocket, client))
+    tasks = []
     try:
+        await websocket.accept(subprotocol=detail)
+        tasks = [
+            asyncio.create_task(_sender(websocket, client)),
+            asyncio.create_task(_heartbeat(websocket, client)),
+        ]
         while True:
             message = await websocket.receive_json()
             if message.get("type") == "pong":
@@ -240,13 +243,13 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
             hub.bus.set_spectrum_subscribers(
                 source_id, max(0, hub.bus.spectrum_subscriber_count(source_id) - 1)
             )
-        sender.cancel()
-        heartbeat.cancel()
-        await asyncio.gather(sender, heartbeat, return_exceptions=True)
+        for task in tasks:
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
         hub.remove(client)
         if not hub.clients:
             pump = getattr(websocket.app.state, "ws_pump", None)
             if pump is not None:
+                websocket.app.state.ws_pump = None
                 pump.cancel()
                 await asyncio.gather(pump, return_exceptions=True)
-                websocket.app.state.ws_pump = None
