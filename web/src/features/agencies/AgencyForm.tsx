@@ -1,8 +1,12 @@
-import { ChangeEvent, FormEvent, useEffect, useState } from "react";
+import { ChangeEvent, FormEvent, lazy, Suspense, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { request } from "../../api/client";
-import { MapCanvas } from "../map/MapCanvas";
+import { Boundary } from "../../app/Boundary";
 import { Incident, IncidentCard } from "../cad/Incidents";
+
+const MapCanvas = lazy(() =>
+    import("../map/MapCanvas").then(({ MapCanvas }) => ({ default: MapCanvas })),
+);
 
 type Agency = {
     id: string;
@@ -306,7 +310,15 @@ export function AgencyForm() {
                     {station.name} ({station.lat}, {station.lon})
                 </p>
             ))}
-            {mapMode && <MapCanvas features={features} onClick={place} />}
+            {mapMode && (
+                <Boundary
+                    fallback={<p role="alert">The map could not load. Enter coordinates above.</p>}
+                >
+                    <Suspense fallback={<p role="status">Loading map…</p>}>
+                        <MapCanvas features={features} onClick={place} />
+                    </Suspense>
+                </Boundary>
+            )}
             <span
                 data-testid="agency-marker"
                 data-lat={agency.location.lat}

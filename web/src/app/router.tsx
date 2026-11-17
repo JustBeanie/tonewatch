@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, lazy, useEffect, useState } from "react";
 import { Link, Route, Routes, useNavigate } from "react-router";
 import { Boundary } from "./Boundary";
 import { Shell } from "./Shell";
@@ -14,19 +14,45 @@ import { Settings } from "../features/settings/Settings";
 import { Analyze } from "../features/analyze/Analyze";
 import { Agencies } from "../features/agencies/Agencies";
 import { AgencyForm } from "../features/agencies/AgencyForm";
-import { MapPage } from "../features/map/MapPage";
 import { CadFeeds, UnmatchedCadAgencies } from "../features/cad/CadFeeds";
-import { Health } from "../features/admin/Health";
-import { AdminAlerts } from "../features/admin/AdminAlerts";
-import { Deliveries } from "../features/admin/Deliveries";
-import { Credentials } from "../features/admin/Credentials";
-import { Maintenance } from "../features/admin/Maintenance";
-import { Audit } from "../features/admin/Audit";
-import { Drill } from "../features/admin/Drill";
-import { ConfigHistory } from "../features/admin/ConfigHistory";
-import { Logs } from "../features/admin/Logs";
-import { Backup } from "../features/admin/Backup";
-import { Replay } from "../features/admin/Replay";
+
+const MapPage = lazy(() =>
+    import("../features/map/MapPage").then(({ MapPage }) => ({ default: MapPage })),
+);
+const Health = lazy(() =>
+    import("../features/admin/Health").then(({ Health }) => ({ default: Health })),
+);
+const AdminAlerts = lazy(() =>
+    import("../features/admin/AdminAlerts").then(({ AdminAlerts }) => ({ default: AdminAlerts })),
+);
+const Deliveries = lazy(() =>
+    import("../features/admin/Deliveries").then(({ Deliveries }) => ({ default: Deliveries })),
+);
+const Credentials = lazy(() =>
+    import("../features/admin/Credentials").then(({ Credentials }) => ({ default: Credentials })),
+);
+const Maintenance = lazy(() =>
+    import("../features/admin/Maintenance").then(({ Maintenance }) => ({ default: Maintenance })),
+);
+const Audit = lazy(() =>
+    import("../features/admin/Audit").then(({ Audit }) => ({ default: Audit })),
+);
+const Drill = lazy(() =>
+    import("../features/admin/Drill").then(({ Drill }) => ({ default: Drill })),
+);
+const ConfigHistory = lazy(() =>
+    import("../features/admin/ConfigHistory").then(({ ConfigHistory }) => ({
+        default: ConfigHistory,
+    })),
+);
+const Logs = lazy(() => import("../features/admin/Logs").then(({ Logs }) => ({ default: Logs })));
+const Backup = lazy(() =>
+    import("../features/admin/Backup").then(({ Backup }) => ({ default: Backup })),
+);
+const Replay = lazy(() =>
+    import("../features/admin/Replay").then(({ Replay }) => ({ default: Replay })),
+);
+
 function Login() {
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");

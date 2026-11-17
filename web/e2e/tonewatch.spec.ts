@@ -211,6 +211,11 @@ test("agency editor links the fixture and map pulses without external requests",
     });
     await login(page);
     await page.goto("/agencies/new");
+    const mapChunk = page.waitForResponse("**/assets/MapCanvas-*.js");
+    await page.getByRole("button", { name: "Place on map" }).click();
+    expect((await mapChunk).ok()).toBeTruthy();
+    await expect(page.getByTestId("map-canvas")).toHaveClass(/leaflet-container/);
+    await page.getByRole("button", { name: "Place on map" }).click();
     await page.getByLabel("ID").fill("fixture-agency");
     await page.getByRole("textbox", { name: "Name", exact: true }).fill("Fixture Agency");
     await page.getByLabel("Short name").fill("FA");
@@ -270,6 +275,29 @@ test("admin health shows the fixture source", async ({ page }) => {
     await page.goto("/admin/health");
     await expect(page.getByRole("heading", { name: "System health" })).toBeVisible();
     await expect(page.getByText("Fixture radio")).toBeVisible({ timeout: 15000 });
+});
+
+test("a failed route chunk can be recovered by reloading", async ({ page }) => {
+    await login(page);
+    let releaseChunk: () => void = () => undefined;
+    const pending = new Promise<void>((resolve) => {
+        releaseChunk = resolve;
+    });
+    await page.route("**/assets/Health-*.js", async (route) => {
+        await pending;
+        await route.abort();
+    });
+    try {
+        await page.goto("/admin/health", { waitUntil: "domcontentloaded" });
+        await expect(page.getByText("Loading page…")).toBeVisible();
+        await expect(page.getByRole("navigation", { name: "Main navigation" })).toBeVisible();
+    } finally {
+        releaseChunk();
+    }
+    await expect(page.getByRole("alert")).toHaveText("This page could not load.");
+    await page.unrouteAll({ behavior: "wait" });
+    await page.getByRole("button", { name: "Reload page" }).click();
+    await expect(page.getByRole("heading", { name: "System health" })).toBeVisible();
 });
 
 test("admin alerts can be enabled and persist after reload", async ({ page }) => {
