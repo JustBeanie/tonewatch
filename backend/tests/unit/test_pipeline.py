@@ -35,6 +35,7 @@ from tonewatch.events import (
     EventBus,
     FeedHealthChanged,
     SquelchChanged,
+    SquelchHealthChanged,
     ToneDetected,
 )
 from tonewatch.pipeline.channel import Channel, RecorderCall
@@ -449,6 +450,37 @@ def test_channel_squelch_changed_is_transition_only() -> None:
         assert len(events) == 1
 
     asyncio.run(run())
+
+
+@pytest.mark.asyncio
+async def test_channel_timestamps_squelch_health_without_gate_transition() -> None:
+    points = [(0, -70), (5, -30), (35, -20), (36, -120), (42, -120)]
+    source = _Source([_frame("radio", at) for at, _ in points])
+    _Engine.outputs = [EngineOutput((_spectrum(level, at),), (), ()) for at, level in points]
+    epoch = datetime(2026, 1, 1, tzinfo=UTC)
+    bus = EventBus()
+    subscription = bus.subscribe(SquelchHealthChanged)
+    config = FileSource(
+        id="radio",
+        name="radio",
+        path="unused.wav",
+        squelch=SquelchConfig(
+            mode="auto", auto_min_samples_s=5, stuck_open_s=30, attack_ms=0, hang_ms=0
+        ),
+    )
+    await Channel(
+        config,
+        [],
+        bus,
+        clock=lambda: epoch,
+        engine_factory=_Engine,
+        source_factory=cast("Any", lambda _: source),
+    ).run()
+    events = [await asyncio.wait_for(anext(subscription), 1) for _ in range(2)]
+    assert events == [
+        SquelchHealthChanged("radio", True, False, epoch + timedelta(seconds=35)),
+        SquelchHealthChanged("radio", False, False, epoch + timedelta(seconds=42)),
+    ]
 
 
 def test_stop_on_squelch_finishes_at_hang_and_stacked_mixed_policy_is_normal() -> None:

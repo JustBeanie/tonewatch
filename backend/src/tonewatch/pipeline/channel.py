@@ -277,18 +277,20 @@ class Channel:
                 for spectrum in output.frames:
                     state, changed = self._squelch.feed(spectrum.level_dbfs, spectrum.t_end_s)
                     self._squelch_open = state if self.source_config.squelch.mode != "off" else None
-                    if changed:
+                    health_changed = self._squelch.health_changed
+                    if changed or health_changed:
                         at = self._to_wall_time(spectrum.t_end_s)
+                    if changed:
                         if state:
                             self._last_activity_at = at
                         self.bus.publish(
                             SquelchChanged(self.source_id, state, spectrum.level_dbfs, at)
                         )
-                    if self._squelch.health_changed:
+                    if health_changed:
                         stuck, chatter = self._squelch.health()
                         self.bus.publish(SquelchHealthChanged(self.source_id, stuck, chatter, at))
-                        logger.log(
-                            "warning" if stuck or chatter else "info",
+                        log_health = logger.warning if stuck or chatter else logger.info
+                        log_health(
                             "squelch health changed",
                             source_id=self.source_id,
                             stuck_open=stuck,
