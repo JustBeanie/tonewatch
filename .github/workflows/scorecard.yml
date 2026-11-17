@@ -2,6 +2,8 @@ name: OpenSSF Scorecard
 
 on:
   push:
+    # Scorecard publishing supports pushes to the default branch.
+    branches: [main]
   schedule:
     - cron: "41 3 * * 1"
 
