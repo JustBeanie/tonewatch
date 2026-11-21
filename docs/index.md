@@ -17,4 +17,6 @@ live; you are responsible for complying with the rules that apply to you.
 - [Tune detection](guide/tuning.md) when pages are missed or false positives occur.
 - [Troubleshoot a recording](guide/troubleshooting.md) with the analyzer.
 - [Import a `tones.cfg` file](guide/importing-tones-cfg.md).
-- [Connect Home Assistant](guide/home-assistant.md). The add-on is [coming soon](install/home-assistant-addon.md).
+- [Connect Home Assistant](guide/home-assistant.md) with MQTT discovery or the
+  [ToneWatch integration](https://github.com/JustBeanie/ha-tonewatch). The
+  add-on is [coming soon](install/home-assistant-addon.md).
