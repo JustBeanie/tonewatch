@@ -70,12 +70,12 @@ mode: queued
 The default recording format is MP3, so the example uses `audio/mpeg`. Change
 the media type if you configure Opus output and your player supports it.
 
-With the future custom Home Assistant integration, recordings will be exposed
-through Home Assistant's media source and a media-player automation can play
-the selected recording. That integration is **coming soon**.
+The [ToneWatch integration](https://github.com/JustBeanie/ha-tonewatch)
+exposes recordings through Home Assistant's media source and ships blueprints
+that play or send the recording. Install it from HACS as a custom repository.
 
-Until then, use the authenticated recording URL in a notification or a
-Home Assistant action that can fetch a URL, for example by passing the URL from
+Without the integration, use the authenticated recording URL in a notification
+or a Home Assistant action that can fetch a URL, for example by passing the URL from
 the MQTT call payload to the action's media content field. The exact action
 depends on the media player and its network access to ToneWatch. The add-on's
 future `/media/tonewatch/` mapping will also make recordings available in

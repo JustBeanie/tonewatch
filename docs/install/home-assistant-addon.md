@@ -12,5 +12,6 @@ verified on a real Home Assistant installation.
 
 For a current Home Assistant setup, run the Docker image and follow the
 [Home Assistant recipes](../guide/home-assistant.md). The custom Home Assistant
-integration is also **coming soon**; the MQTT discovery path is the available
-integration surface today.
+integration, [ha-tonewatch](https://github.com/JustBeanie/ha-tonewatch), is
+installed from HACS as a custom repository and works with any of these
+deployments.
